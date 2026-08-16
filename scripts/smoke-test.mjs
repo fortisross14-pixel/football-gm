@@ -1,0 +1,14 @@
+import { clubs, primeraFederacionClubs } from '../src/data/clubs.js';
+import { createGame, advanceWeek, produceMerch } from '../src/game/engine.js';
+const club=primeraFederacionClubs[0];
+const game=createGame(club,{name:'QA GM',archetype:'business',salary:90000,stats:{finance:6,players:4,fans:4,board:5,football:3,tactics:3,commercial:7}});
+if(clubs.length<80) throw new Error(`Expected >=80 clubs, got ${clubs.length}`);
+if(primeraFederacionClubs.length!==40) throw new Error(`Expected 40 Primera Federación clubs, got ${primeraFederacionClubs.length}`);
+if(game.players.length<22) throw new Error('Squad generation failed');
+if(game.schedule.length!==38) throw new Error('Schedule generation failed');
+const stocked=produceMerch(game,'shirt',100);
+if(stocked.merch.inventory.shirt!==100) throw new Error('Merch production failed');
+const next=advanceWeek(stocked);
+if(next.week!==2 || !next.lastMatch) throw new Error('Weekly simulation failed');
+if(next.table.reduce((s,r)=>s+r.p,0)!==20) throw new Error('League table simulation failed');
+console.log('Smoke tests passed', {clubs:clubs.length, primeraFederacion:primeraFederacionClubs.length, players:game.players.length, schedule:game.schedule.length});

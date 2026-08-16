@@ -1,0 +1,18 @@
+FÚTBOL: DIRECTOR GENERAL — POC v0.1
+
+REQUISITOS
+- Node.js moderno compatible con Vite 8.
+- npm.
+
+ARRANQUE
+1. npm install
+2. npm run dev
+
+BUILD
+npm run build
+
+SMOKE TESTS
+npm run test
+
+El proyecto usa `base: './'` en Vite para facilitar despliegue estático, incluido GitHub Pages.
+El guardado del POC se realiza automáticamente en localStorage.

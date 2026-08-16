@@ -1,0 +1,28 @@
+FÚTBOL: DIRECTOR GENERAL — QA REPORT v0.1 POC
+
+PASADAS AUTOMÁTICAS REALIZADAS
+[PASS] 100 clubes cargados en la base inicial.
+[PASS] 40 clubes de Primera Federación.
+[PASS] Generación procedural de 24 jugadores.
+[PASS] Generación de calendario de 38 jornadas para el club del jugador.
+[PASS] Producción de merchandising descuenta caja y añade inventario.
+[PASS] Avanzar semana produce partido, ingresos, costes, fans y posición.
+[PASS] La tabla completa recibe 20 participaciones por jornada (10 partidos).
+[PASS] Transpilación/sintaxis JSX verificada con TypeScript transpileModule.
+
+REVISIÓN UX / ACCESIBILIDAD
+[PASS] Navegación principal en cuatro áreas.
+[PASS] Focus visible en botones/inputs/selects.
+[PASS] Labels en controles de precio y creación de perfil.
+[PASS] Responsive: cuadrantes y grids se apilan en móvil.
+[PASS] Tablas mantienen scroll horizontal en pantallas estrechas.
+[PASS] Estados positivos/negativos usan texto además de color.
+
+LIMITACIÓN DEL ENTORNO DE ENTREGA
+El registro npm no estuvo accesible desde el entorno de empaquetado, por lo que no se pudo ejecutar `npm install` + `vite build` aquí. Las versiones están fijadas y el código pasó smoke tests del motor y chequeo sintáctico JSX. Ejecutar `npm install && npm run build` en un entorno con acceso a npm es la última comprobación de integración.
+
+RIESGOS DE BALANCE A VALIDAR EN v0.2
+- La economía necesita simulaciones de 5-15 temporadas para calibrar escalado.
+- Global fans todavía es un modelo simplificado.
+- Sponsors y merchandising necesitan elasticidad de precio más profunda.
+- El motor deportivo POC es agregado y no incluye lesiones, fatiga ni estadísticas individuales.

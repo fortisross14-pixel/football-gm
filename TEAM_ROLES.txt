@@ -1,0 +1,43 @@
+FÚTBOL: DIRECTOR GENERAL — EQUIPO DE DESARROLLO / SUBRUTINAS
+
+1) GAME DIRECTOR
+- Mantiene la visión y el GDD.
+- Decide prioridades de cada versión.
+- Revisa el resultado conjunto tras cada pasada.
+
+2) SYSTEMS & ECONOMY DESIGN
+- Modela finanzas, demanda, merchandising, ticketing, sponsors y progresión.
+- Ejecuta escenarios pequeño/medio/grande para evitar fórmulas que exploten.
+
+3) UX/UI + ART DIRECTION
+- Diseña navegación en cuatro cuadrantes.
+- Garantiza que cada pantalla tenga una decisión principal clara.
+- Define lenguaje visual y briefs de assets.
+
+4) SIMULATION / DATA DESIGN
+- Mantiene clubes, competiciones, generación procedural, calendarios y motor deportivo.
+- Usa seeds deterministas para reproducir bugs.
+
+5) LEAD PROGRAMMER
+- Implementa Vite + React.
+- Mantiene motor separado de UI.
+- Versiona save schema y evita dependencias innecesarias.
+
+6) QA GAMEPLAY & BALANCE
+- Corre carreras simuladas.
+- Busca exploits, softlocks, progresión absurda, economías inviables y dominantes.
+
+7) QA ACCESSIBILITY & UX
+- Comprueba teclado, foco, contraste, responsive, scroll horizontal y labels.
+- Busca pantallas sin salida o acciones sin feedback.
+
+8) RELEASE QA
+- Smoke tests.
+- Build.
+- Nueva partida.
+- Guardado/carga.
+- Varias jornadas de simulación.
+- Entrega ZIP solo después de estas comprobaciones.
+
+CADENCIA DE TRABAJO POR VERSIÓN
+Director -> Systems/Data -> UX/UI -> Programming -> Gameplay QA -> Accessibility QA -> Director review -> Release QA.
