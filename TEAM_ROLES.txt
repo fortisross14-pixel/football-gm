@@ -1,43 +1,52 @@
-FÚTBOL: DIRECTOR GENERAL — EQUIPO DE DESARROLLO / SUBRUTINAS
+FÚTBOL: DIRECTOR GENERAL — EQUIPO DE DESARROLLO / SUBRUTINAS v0.2
 
 1) GAME DIRECTOR
-- Mantiene la visión y el GDD.
-- Decide prioridades de cada versión.
-- Revisa el resultado conjunto tras cada pasada.
+- Propietario de la visión del juego.
+- Decide qué fantasía de gestión debe soportar cada sistema.
+- Rechaza mecánicas con una decisión óptima demasiado evidente.
+- Mantiene el balance entre fútbol, empresa, estadio y carrera del GM.
 
 2) SYSTEMS & ECONOMY DESIGN
-- Modela finanzas, demanda, merchandising, ticketing, sponsors y progresión.
-- Ejecuta escenarios pequeño/medio/grande para evitar fórmulas que exploten.
+- Modela P&L, caja, salarios, CAPEX, demanda, sponsors, merchandising, proveedores y activos.
+- Debe validar cada mecánica en club pequeño, medio y grande.
+- Diseña costes de oportunidad: cada euro invertido en una vía desaparece de las demás.
 
-3) UX/UI + ART DIRECTION
-- Diseña navegación en cuatro cuadrantes.
-- Garantiza que cada pantalla tenga una decisión principal clara.
-- Define lenguaje visual y briefs de assets.
+3) FOOTBALL SYSTEMS DESIGN
+- Tácticas 1–20 por parámetros, perfiles de jugador, encaje, peticiones de entrenador y staff de rendimiento.
+- Garantiza que el juego represente dirección deportiva, no microgestión de un simulador de partidos.
 
-4) SIMULATION / DATA DESIGN
-- Mantiene clubes, competiciones, generación procedural, calendarios y motor deportivo.
-- Usa seeds deterministas para reproducir bugs.
+4) UX/UI + ART DIRECTION
+- Objetivo v0.2: reducir dependencia de texto y tablas.
+- Cada área principal necesita un lenguaje visual reconocible: campo táctico, estadio, contratos, sala de fichajes, retail, oficina.
+- Produce assets vectoriales, cards ilustradas, diagramas, menús y jerarquía visual.
+- Debe hacer que el usuario pueda reconocer un área antes de leer su título.
 
-5) LEAD PROGRAMMER
-- Implementa Vite + React.
-- Mantiene motor separado de UI.
-- Versiona save schema y evita dependencias innecesarias.
+5) SIMULATION / DATA DESIGN
+- Clubes, competiciones, calendarios, jugadores/personal procedurales y seeds reproducibles.
+- Separa "talento real" de "información que el GM conoce" cuando entre scouting avanzado.
 
-6) QA GAMEPLAY & BALANCE
-- Corre carreras simuladas.
-- Busca exploits, softlocks, progresión absurda, economías inviables y dominantes.
+6) LEAD PROGRAMMER
+- Vite + React.
+- Estado y motor separados de componentes visuales.
+- Acciones de gestión implementadas como funciones puras cuando sea posible.
+- Saves versionados; dependencias mínimas.
 
-7) QA ACCESSIBILITY & UX
-- Comprueba teclado, foco, contraste, responsive, scroll horizontal y labels.
-- Busca pantallas sin salida o acciones sin feedback.
+7) QA GAMEPLAY & BALANCE
+- No pregunta únicamente "¿hay bugs?".
+- Ejecuta carreras con políticas radicalmente diferentes.
+- Busca estrategia dominante, decisiones falsas, economías inevitables y sistemas sin impacto.
+- Una versión no pasa QA si cuatro estilos de juego acaban tomando esencialmente las mismas decisiones.
 
-8) RELEASE QA
+8) QA ACCESSIBILITY & UX
+- Teclado, foco, labels, contraste, responsive, scroll, modales cerrables y navegación sin callejones.
+- Comprueba que la información visual tenga alternativa textual suficiente.
+
+9) RELEASE QA
 - Smoke tests.
-- Build.
-- Nueva partida.
-- Guardado/carga.
-- Varias jornadas de simulación.
-- Entrega ZIP solo después de estas comprobaciones.
+- QA de cuatro estrategias.
+- Build Vite cuando el entorno permita instalar dependencias.
+- Nueva partida, save/load y varias semanas manuales.
+- ZIP de código sin documentación Markdown adicional.
 
-CADENCIA DE TRABAJO POR VERSIÓN
-Director -> Systems/Data -> UX/UI -> Programming -> Gameplay QA -> Accessibility QA -> Director review -> Release QA.
+CADENCIA
+Director -> Systems/Football/Data -> Art/UI -> Programming -> Gameplay QA -> Balance iteration -> Accessibility QA -> Director review -> Release QA.
