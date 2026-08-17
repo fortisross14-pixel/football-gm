@@ -1,4 +1,5 @@
 import {clubs,primeraFederacionClubs} from '../src/data/clubs.js';
+import {saveGameToSlot,loadGameFromSlot,getSlotSummaries,renameSaveSlot,deleteSaveSlot} from '../src/game/storage.js';
 import {facilityDefs,maxLevel} from '../src/data/management.js';
 import {
   createGame,advanceDays,startSponsorSearch,submitSponsorNegotiation,signSponsor,
@@ -12,6 +13,8 @@ const assert=(condition,message)=>{if(!condition)throw new Error(message)};
 const club=primeraFederacionClubs.find(c=>c.name==='CD Lugo')||primeraFederacionClubs[0];
 const gm={name:'QA GM',archetype:'business',salary:90000,stats:{finance:12,players:11,fans:8,board:10,football:9,tactics:9,commercial:12}};
 let game=createGame(club,gm);
+// Every eligible 1RFEF offer must be able to enter the main game state without an exception.
+for(const offerClub of primeraFederacionClubs){const start=createGame(offerClub,gm);assert(start.club.id===offerClub.id&&start.inbox?.length>=3&&start.table?.length===20,`Career start failed for ${offerClub.name}`);}
 assert(clubs.length===100,`Expected 100 clubs, got ${clubs.length}`);
 assert(primeraFederacionClubs.length===40,`Expected 40 1RFEF clubs, got ${primeraFederacionClubs.length}`);
 assert(game.version===4,'Expected v4 game state');
@@ -94,7 +97,15 @@ assert(game.stadium.condition<conditionBefore+2,'Concert did not materially affe
 game=startInvestment({...game,cash:game.cash+1_000_000},'low',100_000,365);game=advanceDays(game,365);
 const matured=game.financeV4.investments.find(i=>i.type==='low'&&i.status==='matured');assert(matured&&Math.abs(matured.returnRate-.05)<1e-9,'Low-risk investment must return fixed +5% annually');
 
-console.log('v0.4 smoke tests passed',{
+// Three named save slots: explicit mobile-friendly persistence contract.
+const memory=new Map();globalThis.window={localStorage:{getItem:k=>memory.has(k)?memory.get(k):null,setItem:(k,v)=>memory.set(k,String(v)),removeItem:k=>memory.delete(k)}};
+let saved=saveGameToSlot(2,'Mi Lugo móvil',game);assert(saved.ok,'Save slot write failed');
+let loaded=loadGameFromSlot(2);assert(loaded.ok&&loaded.game.club.id===game.club.id,'Save slot load failed');
+assert(getSlotSummaries().filter(s=>!s.empty).length===1,'Save index should contain exactly one test slot');
+assert(renameSaveSlot(2,'Ascenso con Lugo').ok&&getSlotSummaries().find(s=>s.id===2).slotName==='Ascenso con Lugo','Save slot rename failed');
+assert(deleteSaveSlot(2).ok&&getSlotSummaries().find(s=>s.id===2).empty,'Save slot delete failed');
+
+console.log('v0.4.1 smoke tests passed',{
   club:game.club.name,day:game.day,matches:game.history.length,sponsors:game.sponsors.length,
   staffPositions:game.staffPositions.length,scoreboard:game.infrastructure.levels.stadium.scoreboard,
   inbox:game.inbox.length,cash:Math.round(game.cash)
