@@ -1,5 +1,6 @@
 import { firstNames, lastNames, positions, tacticalPresets } from '../data/names.js';
 import { hashString } from '../data/clubs.js';
+import { sponsorRights } from '../data/management.js';
 
 export function rng(seed) {
   let t = seed + 0x6D2B79F5;
@@ -97,34 +98,49 @@ export function generateStaff(club,role,count=5){
       salary:Math.round((22000+rating*rating*31+r()*45000)/1000)*1000,
       tactic:preset,trait:pick(['Metódico','Negociador','Innovador','Formador','Carismático','Analítico','Exigente','Pragmático'],r),
       specialty:pick(roleSpecialties[role]||['Gestión'],r),reputation:clamp(Math.round(rating*.85+r()*18),35,92),
+      ego:35+Math.floor(r()*61),flexibility:25+Math.floor(r()*71),contractYears:1+Math.floor(r()*3),
     };
   });
 }
 
 const localPrefixes=['Clínica','Talleres','Construcciones','Restaurante','Seguros','Transportes','Cerámicas','Grupo','Automoción','Bodegas'];
 const localSuffixes=['Norte','Central','Del Río','San Miguel','La Plaza','Iberia','Atlántico','Levante','Castilla','Costa'];
+const regionalBrands=['Motor Sierra','Caja Regional','Costa Telecom','Norte Bebidas','Ruta Hotels','Atlas Construcción','Mercado Centro','Ebro Energía'];
 const nationalBrands=['Nexo Bank','Brava Foods','Orbe Telecom','Aurea Logistics','Cobalto Tech','Marea Hotels','Alma Retail','Turia Mobility'];
 const globalBrands=['Helix Airways','Vertex Cloud','Northstar Energy','Atlas Global Bank','NovaDrive','Apex Sportswear'];
-export function generateSponsorOffers(club,skill=6){
-  const r=rng(hashString(`${club.name}-sponsors-v2-${skill}`));
-  const scale=club.prestige>=78?'global':club.prestige>=62?'national':club.prestige>=48?'regional':'local';
-  const ranks=scale==='global'?['national','global','global','national','global','regional']:scale==='national'?['regional','national','national','regional','national','local']:scale==='regional'?['local','regional','regional','local','regional','local']:['local','local','regional','local','local','regional'];
-  return Array.from({length:6},(_,i)=>{
-    const scope=ranks[i];
-    const brand=scope==='local'?`${pick(localPrefixes,r)} ${pick(localSuffixes,r)}`:scope==='regional'?`${pick(localPrefixes,r)} ${pick(localSuffixes,r)} Grupo`:scope==='national'?pick(nationalBrands,r):pick(globalBrands,r);
-    const mult={local:.45,regional:.8,national:1.45,global:2.7}[scope];
-    const annual=Math.round(((club.localFans*4+club.globalFans*.16+club.prestige*7800)*mult*(.72+r()*.5))/5000)*5000;
-    return {id:`sp-${i}-${hashString(brand)%9999}`,brand,scope,sector:pick(['Alimentación','Finanzas','Tecnología','Movilidad','Servicios','Turismo','Construcción'],r),
-      type:i===0?'Camiseta principal':i===1?'Manga':i===2?'Training partner':i===3?'Estadio':'Partner oficial',annual,years:1+Math.floor(r()*4),
-      bonusWin:Math.round(annual*(.01+r()*.025)/1000)*1000,fit:42+Math.floor(r()*57),reputation:45+Math.floor(r()*52),
-      targetAnnual:Math.round(annual*(1.03+r()*.12)/5000)*5000,patience:2+Math.floor(r()*3),negotiatedRounds:0,
+const sponsorSectors=['Alimentación','Finanzas','Tecnología','Automoción','Telecomunicaciones','Turismo','Construcción','Energía','Retail'];
+function sponsorScopeFor(club,brandScore,r){
+  if(club.tier>=3){return r()<.72?'local':'regional';}
+  if(club.tier===2){return r()<.25?'local':r()<.78?'regional':'national';}
+  if(brandScore>=72)return r()<.18?'regional':r()<.56?'national':'global';
+  return r()<.35?'regional':'national';
+}
+export function generateSponsorOffers(club,skill=6,brandScore=null){
+  const score=brandScore??Math.round(club.prestige*.72+Math.log10(Math.max(1000,club.globalFans||1000))*5);
+  const r=rng(hashString(`${club.name}-sponsors-v3-${skill}-${score}`));
+  const eligible=sponsorRights.filter(x=>club.tier<=x.minTier&&score>=x.minBrand);
+  const rights=[...eligible].sort(()=>r()-.5).slice(0,Math.min(12,eligible.length));
+  return rights.map((right,i)=>{
+    let scope=sponsorScopeFor(club,score,r);
+    // Absolute gate: a Primera Federación club never receives a global corporation.
+    if(club.tier>=3&&scope==='global')scope='regional';
+    if(club.tier>=3&&scope==='national')scope='regional';
+    const brand=scope==='local'?`${pick(localPrefixes,r)} ${pick(localSuffixes,r)}`:scope==='regional'?pick(regionalBrands,r):scope==='national'?pick(nationalBrands,r):pick(globalBrands,r);
+    const mult={local:.42,regional:.78,national:1.55,global:3.2}[scope];
+    const base=(club.localFans*5.2+(club.globalFans||0)*.18+club.prestige*7600+score*11000);
+    const annual=Math.max(5000,Math.round((base*right.mult*mult*(.78+r()*.42))/5000)*5000);
+    const sector=right.sector||pick(sponsorSectors,r);
+    return {id:`sp-${right.id}-${i}-${hashString(brand)%9999}`,brand,scope,sector,slotId:right.id,type:right.name,group:right.group,annual,years:1+Math.floor(r()*4),remainingYears:1+Math.floor(r()*4),
+      bonusWin:Math.round(annual*(.01+r()*.035)/1000)*1000,fit:42+Math.floor(r()*57),reputation:40+Math.floor(r()*58),
+      targetAnnual:Math.round(annual*(1.04+r()*.16)/5000)*5000,patience:2+Math.floor(r()*3),negotiatedRounds:0,
+      activationAsk:Math.round(annual*(.04+r()*.05)/1000)*1000,exclusivity:sector,
     };
   });
 }
 
 export function generateSuppliers(club){
   const r=rng(hashString(`${club.name}-suppliers-v2`));
-  const categories=['Catering','Seguridad','Limpieza','Telecomunicaciones','Energía','Viajes'];
+  const categories=['Catering','Seguridad','Limpieza','Telecomunicaciones','Energía','Viajes','Merchandising','Ticketing','Material médico'];
   return Object.fromEntries(categories.map((category)=>[category,Array.from({length:3},(_,i)=>{
     const quality=45+Math.floor(r()*48); const cheap=i===0;
     const weekly=Math.round((350+club.capacity*(cheap?.06:.09)+quality*18)*(1+i*.08)/50)*50;

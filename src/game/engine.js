@@ -1,5 +1,6 @@
 import { primeraFederacionClubs, hashString } from '../data/clubs.js';
 import { tacticalPresets, tacticalIdentityNames } from '../data/names.js';
+import { facilityDefs, getNextLevelDef, merchChannelDefs, coachInterventions, sponsorRights } from '../data/management.js';
 import { generateMarket, generatePlayers, generateSponsorOffers, generateStaff, generateSuppliers, rng } from './generator.js';
 
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
@@ -19,233 +20,155 @@ export function money(v){
 }
 
 function matchSchedule(club){
-  const peers=primeraFederacionClubs.filter(c=>c.group===club.group&&c.id!==club.id); const r=rng(hashString(`${club.name}-schedule-v2`));
-  const shuffled=[...peers].sort(()=>r()-.5);
-  const first=shuffled.map((opp,i)=>({round:i+1,opponentId:opp.id,opponent:opp.name,home:i%2===0}));
-  const second=shuffled.map((opp,i)=>({round:i+20,opponentId:opp.id,opponent:opp.name,home:i%2!==0}));
-  return [...first,...second];
+  const peers=primeraFederacionClubs.filter(c=>c.group===club.group&&c.id!==club.id);const r=rng(hashString(`${club.name}-schedule-v3`));
+  const shuffled=[...peers].sort(()=>r()-.5);const first=shuffled.map((opp,i)=>({round:i+1,opponentId:opp.id,opponent:opp.name,home:i%2===0}));
+  const second=shuffled.map((opp,i)=>({round:i+20,opponentId:opp.id,opponent:opp.name,home:i%2!==0}));return [...first,...second];
 }
 function seedTable(club){return primeraFederacionClubs.filter(c=>c.group===club.group).map(c=>({id:c.id,name:c.name,p:0,w:0,d:0,l:0,gf:0,ga:0,gd:0,pts:0,strength:c.sporting}));}
-
 function clubIdentity(club){
-  const ids=['expressive','intense','control','pragmatic']; const id=ids[hashString(club.name+'culture')%ids.length];
-  const vectors={
-    expressive:{attack:18,freedom:18,intensity:12,youth:11,stars:13},
-    intense:{attack:16,freedom:10,intensity:19,youth:12,stars:10},
-    control:{attack:14,freedom:14,intensity:13,youth:18,stars:10},
-    pragmatic:{attack:10,freedom:8,intensity:15,youth:9,stars:14},
-  };
+  const ids=['expressive','intense','control','pragmatic'];const id=ids[hashString(club.name+'culture')%ids.length];
+  const vectors={expressive:{attack:18,freedom:18,intensity:12,youth:11,stars:13},intense:{attack:16,freedom:10,intensity:19,youth:12,stars:10},control:{attack:14,freedom:14,intensity:13,youth:18,stars:10},pragmatic:{attack:10,freedom:8,intensity:15,youth:9,stars:14}};
   return {id,name:tacticalIdentityNames[id],...vectors[id]};
 }
-
 export function getJobOffers(gmStats,archetypeId){
   const r=rng(260816+Object.values(gmStats).reduce((a,b)=>a+b,0)+hashString(archetypeId));
-  return primeraFederacionClubs.filter(c=>c.prestige<67||gmStats.board>=9).sort(()=>r()-.5).slice(0,6).map((c,i)=>({...c,
-    salary:Math.round((54000+c.prestige*2400+i*3000)/1000)*1000,
-    expectation:c.sporting>63?'Pelear por el playoff':c.sporting>51?'Top 10 y profesionalizar el club':'Estabilidad deportiva y caja sostenible',
-    patience:45+(hashString(c.name+'patience')%45),
-  }));
+  return primeraFederacionClubs.filter(c=>c.prestige<67||gmStats.board>=9).sort(()=>r()-.5).slice(0,6).map((c,i)=>({...c,salary:Math.round((54000+c.prestige*2400+i*3000)/1000)*1000,expectation:c.sporting>63?'Pelear por el playoff':c.sporting>51?'Top 10 y profesionalizar el club':'Estabilidad deportiva y caja sostenible',patience:45+(hashString(c.name+'patience')%45)}));
 }
-
 function defaultGMtactic(){return {...tacticalPresets.find(x=>x.id==='balanced')};}
-const staffRoles=[
-  ['coach','Entrenador'],['sportingDirector','Director deportivo'],['fitnessCoach','Preparador físico'],['assistantCoach','Segundo entrenador'],['physio','Fisioterapia'],
-  ['cmo','Chief Merchandising Officer'],['cfo','CFO'],['scout','Jefe de scouting'],['academyDirector','Director de cantera'],
-];
-
+const staffRoles=[['coach','Entrenador'],['sportingDirector','Director deportivo'],['fitnessCoach','Preparador físico'],['assistantCoach','Segundo entrenador'],['physio','Fisioterapia'],['cmo','Chief Merchandising Officer'],['cfo','CFO'],['scout','Jefe de scouting'],['academyDirector','Director de cantera']];
+function initialLevels(){return {stadium:{scoreboard:0,access:0,toilets:0,seating:0,capacity:0,vip:0,fnb:0,retail:0,wifi:0,pitch:0,lighting:0},club:{offices:0,medical:0,mediaCenter:0,dataCenter:0,commercialOffice:0,warehouse:0},sport:{trainingPitches:0,gym:0,recovery:0,analysisRoom:0,academyGround:0,academyResidence:0}};}
+export function getBrandScore(game){
+  const fanReach=Math.log10(Math.max(1000,game.localFans+game.nationalFans*1.6+game.globalFans*2.5));const sportBoost=Math.max(0,12-(game.table?.findIndex(x=>x.id===game.club.id)+1||12))*.45;const infra=facilityBonuses(game);
+  return clamp(Math.round(game.club.prestige*.42+fanReach*7+sportBoost+(infra.sponsor||0)*.45+(infra.digital||0)*.22),12,96);
+}
 export function createGame(club,gm){
-  const players=generatePlayers(club); const coaches=generateStaff(club,'Entrenador',6); const currentCoach=coaches[0];
-  const candidates=Object.fromEntries(staffRoles.filter(([k])=>k!=='coach').map(([,role])=>[role,generateStaff(club,role,5)]));
-  const fanCulture=clubIdentity(club);
-  return {
-    version:2,club:{...club},gm:{...gm,reputation:34,level:1,xp:0,unspent:0},week:1,season:1,dateLabel:'Agosto · Semana 1',cash:club.cash,
-    boardConfidence:68,fanSentiment:64,localFans:club.localFans,globalFans:club.globalFans,nationalFans:Math.round(club.localFans*.55),fanCulture,
-    stadium:{capacity:club.capacity,condition:72,vipSeats:Math.round(club.capacity*.025),training:1,access:'Manual',accessRating:32,gates:Math.max(2,Math.round(club.capacity/3500)),concourse:1,transport:42,commercialSlots:3,units:[{slot:0,type:'kiosk',name:'Kiosco local'}]},
-    ticket:{price:club.tier===3?18:28,seasonTickets:Math.min(Math.round(club.localFans*.12),Math.round(club.capacity*.55))},players,market:generateMarket(club),
-    staff:{coach:currentCoach,sportingDirector:null,fitnessCoach:null,assistantCoach:null,physio:null,cmo:null,cfo:null,scout:null,academyDirector:null},
-    coachCandidates:coaches.slice(1),staffCandidates:candidates,controlMode:'coach',gmTactic:defaultGMtactic(),coachTrust:70,
-    sponsors:[],sponsorOffers:generateSponsorOffers(club,gm.stats.finance),suppliers:{},supplierOffers:generateSuppliers(club),
-    merch:{inventory:{shirt:0,scarf:0,cap:0},prices:{shirt:45,scarf:18,cap:22},produced:{shirt:0,scarf:0,cap:0},revenueSeason:0,channels:{matchday:true,ecommerce:false,clubShop:false,distributors:false}},
-    finance:{revenue:0,costs:0,ticket:0,merch:0,sponsor:0,broadcast:0,hospitality:0,wages:0,facilities:0,suppliers:0,transfersIn:0,transfersOut:0,weekly:[]},
-    schedule:matchSchedule(club),lastMatch:null,table:seedTable(club),
-    objectives:[{id:'league',label:club.sporting>60?'Terminar Top 6':'Terminar en la mitad superior',target:club.sporting>60?6:10},{id:'cash',label:'Cerrar la temporada con caja positiva'},{id:'fans',label:'Aumentar la afición local un 8%'}],
-    achievements:{merch1:false,merch5:false,star:false,sellouts:0,selloutSkill:false,boardEliteWeeks:0,boardSkill:false,tacticsSkill:false,staffEdge:false},
-    history:[],news:[{week:1,title:`${club.name} presenta a su nuevo Director General`,tone:'info'},{week:1,title:`La grada se identifica con un fútbol ${fanCulture.name.toLowerCase()}`,tone:'neutral'}],
+  const players=generatePlayers(club);const coaches=generateStaff(club,'Entrenador',6);const currentCoach=coaches[0];const candidates=Object.fromEntries(staffRoles.filter(([k])=>k!=='coach').map(([,role])=>[role,generateStaff(club,role,5)]));const fanCulture=clubIdentity(club);
+  const base={
+    version:3,club:{...club},gm:{...gm,reputation:34,level:1,xp:0,unspent:0},week:1,season:1,dateLabel:'Agosto · Semana 1',cash:club.cash,boardConfidence:68,fanSentiment:64,localFans:club.localFans,globalFans:club.globalFans,nationalFans:Math.round(club.localFans*.55),fanCulture,
+    stadium:{capacity:club.capacity,condition:72,vipSeats:Math.max(20,Math.round(club.capacity*.01)),commercialSlots:1,units:[],ticketZones:{lateral:{name:'Lateral',share:.46,matchPrice:20,seasonPrice:270,seasonAllocation:.34},goals:{name:'Fondos',share:.42,matchPrice:14,seasonPrice:190,seasonAllocation:.27},premium:{name:'Preferencia',share:.12,matchPrice:27,seasonPrice:360,seasonAllocation:.22}}},
+    infrastructure:{levels:initialLevels(),projects:[],maxProjects:2},players,market:generateMarket(club),
+    staff:{coach:currentCoach,sportingDirector:null,fitnessCoach:null,assistantCoach:null,physio:null,cmo:null,cfo:null,scout:null,academyDirector:null},coachCandidates:coaches.slice(1),staffCandidates:candidates,controlMode:'coach',gmTactic:defaultGMtactic(),coachRelationship:{trust:68,respect:58,interventions:0,autonomy:'consultation'},coachDirectives:{youth:false},trainingIntensity:'balanced',
+    sponsors:[],sponsorOffers:[],suppliers:{},supplierOffers:generateSuppliers(club),
+    merch:{inventory:{shirt:0,scarf:0,cap:0},prices:{shirt:45,scarf:18,cap:22},produced:{shirt:0,scarf:0,cap:0},revenueSeason:0,channels:{matchday:0,ecommerce:0,distributors:0}},
+    business:{hospitality:{vipPrice:80,eventPolicy:'community',eventPrice:20},media:{weeklyBudget:500,cadence:'basic',digitalReach:Math.round(club.localFans*.6)},membership:{annualFee:35,members:Math.round(club.localFans*.055)},commercialPolicy:'balanced'},
+    finance:{revenue:0,costs:0,ticket:0,merch:0,sponsor:0,broadcast:0,hospitality:0,events:0,commercialSpaces:0,membership:0,media:0,wages:0,facilities:0,suppliers:0,transfersIn:0,transfersOut:0,weekly:[]},schedule:matchSchedule(club),lastMatch:null,table:seedTable(club),
+    objectives:[{id:'league',label:club.sporting>60?'Terminar Top 6':'Terminar en la mitad superior',target:club.sporting>60?6:10},{id:'cash',label:'Cerrar la temporada con caja positiva'},{id:'fans',label:'Aumentar la afición local un 8%'}],achievements:{merch1:false,merch5:false,star:false,sellouts:0,selloutSkill:false,boardEliteWeeks:0,boardSkill:false,tacticsSkill:false,staffEdge:false},history:[],news:[{week:1,title:`${club.name} presenta a su nuevo Director General`,tone:'info'},{week:1,title:`La grada se identifica con un fútbol ${fanCulture.name.toLowerCase()}`,tone:'neutral'}],
   };
+  const brand=getBrandScore(base);return {...base,brandScore:brand,sponsorOffers:generateSponsorOffers(club,gm.stats.finance,brand)};
 }
 
 export function getActiveTactic(game){return game.controlMode==='self'?game.gmTactic:(game.staff.coach?.tactic||game.gmTactic);}
 export function setTactic(game,patch){if(game.controlMode!=='self')return game;return {...game,gmTactic:{...game.gmTactic,...patch}};}
 export function applyTacticalPreset(game,id){const p=tacticalPresets.find(x=>x.id===id);return p?setTactic(game,{...p}):game;}
-
 function closeness(a,b){return Math.max(0,20-Math.abs(a-b))/20;}
-export function getFanTacticalSatisfaction(game){
-  const t=getActiveTactic(game),f=game.fanCulture;
-  const intensity=(t.pressing+t.aggression+t.transitionAD)/3;
-  const academyShare=game.players.filter(p=>p.academy).length/Math.max(1,game.players.length)*20;
-  const score=(closeness(t.attackIntent,f.attack)*.31+closeness(t.freedom,f.freedom)*.22+closeness(intensity,f.intensity)*.24+closeness(academyShare,f.youth)*.10+closeness(20-t.setPieces*.35,f.stars)*.03)*100;
-  return clamp(Math.round(score),18,98);
-}
-
-export function playerTacticalFit(player,tactic){
-  const s=player.style||{directness:10,pressing:10,line:10,freedom:10};
-  const lineWeight=['DFC','LD','LI'].includes(player.pos)?.3:.12; const pressWeight=['POR'].includes(player.pos)?.08:.25;
-  const score=closeness(s.directness,tactic.directness)*.25+closeness(s.pressing,tactic.pressing)*pressWeight+closeness(s.line,tactic.defensiveLine)*lineWeight+closeness(s.freedom,tactic.freedom)*.2;
-  return clamp(Math.round(score*100),25,99);
-}
-
-function bestXI(game){const t=getActiveTactic(game);return [...game.players].sort((a,b)=>(b.overall+playerTacticalFit(b,t)*.12+b.fitness*.05)-(a.overall+playerTacticalFit(a,t)*.12+a.fitness*.05)).slice(0,11);}
-export function squadTacticalFit(game){const t=getActiveTactic(game),xi=bestXI(game);return Math.round(xi.reduce((s,p)=>s+playerTacticalFit(p,t),0)/xi.length);}
-
+export function getFanTacticalSatisfaction(game){const t=getActiveTactic(game),f=game.fanCulture;const intensity=(t.pressing+t.aggression+t.transitionAD)/3;const academyShare=game.players.filter(p=>p.academy).length/Math.max(1,game.players.length)*20;const score=(closeness(t.attackIntent,f.attack)*.31+closeness(t.freedom,f.freedom)*.22+closeness(intensity,f.intensity)*.24+closeness(academyShare,f.youth)*.10+closeness(20-t.setPieces*.35,f.stars)*.03)*100;return clamp(Math.round(score),18,98);}
+export function playerTacticalFit(player,tactic){const s=player.style||{directness:10,pressing:10,line:10,freedom:10};const lineWeight=['DFC','LD','LI'].includes(player.pos)?.3:.12;const pressWeight=['POR'].includes(player.pos)?.08:.25;const score=closeness(s.directness,tactic.directness)*.25+closeness(s.pressing,tactic.pressing)*pressWeight+closeness(s.line,tactic.defensiveLine)*lineWeight+closeness(s.freedom,tactic.freedom)*.2;return clamp(Math.round(score*100),25,99);}
+function bestXI(game){const t=getActiveTactic(game);const youth=game.coachDirectives?.youth?2.2:0;return [...game.players].filter(p=>(p.injuredWeeks??0)<=0).sort((a,b)=>(b.overall+playerTacticalFit(b,t)*.12+b.fitness*.05+(b.age<=21?youth:0))-(a.overall+playerTacticalFit(a,t)*.12+a.fitness*.05+(a.age<=21?youth:0))).slice(0,11);}
+export function squadTacticalFit(game){const t=getActiveTactic(game),xi=bestXI(game);return xi.length?Math.round(xi.reduce((s,p)=>s+playerTacticalFit(p,t),0)/xi.length):40;}
 export function getCoachRequests(game){
-  if(game.controlMode!=='coach'||!game.staff.coach)return [];
-  const t=getActiveTactic(game),req=[]; const defenders=game.players.filter(p=>p.pos==='DFC'); const attackers=game.players.filter(p=>['DC','ED','EI','MP'].includes(p.pos));
-  if(t.pressing>=16&&(!game.staff.fitnessCoach||game.staff.fitnessCoach.rating<68)) req.push({id:'fitness',priority:'Alta',title:'Preparador físico de nivel',detail:'Mi presión exige sostener esfuerzos. Quiero un preparador físico de 68+.',fulfilled:game.staff.fitnessCoach?.rating>=68});
-  if(t.defensiveLine>=15&&Math.max(...defenders.map(p=>p.attributes?.pace||0),0)<72) req.push({id:'fastcb',priority:'Alta',title:'Central rápido',detail:'La línea alta necesita un DFC con velocidad ≥72.',fulfilled:defenders.some(p=>(p.attributes?.pace||0)>=72)});
-  if(t.setPieces>=14&&!attackers.some(p=>(p.attributes?.aerial||0)>=75)) req.push({id:'aerial',priority:'Media',title:'Amenaza aérea',detail:'Necesito un atacante con juego aéreo ≥75 para explotar balón parado.',fulfilled:false});
-  if(t.freedom>=16&&!attackers.some(p=>(p.attributes?.creativity||0)>=76)) req.push({id:'creator',priority:'Media',title:'Jugador creativo',detail:'Nuestro modelo necesita un atacante/MP con creatividad ≥76.',fulfilled:false});
-  if(squadTacticalFit(game)<62) req.push({id:'fit',priority:'Alta',title:'Plantilla poco compatible',detail:`El encaje táctico del XI está en ${squadTacticalFit(game)}%. Prioriza fichajes compatibles.`,fulfilled:false});
-  return req.slice(0,4);
+  if(game.controlMode!=='coach'||!game.staff.coach)return [];const t=getActiveTactic(game),req=[];const defenders=game.players.filter(p=>p.pos==='DFC');const attackers=game.players.filter(p=>['DC','ED','EI','MP'].includes(p.pos));
+  if(t.pressing>=16&&(!game.staff.fitnessCoach||game.staff.fitnessCoach.rating<68))req.push({id:'fitness',priority:'Alta',title:'Preparador físico de nivel',detail:'Mi presión exige sostener esfuerzos. Quiero un preparador físico de 68+.',fulfilled:game.staff.fitnessCoach?.rating>=68});
+  if(t.defensiveLine>=15&&Math.max(...defenders.map(p=>p.attributes?.pace||0),0)<72)req.push({id:'fastcb',priority:'Alta',title:'Central rápido',detail:'La línea alta necesita un DFC con velocidad ≥72.',fulfilled:defenders.some(p=>(p.attributes?.pace||0)>=72)});
+  if(t.setPieces>=14&&!attackers.some(p=>(p.attributes?.aerial||0)>=75))req.push({id:'aerial',priority:'Media',title:'Amenaza aérea',detail:'Quiero una referencia aérea para convertir el balón parado en una ventaja.',fulfilled:false});
+  if(t.freedom>=16&&!attackers.some(p=>(p.attributes?.creativity||0)>=76))req.push({id:'creator',priority:'Media',title:'Jugador creativo',detail:'Nuestro modelo necesita un atacante/MP con creatividad ≥76.',fulfilled:false});
+  if(squadTacticalFit(game)<62)req.push({id:'fit',priority:'Alta',title:'Plantilla poco compatible',detail:`El encaje táctico del XI está en ${squadTacticalFit(game)}%. Prioriza perfiles compatibles.`,fulfilled:false});return req.slice(0,4);
+}
+export function coachIntervene(game,actionId,force=false){
+  const action=coachInterventions[actionId];if(!action)return game;
+  if(game.controlMode==='self'){
+    let next=game;if(action.patch)next={...next,gmTactic:{...next.gmTactic,...Object.fromEntries(Object.entries(action.patch).map(([k,v])=>[k,clamp((next.gmTactic[k]||10)+v,1,20)]))}};if(action.training)next={...next,trainingIntensity:action.training};if(action.directive==='youth')next={...next,coachDirectives:{...next.coachDirectives,youth:!next.coachDirectives.youth}};return next;
+  }
+  const coach=game.staff.coach;if(!coach)return game;const rel=game.coachRelationship||{trust:60,respect:55,interventions:0};const seed=hashString(`${coach.id}-${game.week}-${actionId}-${rel.interventions}`),roll=rng(seed)()*100;
+  const acceptance=clamp(32+game.gm.stats.tactics*2+game.gm.stats.football*1.2+rel.trust*.28+coach.flexibility*.33-coach.reputation*.22-coach.ego*.15,18,92);const accepted=force||roll<acceptance;
+  let staff=game.staff,trainingIntensity=game.trainingIntensity,directives={...game.coachDirectives},trust=rel.trust,respect=rel.respect,news=[...game.news];
+  if(accepted){if(action.patch)staff={...staff,coach:{...coach,tactic:{...coach.tactic,...Object.fromEntries(Object.entries(action.patch).map(([k,v])=>[k,clamp((coach.tactic[k]||10)+v,1,20)]))}}};if(action.training)trainingIntensity=action.training;if(action.directive==='youth')directives.youth=!directives.youth;trust+=force?-(5+coach.ego/25):1;respect+=force?-2:1;news.unshift({week:game.week,title:`Reunión con ${coach.name}: ${force?'impones':'acuerda'} “${action.label}”`,tone:force?'warning':'info'});}else{trust-=2;news.unshift({week:game.week,title:`${coach.name} rechaza tu sugerencia: “${action.label}”`,tone:'warning'});}
+  trust=clamp(Math.round(trust),0,100);respect=clamp(Math.round(respect),0,100);let quit=false;if(force&&trust<20&&(coach.reputation>=72||coach.ego>=78)){quit=true;staff={...staff,coach:null};news.unshift({week:game.week,title:`${coach.name} dimite: considera intolerable la intervención del GM`,tone:'negative'});}
+  return {...game,staff,trainingIntensity,coachDirectives:directives,coachRelationship:{...rel,trust,respect,interventions:rel.interventions+1,lastOutcome:quit?'quit':accepted?'accepted':'rejected'},news:news.slice(0,40)};
+}
+export function fireCoach(game){const coach=game.staff.coach;if(!coach)return game;const severance=Math.round(coach.salary*(.18+.08*(coach.contractYears||1)));if(game.cash<severance)return game;return {...game,cash:game.cash-severance,staff:{...game.staff,coach:null},coachRelationship:{trust:0,respect:0,interventions:0,autonomy:'vacant'},finance:{...game.finance,costs:game.finance.costs+severance},news:[{week:game.week,title:`Destituyes a ${coach.name}. Indemnización: ${money(severance)}`,tone:'negative'},...game.news]};}
+
+export function facilityBonuses(game){
+  const out={};const levels=game.infrastructure?.levels||{};for(const [group,assets] of Object.entries(levels)){for(const [id,level] of Object.entries(assets)){const def=facilityDefs[group]?.[id]?.levels?.[level];for(const [k,v] of Object.entries(def?.effects||{}))out[k]=(out[k]||0)+v;}}return out;
+}
+export function facilityUpkeep(game){let sum=0;const levels=game.infrastructure?.levels||{};for(const [group,assets] of Object.entries(levels)){for(const [id,level] of Object.entries(assets)){sum+=facilityDefs[group]?.[id]?.levels?.[level]?.upkeep||0;}}return sum;}
+export function facilityScore(game,group){const assets=game.infrastructure?.levels?.[group]||{};const vals=Object.entries(assets).map(([id,l])=>{const max=Math.max(1,facilityDefs[group]?.[id]?.levels?.length-1||1);return l/max*100;});return vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0;}
+export function startFacilityProject(game,group,assetId){
+  const next=getNextLevelDef(game,group,assetId);if(!next)return game;if((game.infrastructure.projects||[]).length>=game.infrastructure.maxProjects)return game;const req=next.requires||{};if(req.minCapacity&&game.stadium.capacity<req.minCapacity)return game;if(req.minBrand&&getBrandScore(game)<req.minBrand)return game;if(game.cash<next.cost)return game;
+  const target=(game.infrastructure.levels[group]?.[assetId]||0)+1;const project={id:`pr-${group}-${assetId}-${game.week}-${target}`,group,assetId,targetLevel:target,name:next.name,totalWeeks:next.weeks,remainingWeeks:next.weeks,cost:next.cost};
+  return {...game,cash:game.cash-next.cost,infrastructure:{...game.infrastructure,projects:[...game.infrastructure.projects,project]},finance:{...game.finance,costs:game.finance.costs+next.cost,facilities:game.finance.facilities+next.cost},news:[{week:game.week,title:`Obra aprobada: ${next.name} · ${money(next.cost)} · ${next.weeks} semanas`,tone:'info'},...game.news]};
+}
+function progressProjects(game){
+  let levels=JSON.parse(JSON.stringify(game.infrastructure.levels)),stadium={...game.stadium},news=[...game.news],completed=[];const projects=[];
+  for(const p of game.infrastructure.projects||[]){const remaining=p.remainingWeeks-1;if(remaining>0){projects.push({...p,remainingWeeks:remaining});continue;}levels[p.group][p.assetId]=p.targetLevel;const def=facilityDefs[p.group][p.assetId].levels[p.targetLevel],e=def.effects||{};if(e.capacity)stadium.capacity+=e.capacity;if(e.vipSeats)stadium.vipSeats+=e.vipSeats;if(e.commercialSlots)stadium.commercialSlots+=e.commercialSlots;completed.push(p);news.unshift({week:game.week,title:`Proyecto terminado: ${def.name}`,tone:'positive'});}
+  return {...game,infrastructure:{...game.infrastructure,levels,projects},stadium,news,completed};
 }
 
-function teamStrength(game){
-  const xi=bestXI(game),avg=xi.reduce((s,p)=>s+p.overall,0)/11,fit=squadTacticalFit(game),fitness=xi.reduce((s,p)=>s+p.fitness,0)/11;
-  const coach=game.controlMode==='self'?42+game.gm.stats.tactics*2.8:(game.staff.coach?.rating??50);
-  const fitnessStaff=game.staff.fitnessCoach?.rating??38; const assistant=game.staff.assistantCoach?.rating??40;
-  return avg*.68+coach*.14+fit*.07+fitness*.04+fitnessStaff*.035+assistant*.02+game.gm.stats.football*.22;
+export function updateTicketZone(game,zone,patch){if(!game.stadium.ticketZones[zone])return game;return {...game,stadium:{...game.stadium,ticketZones:{...game.stadium.ticketZones,[zone]:{...game.stadium.ticketZones[zone],...patch}}}};}
+export function ticketProjection(game){
+  const b=facilityBonuses(game),zones=game.stadium.ticketZones;let attendance=0,revenue=0;const fanBase=game.localFans*(.78+game.fanSentiment/280);const data=[];
+  for(const [id,z] of Object.entries(zones)){const cap=Math.round(game.stadium.capacity*z.share);const seasonQuota=Math.round(cap*z.seasonAllocation);const reference=id==='goals'?190:id==='premium'?360:270;const passElastic=clamp(1-(z.seasonPrice-reference)/reference*.65,.25,1.35);const passDemand=Math.round(fanBase*z.share*.18*passElastic*(1+(b.fan||0)/100));const seasonSold=Math.min(seasonQuota,passDemand);const regularCap=Math.max(0,cap-seasonSold);const refMatch=id==='goals'?14:id==='premium'?27:20;const wtp=1+(b.ticketWtp||0)/35;const matchElastic=clamp(1-(z.matchPrice-refMatch*wtp)/(refMatch*wtp)*.62,.18,1.35);const regularDemand=Math.round(fanBase*z.share*.23*matchElastic*(1+(b.fan||0)/115));const regularSold=Math.min(regularCap,regularDemand);attendance+=seasonSold+regularSold;revenue+=seasonSold*z.seasonPrice/19+regularSold*z.matchPrice;data.push({id,...z,capacity:cap,seasonQuota,seasonSold,regularSold,attendance:seasonSold+regularSold,revenue:Math.round(seasonSold*z.seasonPrice/19+regularSold*z.matchPrice)});}
+  return {attendance:Math.min(game.stadium.capacity,attendance),revenue:Math.round(revenue),zones:data};
 }
 
+export function upgradeMerchChannel(game,key){const current=game.merch.channels[key]||0,next=merchChannelDefs[key]?.levels?.[current+1];if(!next||game.cash<next.cost)return game;return {...game,cash:game.cash-next.cost,merch:{...game.merch,channels:{...game.merch.channels,[key]:current+1}},finance:{...game.finance,costs:game.finance.costs+next.cost},news:[{week:game.week,title:`Merchandising: ${next.name}`,tone:'positive'},...game.news]};}
+export function setMerchPrice(game,key,price){return {...game,merch:{...game.merch,prices:{...game.merch.prices,[key]:clamp(Number(price)||0,1,500)}}};}
+export function setBusinessPolicy(game,area,patch){return {...game,business:{...game.business,[area]:{...game.business[area],...patch}}};}
 
-function poisson(lambda,r){
-  const L=Math.exp(-lambda);let k=0,p=1;
-  do{k+=1;p*=r();}while(p>L&&k<9);
-  return Math.max(0,k-1);
-}
-
-function updateTable(table,userId,opponentId,userGoals,oppGoals,seed){
-  const r=rng(seed),next=table.map(row=>({...row}));
-  const apply=(row,gf,ga)=>{row.p++;row.gf+=gf;row.ga+=ga;row.gd=row.gf-row.ga;if(gf>ga){row.w++;row.pts+=3}else if(gf===ga){row.d++;row.pts++}else row.l++;};
-  const user=next.find(x=>x.id===userId),opp=next.find(x=>x.id===opponentId); apply(user,userGoals,oppGoals);apply(opp,oppGoals,userGoals);
-  const idle=next.filter(x=>x.id!==userId&&x.id!==opponentId).sort(()=>r()-.5);
-  for(let i=0;i<idle.length;i+=2){const a=idle[i],b=idle[i+1];const edge=(a.strength-b.strength)/18;const ag=Math.max(0,Math.floor(r()*3+Math.max(0,edge)));const bg=Math.max(0,Math.floor(r()*3+Math.max(0,-edge)));apply(a,ag,bg);apply(b,bg,ag);}
-  return next.sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);
-}
-
-function demand(game){
-  const brand=game.club.brand/100; const success=Math.max(.72,game.fanSentiment/70); const reach=game.localFans+game.nationalFans*.42+game.globalFans*.08;
-  const cmo=1+(game.staff.cmo?.rating??0)/460; const channels=(game.merch.channels.matchday?.25:0)+(game.merch.channels.ecommerce?.35:0)+(game.merch.channels.clubShop?.32:0)+(game.merch.channels.distributors?.7:0);
-  return reach*.00125*success*(.65+brand)*cmo*Math.max(.18,channels);
-}
-function sellMerch(game,attendance){
-  const base=demand(game)+(attendance*.018); let inventory={...game.merch.inventory},revenue=0,sold={};
-  const weights={shirt:.25,scarf:.47,cap:.28};
-  for(const key of Object.keys(weights)){const price=game.merch.prices[key],elastic=Math.max(.35,1-(price-({shirt:45,scarf:18,cap:22}[key]))*.018);const q=Math.min(inventory[key],Math.max(0,Math.round(base*weights[key]*elastic)));inventory[key]-=q;sold[key]=q;revenue+=q*price;}
-  return {inventory,revenue,sold};
-}
-
-const unitDefs={
-  kiosk:{name:'Kiosco F&B',build:70000,weeklyBase:220,perFan:.65,upkeep:90},
-  clubShop:{name:'Tienda oficial',build:210000,weeklyBase:180,perFan:.34,upkeep:180},
-  restaurant:{name:'Restaurante',build:480000,weeklyBase:420,perFan:1.05,upkeep:620},
-  rental:{name:'Local comercial alquilado',build:155000,weeklyBase:750,perFan:.05,upkeep:80},
-  hospitality:{name:'Lounge hospitality',build:690000,weeklyBase:520,perFan:1.45,upkeep:900},
-};
-export const commercialUnitCatalog=unitDefs;
-
-function stadiumBusiness(game,attendance){
-  let rev=0,cost=0;
-  for(const u of game.stadium.units){const d=unitDefs[u.type];if(!d)continue;rev+=d.weeklyBase+(game.lastMatch||attendance?attendance*d.perFan:0);cost+=d.upkeep;}
-  return {revenue:Math.round(rev),cost:Math.round(cost)};
-}
+function merchChannelStats(game){let cap=0,mult=0,active=0;for(const [key,level] of Object.entries(game.merch.channels)){const d=merchChannelDefs[key]?.levels?.[level];if(d&&d.capacity>0){cap+=d.capacity;mult+=d.mult;active++;}}const retail=facilityBonuses(game).retail||0;return {capacity:Math.round(cap*(1+retail/60)),mult:active?mult/active:0};}
+function merchDemand(game,attendance){const reach=game.localFans+game.nationalFans*.45+game.globalFans*.10;const cmo=1+(game.staff.cmo?.rating??0)/430;const brand=.58+getBrandScore(game)/115;const channels=merchChannelStats(game);return {base:(reach*.00115+attendance*.019)*cmo*brand*(channels.mult||.2),cap:channels.capacity};}
+function sellMerch(game,attendance){const d=merchDemand(game,attendance),inventory={...game.merch.inventory};let revenue=0,total=0;const sold={},weights={shirt:.31,scarf:.43,cap:.26},refs={shirt:45,scarf:18,cap:22};for(const key of Object.keys(weights)){const price=game.merch.prices[key],elastic=clamp(1-(price-refs[key])/refs[key]*.72,.25,1.4);let q=Math.max(0,Math.round(d.base*weights[key]*elastic));if(d.cap>0)q=Math.min(q,Math.max(1,Math.round(d.cap*weights[key])));q=Math.min(inventory[key],q);inventory[key]-=q;sold[key]=q;total+=q;revenue+=q*price;}return {inventory,revenue,sold,total};}
 function supplierWeekly(game){return Object.values(game.suppliers).filter(Boolean).reduce((s,x)=>s+x.weekly,0);}
 function supplierQuality(game,cat){return game.suppliers[cat]?.quality??40;}
+export const commercialUnitCatalog={
+  kiosk:{name:'Kiosco de comida/bebida',fitout:45000,weeklyCost:180,base:120,perFan:.42,description:'Bajo CAPEX y muy dependiente del día de partido.'},
+  clubShop:{name:'Tienda pequeña del club',fitout:95000,weeklyCost:350,base:180,perFan:.18,description:'Vende producto propio y refuerza marca; requiere stock.'},
+  restaurant:{name:'Restaurante',fitout:280000,weeklyCost:900,base:850,perFan:.72,description:'Opera en partido y entre semana. Más upside y más coste fijo.'},
+  rental:{name:'Local alquilado a tercero',fitout:65000,weeklyCost:80,base:720,perFan:.02,description:'Ingreso estable a cambio de renunciar a parte del upside.'},
+  hospitality:{name:'Lounge corporativo',fitout:390000,weeklyCost:1100,base:650,perFan:1.05,description:'Margen alto cuando existe demanda empresarial.'},
+};
+export function leaseCommercialUnit(game,slot,type){const d=commercialUnitCatalog[type];if(!d||slot<0||slot>=game.stadium.commercialSlots||game.stadium.units.some(u=>u.slot===slot)||game.cash<d.fitout)return game;return {...game,cash:game.cash-d.fitout,stadium:{...game.stadium,units:[...game.stadium.units,{slot,type,name:d.name}]},finance:{...game.finance,costs:game.finance.costs+d.fitout,facilities:game.finance.facilities+d.fitout},news:[{week:game.week,title:`Nuevo espacio comercial: ${d.name} en local ${slot+1}`,tone:'positive'},...game.news]};}
+function commercialUnitWeekly(game,attendance,home){let revenue=0,cost=0;for(const u of game.stadium.units||[]){const d=commercialUnitCatalog[u.type];if(!d)continue;const nonMatch=u.type==='restaurant'?450:u.type==='rental'?d.base:u.type==='clubShop'?90:0;revenue+=(home?d.base+attendance*d.perFan:0)+nonMatch;cost+=d.weeklyCost;}return {revenue:Math.round(revenue),cost:Math.round(cost)};}
 
-export function advanceWeek(game){
-  if(game.week>38)return game; const match=game.schedule[game.week-1]; const opponent=primeraFederacionClubs.find(c=>c.id===match.opponentId); const r=rng(hashString(`${game.club.id}-${game.season}-${game.week}-v2`));
-  const strength=teamStrength(game),oppStrength=44+opponent.sporting*.38; const tactical=getFanTacticalSatisfaction(game); const homeEdge=match.home?2.4:0; const diff=(strength-oppStrength+homeEdge)/6.5;
-  const xgFor=clamp(1.12+diff*.42+(match.home?.12:0),.28,3.2);const xgAgainst=clamp(1.08-diff*.36,.28,3.0);
-  const goalsFor=poisson(xgFor,r); const goalsAgainst=poisson(xgAgainst,r); const win=goalsFor>goalsAgainst,draw=goalsFor===goalsAgainst;
-  const accessFactor=.82+game.stadium.accessRating/180; const securityFactor=.9+supplierQuality(game,'Seguridad')/500;
-  const priceElastic=Math.max(.38,1-(game.ticket.price-18)*.021); const resultBuzz=.72+game.fanSentiment/130;
-  const attendance=match.home?Math.min(game.stadium.capacity,Math.round((game.localFans*.255+500)*priceElastic*resultBuzz*accessFactor*securityFactor)):0;
-  const sellout=match.home&&attendance>=game.stadium.capacity*.98; const ticketRevenue=attendance*game.ticket.price;
-  const stadiumBiz=stadiumBusiness(game,attendance); const merchResult=sellMerch(game,attendance);
-  const sponsorRevenue=game.sponsors.reduce((s,x)=>s+x.annual/52+(win?x.bonusWin:0),0);
-  const broadcastRevenue=game.club.tier===3?18000:game.club.tier===2?65000:210000;
-  const wages=(game.players.reduce((s,p)=>s+p.salary,0)+Object.values(game.staff).filter(Boolean).reduce((s,x)=>s+x.salary,0)+game.gm.salary)/52;
-  const suppliers=supplierWeekly(game); const facilities=game.stadium.capacity*.055+game.stadium.concourse*450+game.stadium.gates*85;
-  const revenue=Math.round(ticketRevenue+stadiumBiz.revenue+merchResult.revenue+sponsorRevenue+broadcastRevenue); const costs=Math.round(wages+suppliers+facilities+stadiumBiz.cost); const cash=game.cash+revenue-costs;
-  const styleBonus=tactical>=78?1:tactical<45?-2:0; const sentiment=clamp(game.fanSentiment+(win?3:draw?0:-3)+styleBonus+(sellout?1:0),15,98);
-  const localGrowth=Math.max(-90,Math.round((win?game.localFans*.0018:draw?game.localFans*.00045:-game.localFans*.0007)+(sellout?85:0)+(tactical>80?28:0)));
-  const globalGrowth=Math.max(-25,Math.round((win?game.globalFans*.00045:-game.globalFans*.00008)+(game.club.prestige>58&&win?70:0)));
-  const table=updateTable(game.table,game.club.id,opponent.id,goalsFor,goalsAgainst,hashString(`${game.club.id}-table-${game.week}-v2`)); const position=table.findIndex(x=>x.id===game.club.id)+1;
-  const boardConfidence=clamp(game.boardConfidence+(win?2:draw?0:-2)+(cash<0?-2:0)+(position<=6?1:0),10,98);
-  const fitnessCoach=game.staff.fitnessCoach?.rating??42,physio=game.staff.physio?.rating??38;
-  const academy=game.staff.academyDirector?.rating??38;
-  const players=game.players.map(p=>{const load=match?5+r()*5:2;const recovery=3+fitnessCoach/35;const injuryRisk=Math.max(.002,.014-physio/9000);const injuredWeeks=(p.injuredWeeks??0)>0?(p.injuredWeeks-1):(r()<injuryRisk?1+Math.floor(r()*3):0);let overall=p.overall;const developmentWeek=game.week%4===0&&p.age<=22&&overall<p.potential;const devChance=.05+academy/260+(p.potential-overall)/180+(p.academy?.05:0);if(developmentWeek&&r()<devChance)overall=Math.min(p.potential,overall+1);const value=overall>p.overall?Math.round(p.value*1.09/10000)*10000:p.value;return {...p,overall,value,fitness:clamp(Math.round(p.fitness-load+recovery),48,99),sharpness:clamp(Math.round(p.sharpness+(match?2:-1)),45,99),injuredWeeks};});
-  const finance={...game.finance,revenue:game.finance.revenue+revenue,costs:game.finance.costs+costs,ticket:game.finance.ticket+ticketRevenue,merch:game.finance.merch+merchResult.revenue,sponsor:game.finance.sponsor+sponsorRevenue,broadcast:game.finance.broadcast+broadcastRevenue,hospitality:game.finance.hospitality+stadiumBiz.revenue,wages:game.finance.wages+wages,facilities:game.finance.facilities+facilities,suppliers:game.finance.suppliers+suppliers,weekly:[...game.finance.weekly,{week:game.week,revenue,costs,cash}].slice(-14)};
-  const achievements={...game.achievements};if(sellout)achievements.sellouts++;if(boardConfidence>=90)achievements.boardEliteWeeks++;else achievements.boardEliteWeeks=0;
-  const gm={...game.gm,stats:{...game.gm.stats}};const news=[...game.news];const award=(stat,why,points=1)=>{gm.stats[stat]=Math.min(MAX_GM_STAT,gm.stats[stat]+points);gm.xp+=points*100;news.unshift({week:game.week,title:`Hito de carrera: ${why} (+${points} ${statLabelsShort[stat]})`,tone:'positive'});};
-  const merchRevenue=game.merch.revenueSeason+merchResult.revenue;
-  if(!achievements.merch1&&merchRevenue>=1000000){achievements.merch1=true;award('commercial','1 M€ de merchandising en una temporada');}
-  if(!achievements.merch5&&merchRevenue>=5000000){achievements.merch5=true;award('commercial','5 M€ de merchandising',2);}
-  if(!achievements.selloutSkill&&achievements.sellouts>=10){achievements.selloutSkill=true;award('fans','10 llenos en casa');}
-  if(!achievements.boardSkill&&achievements.boardEliteWeeks>=8){achievements.boardSkill=true;award('board','8 semanas con confianza ≥90');}
-  if(!achievements.staffEdge&&game.staff.fitnessCoach?.rating>=75&&position<=5){achievements.staffEdge=true;award('football','convertir staff de élite en ventaja deportiva');}
-  news.unshift({week:game.week,title:`${game.club.name} ${goalsFor}-${goalsAgainst} ${opponent.name}${match.home?'':' (fuera)'}`,tone:win?'positive':draw?'neutral':'negative'});
-  return {...game,week:game.week+1,dateLabel:weekLabel(game.week+1),cash,boardConfidence,fanSentiment:sentiment,localFans:game.localFans+localGrowth,globalFans:game.globalFans+globalGrowth,nationalFans:game.nationalFans+Math.max(0,Math.round(localGrowth*.35)),table,players,finance,achievements,gm,merch:{...game.merch,inventory:merchResult.inventory,revenueSeason:merchRevenue},lastMatch:{...match,opponent:opponent.name,goalsFor,goalsAgainst,attendance,ticketRevenue,hospitalityRevenue:stadiumBiz.revenue,merchRevenue:merchResult.revenue,position,tacticalSatisfaction:tactical},news:news.slice(0,36),history:[...game.history,{week:game.week,opponent:opponent.name,home:match.home,gf:goalsFor,ga:goalsAgainst,attendance}]};
+function businessRevenue(game,attendance,home){
+  const b=facilityBonuses(game),hospitality=game.business.hospitality,media=game.business.media,membership=game.business.membership;const vipCapacity=Math.max(0,game.stadium.vipSeats);const vipDemand=home?Math.min(vipCapacity,Math.round((game.localFans*.012+getBrandScore(game)*1.5)*(1+(b.hospitality||0)/40)*clamp(1-(hospitality.vipPrice-80)/180,.35,1.2))):0;const hospitalityRev=vipDemand*hospitality.vipPrice;
+  const policyMult={none:0,community:.55,commercial:1,aggressive:1.45}[hospitality.eventPolicy]??.55;const eventRevenue=Math.round((b.nonMatch||0)*220*policyMult*(1+getBrandScore(game)/120));
+  const mediaQuality=(b.media||0)+(game.staff.cmo?.rating||0)/12;const mediaRevenue=Math.round(Math.max(0,media.digitalReach)*.0025*(1+mediaQuality/45));const membershipRevenue=Math.round(membership.members*membership.annualFee/52);const units=commercialUnitWeekly(game,attendance,home);
+  return {hospitality:Math.round(hospitalityRev),events:eventRevenue,commercialSpaces:units.revenue,unitCost:units.cost,media:mediaRevenue,membership:membershipRevenue,mediaCost:media.weeklyBudget||0};
+}
+function teamStrength(game){const xi=bestXI(game),b=facilityBonuses(game);if(!xi.length)return 35;const avg=xi.reduce((s,p)=>s+p.overall,0)/xi.length,fit=squadTacticalFit(game),fitness=xi.reduce((s,p)=>s+p.fitness,0)/xi.length,sharp=xi.reduce((s,p)=>s+p.sharpness,0)/xi.length;const coach=game.controlMode==='self'?42+game.gm.stats.tactics*2.8:(game.staff.coach?.rating??45);const fitnessStaff=game.staff.fitnessCoach?.rating??38,assistant=game.staff.assistantCoach?.rating??40;return avg*.66+coach*.14+fit*.065+fitness*.035+sharp*.02+fitnessStaff*.028+assistant*.018+game.gm.stats.football*.20+(b.performance||0)*.22+(b.training||0)*.08+(b.analysis||0)*.06;}
+function poisson(lambda,r){const L=Math.exp(-lambda);let k=0,p=1;do{k+=1;p*=r();}while(p>L&&k<9);return Math.max(0,k-1);}
+function updateTable(table,userId,opponentId,userGoals,oppGoals,seed){const r=rng(seed),next=table.map(row=>({...row}));const apply=(row,gf,ga)=>{row.p++;row.gf+=gf;row.ga+=ga;row.gd=row.gf-row.ga;if(gf>ga){row.w++;row.pts+=3}else if(gf===ga){row.d++;row.pts++}else row.l++;};const user=next.find(x=>x.id===userId),opp=next.find(x=>x.id===opponentId);apply(user,userGoals,oppGoals);apply(opp,oppGoals,userGoals);const idle=next.filter(x=>x.id!==userId&&x.id!==opponentId).sort(()=>r()-.5);for(let i=0;i<idle.length;i+=2){const a=idle[i],b=idle[i+1],edge=(a.strength-b.strength)/18,ag=Math.max(0,Math.floor(r()*3+Math.max(0,edge))),bg=Math.max(0,Math.floor(r()*3+Math.max(0,-edge)));apply(a,ag,bg);apply(b,bg,ag);}return next.sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);}
+
+export function advanceWeek(input){
+  if(input.week>38)return input;let game=progressProjects(input);const match=game.schedule[game.week-1],opponent=primeraFederacionClubs.find(c=>c.id===match.opponentId),r=rng(hashString(`${game.club.id}-${game.season}-${game.week}-v3`));const b=facilityBonuses(game),strength=teamStrength(game),oppStrength=44+opponent.sporting*.38,tactical=getFanTacticalSatisfaction(game),homeEdge=match.home?2.4:0,diff=(strength-oppStrength+homeEdge)/6.5;const xgFor=clamp(1.12+diff*.42+(match.home?.12:0),.28,3.2),xgAgainst=clamp(1.08-diff*.36,.28,3.0),goalsFor=poisson(xgFor,r),goalsAgainst=poisson(xgAgainst,r),win=goalsFor>goalsAgainst,draw=goalsFor===goalsAgainst;
+  const ticket=ticketProjection(game),accessFactor=clamp(.82+(b.attendanceCap||0)/70,0.72,1.18),securityFactor=.9+supplierQuality(game,'Seguridad')/500;const attendance=match.home?Math.min(game.stadium.capacity,Math.round(ticket.attendance*accessFactor*securityFactor)):0,ticketRevenue=match.home?Math.round(ticket.revenue*(attendance/Math.max(1,ticket.attendance))):0,sellout=match.home&&attendance>=game.stadium.capacity*.98;
+  const merchResult=sellMerch(game,attendance),biz=businessRevenue(game,attendance,match.home),sponsorRevenue=game.sponsors.reduce((s,x)=>s+x.annual/52+(win?x.bonusWin:0),0),broadcastRevenue=game.club.tier===3?18000:game.club.tier===2?65000:210000,wages=(game.players.reduce((s,p)=>s+p.salary,0)+Object.values(game.staff).filter(Boolean).reduce((s,x)=>s+x.salary,0)+game.gm.salary)/52,suppliers=supplierWeekly(game),facilities=facilityUpkeep(game)+game.stadium.capacity*.026,costs=Math.round(wages+suppliers+facilities+biz.mediaCost+biz.unitCost),revenue=Math.round(ticketRevenue+merchResult.revenue+sponsorRevenue+broadcastRevenue+biz.hospitality+biz.events+biz.commercialSpaces+biz.media+biz.membership),cash=game.cash+revenue-costs;
+  const styleBonus=tactical>=78?1:tactical<45?-2:0,fanFacility=Math.min(2,(b.fan||0)/10),sentiment=clamp(game.fanSentiment+(win?3:draw?0:-3)+styleBonus+(sellout?1:0)+fanFacility*.25,15,98),localGrowth=Math.max(-100,Math.round((win?game.localFans*.0018:draw?game.localFans*.00045:-game.localFans*.0007)+(sellout?85:0)+(tactical>80?28:0)+(b.fan||0)*1.2)),globalGrowth=Math.max(-25,Math.round((win?game.globalFans*.00045:-game.globalFans*.00008)+(getBrandScore(game)>55&&win?45:0)+(b.media||0)*.7));
+  const table=updateTable(game.table,game.club.id,opponent.id,goalsFor,goalsAgainst,hashString(`${game.club.id}-table-${game.week}-v3`)),position=table.findIndex(x=>x.id===game.club.id)+1,boardConfidence=clamp(game.boardConfidence+(win?2:draw?0:-2)+(cash<0?-2:0)+(position<=6?1:0),10,98);
+  const fitnessCoach=game.staff.fitnessCoach?.rating??42,physio=game.staff.physio?.rating??38,academy=game.staff.academyDirector?.rating??38,intensity=game.trainingIntensity==='high'?1.35:game.trainingIntensity==='light'?.68:1,bRecovery=b.recovery||0,bMedical=b.medical||0,bYouth=b.youth||0,bPotential=b.potential||0;
+  const players=game.players.map(p=>{const load=(match?5+r()*5:2)*intensity,recovery=3+fitnessCoach/38+bRecovery*.18+(game.trainingIntensity==='light'?2.3:0),injuryRisk=Math.max(.0015,(.014+(game.trainingIntensity==='high'?.010:game.trainingIntensity==='light'?-.004:0))-physio/9000+(b.injury||0)/1000-bMedical/4200),injuredWeeks=(p.injuredWeeks??0)>0?(p.injuredWeeks-1):(r()<injuryRisk?1+Math.floor(r()*3):0);let overall=p.overall;const developmentWeek=game.week%4===0&&p.age<=22&&overall<p.potential,devChance=.045+academy/280+(p.potential-overall)/185+(p.academy?.04:0)+bYouth/240+bPotential/300+(game.trainingIntensity==='high'?.018:0);if(developmentWeek&&r()<devChance)overall=Math.min(p.potential,overall+1);const value=overall>p.overall?Math.round(p.value*1.09/10000)*10000:p.value;return {...p,overall,value,fitness:clamp(Math.round(p.fitness-load+recovery),42,99),sharpness:clamp(Math.round(p.sharpness+(match?2:0)+(game.trainingIntensity==='high'?2:game.trainingIntensity==='light'?-1:0)),40,99),injuredWeeks};});
+  const currentMembership=game.business.membership,feeElastic=clamp(1-(currentMembership.annualFee-35)/95,.35,1.25),memberGrowth=Math.round((sentiment-55)*.12*feeElastic+(b.digital||0)*.18),membership={...currentMembership,members:Math.max(0,currentMembership.members+memberGrowth)},mediaReachGrowth=Math.max(0,Math.round((game.localFans+game.nationalFans*.5)*.001*(1+(b.digital||0)/30)*(game.business.media.weeklyBudget>0?1:0))),media={...game.business.media,digitalReach:game.business.media.digitalReach+mediaReachGrowth};
+  const requests=getCoachRequests({...game,players});let coachRelationship={...game.coachRelationship},staff=game.staff,news=[...game.news];if(game.controlMode==='coach'&&staff.coach){const highUnmet=requests.filter(x=>x.priority==='Alta'&&!x.fulfilled).length,highMet=requests.filter(x=>x.priority==='Alta'&&x.fulfilled).length;coachRelationship.trust=clamp(Math.round(coachRelationship.trust+(win?1:goalsFor<goalsAgainst?-.5:0)+highMet*.4-(game.week%4===0?highUnmet*.8:0)),0,100);if(coachRelationship.trust<12&&staff.coach.reputation>70&&r()<.18){news.unshift({week:game.week,title:`${staff.coach.name} dimite por la ruptura de confianza con el GM`,tone:'negative'});staff={...staff,coach:null};}}
+  const finance={...game.finance,revenue:game.finance.revenue+revenue,costs:game.finance.costs+costs,ticket:game.finance.ticket+ticketRevenue,merch:game.finance.merch+merchResult.revenue,sponsor:game.finance.sponsor+sponsorRevenue,broadcast:game.finance.broadcast+broadcastRevenue,hospitality:game.finance.hospitality+biz.hospitality,events:game.finance.events+biz.events,commercialSpaces:(game.finance.commercialSpaces||0)+biz.commercialSpaces,membership:game.finance.membership+biz.membership,media:game.finance.media+biz.media,wages:game.finance.wages+wages,facilities:game.finance.facilities+facilities,suppliers:game.finance.suppliers+suppliers,weekly:[...game.finance.weekly,{week:game.week,revenue,costs,cash,ticket:ticketRevenue,commercial:merchResult.revenue+sponsorRevenue+biz.hospitality+biz.events+biz.commercialSpaces+biz.membership+biz.media}].slice(-16)};
+  const achievements={...game.achievements};if(sellout)achievements.sellouts++;if(boardConfidence>=90)achievements.boardEliteWeeks++;else achievements.boardEliteWeeks=0;const gm={...game.gm,stats:{...game.gm.stats}};const award=(stat,why,points=1)=>{gm.stats[stat]=Math.min(MAX_GM_STAT,gm.stats[stat]+points);gm.xp+=points*100;news.unshift({week:game.week,title:`Hito de carrera: ${why} (+${points} ${statLabelsShort[stat]})`,tone:'positive'});};const merchRevenue=game.merch.revenueSeason+merchResult.revenue;if(!achievements.merch1&&merchRevenue>=1000000){achievements.merch1=true;award('commercial','1 M€ de merchandising en una temporada');}if(!achievements.merch5&&merchRevenue>=5000000){achievements.merch5=true;award('commercial','5 M€ de merchandising',2);}if(!achievements.selloutSkill&&achievements.sellouts>=10){achievements.selloutSkill=true;award('fans','10 llenos en casa');}if(!achievements.boardSkill&&achievements.boardEliteWeeks>=8){achievements.boardSkill=true;award('board','8 semanas con confianza ≥90');}if(!achievements.staffEdge&&game.staff.fitnessCoach?.rating>=75&&position<=5){achievements.staffEdge=true;award('football','convertir staff de élite en ventaja deportiva');}
+  news.unshift({week:game.week,title:`${game.club.name} ${goalsFor}-${goalsAgainst} ${opponent.name}${match.home?'':' (fuera)'}`,tone:win?'positive':draw?'neutral':'negative'});const nextBase={...game,week:game.week+1,dateLabel:weekLabel(game.week+1),cash,boardConfidence,fanSentiment:sentiment,localFans:game.localFans+localGrowth,globalFans:game.globalFans+globalGrowth,nationalFans:game.nationalFans+Math.max(0,Math.round(localGrowth*.35)),table,players,staff,coachRelationship,business:{...game.business,membership,media},finance,achievements,gm,merch:{...game.merch,inventory:merchResult.inventory,revenueSeason:merchRevenue},lastMatch:{...match,opponent:opponent.name,goalsFor,goalsAgainst,attendance,ticketRevenue,hospitalityRevenue:biz.hospitality,merchRevenue:merchResult.revenue,position,tacticalSatisfaction:tactical},news:news.slice(0,40),history:[...game.history,{week:game.week,opponent:opponent.name,home:match.home,gf:goalsFor,ga:goalsAgainst,attendance}]};return {...nextBase,brandScore:getBrandScore(nextBase)};
 }
 function weekLabel(w){const m=w<5?'Agosto':w<9?'Septiembre':w<14?'Octubre':w<18?'Noviembre':w<22?'Diciembre':w<27?'Enero':w<31?'Febrero':w<35?'Marzo':'Abril';return `${m} · Semana ${w}`;}
 
-export function produceMerch(game,key,qty){const unitCost={shirt:17,scarf:6,cap:8}[key];const cmoDiscount=1-((game.staff.cmo?.rating??0)/900);const cost=Math.round(unitCost*qty*cmoDiscount);if(qty<=0||game.cash<cost)return game;return {...game,cash:game.cash-cost,merch:{...game.merch,inventory:{...game.merch.inventory,[key]:game.merch.inventory[key]+qty},produced:{...game.merch.produced,[key]:game.merch.produced[key]+qty}},finance:{...game.finance,costs:game.finance.costs+cost}};}
-
+export function produceMerch(game,key,qty){const unitCost={shirt:17,scarf:6,cap:8}[key],cmoDiscount=1-((game.staff.cmo?.rating??0)/900),supplierDiscount=1-(supplierQuality(game,'Merchandising')-40)/900,cost=Math.round(unitCost*qty*cmoDiscount*supplierDiscount),b=facilityBonuses(game),inventoryTotal=Object.values(game.merch.inventory).reduce((a,x)=>a+x,0),cap=b.inventoryCap||800;if(qty<=0||game.cash<cost||inventoryTotal+qty>cap)return game;return {...game,cash:game.cash-cost,merch:{...game.merch,inventory:{...game.merch.inventory,[key]:game.merch.inventory[key]+qty},produced:{...game.merch.produced,[key]:game.merch.produced[key]+qty}},finance:{...game.finance,costs:game.finance.costs+cost}};}
 const roleKeyMap={'Entrenador':'coach','Director deportivo':'sportingDirector','Preparador físico':'fitnessCoach','Segundo entrenador':'assistantCoach','Fisioterapia':'physio','Chief Merchandising Officer':'cmo','CFO':'cfo','Jefe de scouting':'scout','Director de cantera':'academyDirector'};
-export function hireStaff(game,role,candidate){const signing=Math.round(candidate.salary*.12);if(game.cash<signing)return game;const key=roleKeyMap[role];return {...game,cash:game.cash-signing,staff:{...game.staff,[key]:candidate},news:[{week:game.week,title:`${candidate.name} se incorpora como ${role}`,tone:'positive'},...game.news]};}
-
+export function hireStaff(game,role,candidate){const signing=Math.round(candidate.salary*.12);if(game.cash<signing)return game;const key=roleKeyMap[role];let next={...game,cash:game.cash-signing,staff:{...game.staff,[key]:candidate},news:[{week:game.week,title:`${candidate.name} se incorpora como ${role}`,tone:'positive'},...game.news]};if(key==='coach')next={...next,controlMode:'coach',coachRelationship:{trust:clamp(72-Math.round(candidate.ego/8)+game.gm.stats.football,45,80),respect:clamp(45+game.gm.stats.football*2-candidate.reputation/10,35,78),interventions:0,autonomy:'consultation'}};return next;}
 export function signSupplier(game,category,candidate){return {...game,suppliers:{...game.suppliers,[category]:candidate},news:[{week:game.week,title:`Proveedor ${category}: acuerdo con ${candidate.name}`,tone:'info'},...game.news]};}
-
-export function acceptSponsor(game,offer){if(game.sponsors.some(s=>s.type===offer.type))return game;return {...game,sponsors:[...game.sponsors,offer],sponsorOffers:game.sponsorOffers.filter(x=>x.id!==offer.id),news:[{week:game.week,title:`Acuerdo con ${offer.brand}: ${offer.type}`,tone:'positive'},...game.news]};}
-export function submitSponsorOffer(game,offer,annual){
-  const ask=offer.targetAnnual;const skill=game.gm.stats.finance;const floor=ask*(.92-skill*.009);let status='counter',next=offer;
-  if(annual>=floor)status='accepted';else if(annual<ask*.7)status='rejected';
-  else next={...offer,targetAnnual:Math.round((ask*(.96-skill*.002))/5000)*5000,negotiatedRounds:(offer.negotiatedRounds||0)+1};
-  return {status,offer:next,message:status==='accepted'?'Aceptan tus condiciones.':status==='rejected'?'La oferta está demasiado lejos. No ceden.':`Contraoferta: ${money(next.targetAnnual)} al año.`};
-}
+export function acceptSponsor(game,offer){if(game.sponsors.some(s=>s.slotId===offer.slotId))return game;if(game.sponsors.some(s=>s.exclusivity===offer.exclusivity&&s.group==='Partners'&&offer.group==='Partners'))return game;return {...game,sponsors:[...game.sponsors,{...offer,remainingYears:offer.years}],sponsorOffers:game.sponsorOffers.filter(x=>x.id!==offer.id),news:[{week:game.week,title:`Acuerdo con ${offer.brand}: ${offer.type} · ${offer.years} años`,tone:'positive'},...game.news]};}
+export function submitSponsorOffer(game,offer,annual){const ask=offer.targetAnnual,skill=game.gm.stats.finance,b=facilityBonuses(game),commercial=(b.commercial||0)+(game.staff.cmo?.rating||0)/12,floor=ask*(.94-skill*.008-commercial*.002);let status='counter',next=offer;if(annual>=floor)status='accepted';else if(annual<ask*.68)status='rejected';else next={...offer,targetAnnual:Math.round((ask*(.97-skill*.002-commercial*.001))/5000)*5000,negotiatedRounds:(offer.negotiatedRounds||0)+1};return {status,offer:next,message:status==='accepted'?'Aceptan tus condiciones.':status==='rejected'?'La propuesta está demasiado lejos de su valoración del activo.':`Contraoferta: ${money(next.targetAnnual)} al año.`};}
 export function negotiateSponsor(game,offer){const result=submitSponsorOffer(game,offer,offer.annual*(1.02+game.gm.stats.finance*.006));if(result.status==='accepted')return {...game,sponsorOffers:game.sponsorOffers.map(x=>x.id===offer.id?{...x,annual:Math.round(offer.annual*(1.02+game.gm.stats.finance*.006)),negotiated:true}:x)};return {...game,sponsorOffers:game.sponsorOffers.map(x=>x.id===offer.id?{...result.offer,annual:Math.round(offer.annual*1.02)}:x)};}
+export function sponsorPortfolio(game){return sponsorRights.map(r=>({...r,contract:game.sponsors.find(s=>s.slotId===r.id)||null,offers:game.sponsorOffers.filter(s=>s.slotId===r.id)}));}
 
-export function evaluateClubOffer(game,player,amount,round=1){
-  if(player.club==='Libre')return {status:'accepted',counter:0,message:'El jugador es libre: no hay club vendedor.'};
-  const ask=player.seller.asking;const skill=game.gm.stats.players;const relationship=player.seller.relationship;const min=ask*(.84-skill*.009-(player.seller.needCash?.05:0)-(relationship-50)/1000);
-  if(amount>=min)return {status:'accepted',counter:amount,message:'El club acepta la estructura económica.'};
-  if(round>=player.seller.patience&&amount<ask*.82)return {status:'walked',counter:null,message:'El club da por terminadas las conversaciones.'};
-  if(amount<ask*.62)return {status:'rejected',counter:ask,message:'Consideran la propuesta poco seria.'};
-  const counter=Math.round((ask*(1-.025*round-skill*.003))/50000)*50000;
-  return {status:'counter',counter,message:`Rechazan, pero contraofertan ${money(counter)}.`};
-}
-export function evaluatePlayerOffer(game,player,salary,signing,round=1){
-  const skill=game.gm.stats.players;const target=player.agent.salaryAsk*(1-skill*.006);const signingTarget=player.agent.signingAsk*(1-skill*.007);const score=(salary/target)*.68+(signing/signingTarget)*.32;
-  if(score>=.985)return {status:'accepted',salary,signing,message:'El agente da el visto bueno.'};
-  if(round>=player.agent.patience&&score<.82)return {status:'walked',message:'El agente rompe las conversaciones.'};
-  if(score<.68)return {status:'rejected',salary:player.agent.salaryAsk,signing:player.agent.signingAsk,message:'La propuesta está muy lejos de sus expectativas.'};
-  return {status:'counter',salary:Math.round(target*(.99-.02*round)/5000)*5000,signing:Math.round(signingTarget*(.98-.025*round)/5000)*5000,message:'El agente presenta una contraoferta.'};
-}
-export function completeTransfer(game,player,clubFee,salary,signing){
-  const total=clubFee+signing;if(game.cash<total||game.players.length>=30)return game;
-  const achievements={...game.achievements},gm={...game.gm,stats:{...game.gm.stats}},news=[...game.news];
-  if(player.star&&!achievements.star){achievements.star=true;gm.stats.players=Math.min(MAX_GM_STAT,gm.stats.players+1);gm.xp+=100;news.unshift({week:game.week,title:'Hito: fichaste una estrella para el nivel del club (+1 negociación)',tone:'positive'});}
-  news.unshift({week:game.week,title:`Fichaje cerrado: ${player.name} · ${money(clubFee)} + contrato ${money(salary)}/año`,tone:'positive'});
-  return {...game,cash:game.cash-total,players:[...game.players,{...player,id:`signed-${player.id}`,club:game.club.name,salary,morale:80,contract:3}],market:game.market.filter(p=>p.id!==player.id),achievements,gm,news,finance:{...game.finance,transfersIn:game.finance.transfersIn+total,costs:game.finance.costs+total}};
-}
+export function evaluateClubOffer(game,player,amount,round=1){if(player.club==='Libre')return {status:'accepted',counter:0,message:'El jugador es libre: no hay club vendedor.'};const ask=player.seller.asking,skill=game.gm.stats.players,relationship=player.seller.relationship,min=ask*(.84-skill*.009-(player.seller.needCash?.05:0)-(relationship-50)/1000);if(amount>=min)return {status:'accepted',counter:amount,message:'El club acepta la estructura económica.'};if(round>=player.seller.patience&&amount<ask*.82)return {status:'walked',counter:null,message:'El club da por terminadas las conversaciones.'};if(amount<ask*.62)return {status:'rejected',counter:ask,message:'Consideran la propuesta poco seria.'};const counter=Math.round((ask*(1-.025*round-skill*.003))/50000)*50000;return {status:'counter',counter,message:`Rechazan, pero contraofertan ${money(counter)}.`};}
+export function evaluatePlayerOffer(game,player,salary,signing,round=1){const skill=game.gm.stats.players,target=player.agent.salaryAsk*(1-skill*.006),signingTarget=player.agent.signingAsk*(1-skill*.007),score=(salary/target)*.68+(signing/signingTarget)*.32;if(score>=.985)return {status:'accepted',salary,signing,message:'El agente da el visto bueno.'};if(round>=player.agent.patience&&score<.82)return {status:'walked',message:'El agente rompe las conversaciones.'};if(score<.68)return {status:'rejected',salary:player.agent.salaryAsk,signing:player.agent.signingAsk,message:'La propuesta está muy lejos de sus expectativas.'};return {status:'counter',salary:Math.round(target*(.99-.02*round)/5000)*5000,signing:Math.round(signingTarget*(.98-.025*round)/5000)*5000,message:'El agente presenta una contraoferta.'};}
+export function completeTransfer(game,player,clubFee,salary,signing){const total=clubFee+signing;if(game.cash<total||game.players.length>=30)return game;const achievements={...game.achievements},gm={...game.gm,stats:{...game.gm.stats}},news=[...game.news];if(player.star&&!achievements.star){achievements.star=true;gm.stats.players=Math.min(MAX_GM_STAT,gm.stats.players+1);gm.xp+=100;news.unshift({week:game.week,title:'Hito: fichaste una estrella para el nivel del club (+1 negociación)',tone:'positive'});}news.unshift({week:game.week,title:`Fichaje cerrado: ${player.name} · ${money(clubFee)} + contrato ${money(salary)}/año`,tone:'positive'});return {...game,cash:game.cash-total,players:[...game.players,{...player,id:`signed-${player.id}`,club:game.club.name,salary,morale:80,contract:3}],market:game.market.filter(p=>p.id!==player.id),achievements,gm,news,finance:{...game.finance,transfersIn:game.finance.transfersIn+total,costs:game.finance.costs+total}};}
 export function signPlayer(game,player){const fee=player.club==='Libre'?0:player.seller?.asking||player.value;return completeTransfer(game,player,fee,player.agent?.salaryAsk||player.salary,player.agent?.signingAsk||Math.round(player.salary*.12));}
 
-export function buildCommercialUnit(game,slot,type){const d=unitDefs[type];if(!d||slot>=game.stadium.commercialSlots||game.stadium.units.some(u=>u.slot===slot)||game.cash<d.build)return game;return {...game,cash:game.cash-d.build,stadium:{...game.stadium,units:[...game.stadium.units,{slot,type,name:d.name}]},news:[{week:game.week,title:`Estadio: abre ${d.name}`,tone:'positive'},...game.news]};}
-export function stadiumUpgrade(game,id){
-  const s={...game.stadium};let cost=0,title='';
-  if(id==='barcode'&&s.access==='Manual'){cost=160000;s.access='Código de barras';s.accessRating=55;title='Accesos con código de barras';}
-  else if(id==='automatic'&&s.access!=='Automático'){cost=680000;s.access='Automático';s.accessRating=84;title='Accesos automáticos';}
-  else if(id==='gates'){cost=120000+s.gates*8000;s.gates+=2;s.accessRating=clamp(s.accessRating+4,0,95);title='Dos nuevos tornos/accesos';}
-  else if(id==='concourse'){cost=320000*s.concourse;s.concourse+=1;s.commercialSlots+=1;title='Ampliación de galería comercial';}
-  else if(id==='transport'){cost=420000+Math.max(0,s.transport-40)*9000;s.transport=clamp(s.transport+14,0,95);title='Mejora de accesos y transporte';}
-  else if(id==='seats'){cost=Math.round(s.capacity*430);s.capacity+=Math.max(500,Math.round(s.capacity*.14));s.condition=clamp(s.condition-3,0,100);title='Ampliación de aforo';}
-  if(!cost||game.cash<cost)return game;return {...game,cash:game.cash-cost,stadium:s,finance:{...game.finance,costs:game.finance.costs+cost,facilities:game.finance.facilities+cost},news:[{week:game.week,title:`Proyecto completado: ${title} (${money(cost)})`,tone:'positive'},...game.news]};
-}
+// Compatibility wrappers kept for older POC screens.
+export function buildCommercialUnit(game,slot,type){return leaseCommercialUnit(game,slot,type);}
+export function stadiumUpgrade(game,id){const map={barcode:'access',automatic:'access',gates:'access',concourse:'commercialSpaces',transport:'access',seats:'capacity'};return map[id]?startFacilityProject(game,'stadium',map[id]):game;}
