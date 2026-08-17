@@ -1,26 +1,15 @@
-import React from 'react';
-import { money } from '../game/engine.js';
+import React,{useState} from 'react';
+import { money,activeFacilityProjects } from '../game/v4.js';
 import { facilityDefs, maxLevel } from '../data/management.js';
 import { Pill } from './UI.jsx';
 
-export function FacilityVisual({code,level=0}){
-  return <div className={`facility-visual fv-${code.toLowerCase()}`} aria-hidden="true">
-    <div className="facility-glow"/><div className="facility-building"><i/><i/><i/></div><div className="facility-code">{code}</div><div className="facility-level-bars">{Array.from({length:5}).map((_,i)=><span key={i} className={i<Math.min(5,level+1)?'on':''}/>)}</div>
-  </div>;
-}
-
+export function FacilityVisual({code,level=0,max=5}){return <div className={`facility-visual fv-${code.toLowerCase()}`} aria-hidden="true"><div className="facility-glow"/><div className="facility-building"><i/><i/><i/></div><div className="facility-code">{code}</div><div className="facility-level-bars">{Array.from({length:max+1}).map((_,i)=><span key={i} className={i<=level?'on':''}/>)}</div></div>}
+function packageCost(def,current,target){let cost=0,weeks=0,upkeep=0;for(let i=current+1;i<=target;i++){cost+=def.levels[i].cost;weeks+=def.levels[i].weeks;upkeep=def.levels[i].upkeep||upkeep;}return {cost,weeks,upkeep};}
 export function FacilityCard({game,group,id,onBuild}){
-  const def=facilityDefs[group][id],level=game.infrastructure.levels[group][id]||0,current=def.levels[level],next=def.levels[level+1],project=game.infrastructure.projects.find(p=>p.group===group&&p.assetId===id),max=maxLevel(group,id);
-  const blockers=[];if(next?.requires?.minCapacity&&game.stadium.capacity<next.requires.minCapacity)blockers.push(`Requiere ${next.requires.minCapacity.toLocaleString('es-ES')} plazas`);if(next?.requires?.minBrand&&game.brandScore<next.requires.minBrand)blockers.push(`Requiere marca ${next.requires.minBrand}`);if(game.infrastructure.projects.length>=game.infrastructure.maxProjects&&!project)blockers.push('Equipo de obras ocupado');if(next&&game.cash<next.cost)blockers.push('Caja insuficiente');
-  return <article className="facility-card">
-    <FacilityVisual code={def.icon} level={level}/>
-    <div className="facility-card-top"><div><span>{def.category}</span><h3>{def.name}</h3></div><Pill tone={level===max?'positive':'neutral'}>Nivel {level}/{max}</Pill></div>
-    <div className="facility-current"><small>INSTALACIÓN ACTUAL</small><b>{current.name}</b><p>{current.description}</p></div>
-    <div className="facility-path">{def.levels.map((l,i)=><i key={l.name} className={i<=level?'done':i===level+1?'next':''} title={l.name}/>)}</div>
-    {project?<div className="facility-project"><span>EN OBRA</span><b>{project.name}</b><small>{project.remainingWeeks}/{project.totalWeeks} semanas restantes</small><div className="project-progress"><i style={{width:`${Math.round((1-project.remainingWeeks/project.totalWeeks)*100)}%`}}/></div></div>:next?<div className="facility-next"><small>SIGUIENTE PROYECTO</small><b>{next.name}</b><p>{next.description}</p><div className="facility-cost"><span>{money(next.cost)}</span><span>{next.weeks} sem.</span><span>{next.upkeep>0?`+${money(next.upkeep)}/sem`:next.upkeep<0?`${money(next.upkeep)}/sem`:'sin coste fijo'}</span></div>{blockers.length?<div className="facility-blockers">{blockers.map(x=><span key={x}>{x}</span>)}</div>:<button className="primary wide" onClick={()=>onBuild(group,id)}>Aprobar proyecto</button>}</div>:<div className="facility-max"><b>Instalación al máximo nivel</b><span>Has llegado al extremo comercial/técnico de este activo.</span></div>}
-  </article>;
+  const def=facilityDefs[group][id],level=game.infrastructure.levels[group][id]||0,max=maxLevel(group,id);const [target,setTarget]=useState(Math.min(max,level+1));const project=activeFacilityProjects(game).find(p=>p.group===group&&p.assetId===id);const current=def.levels[level];const safeTarget=Math.max(level+1,Math.min(max,target));const chosen=def.levels[safeTarget],pack=level<max?packageCost(def,level,safeTarget):null;
+  const blockers=[];for(let i=level+1;i<=safeTarget;i++){const req=def.levels[i]?.requires||{};if(req.minCapacity&&game.stadium.capacity<req.minCapacity)blockers.push(`Nivel ${i}: requiere ${req.minCapacity.toLocaleString('es-ES')} plazas`);if(req.minBrand&&game.brandScore<req.minBrand)blockers.push(`Nivel ${i}: requiere marca ${req.minBrand}`);}if(pack&&game.cash<pack.cost)blockers.push('Caja insuficiente');
+  return <article className="facility-card v4"><FacilityVisual code={def.icon} level={level} max={max}/><div className="facility-card-top"><div><span>{def.category}</span><h3>{def.name}</h3></div><Pill tone={level===max?'positive':'neutral'}>{level}/{max}</Pill></div><div className="facility-current"><small>ACTUAL</small><b>{current.name}</b><p>{current.description}</p></div>
+  <div className="facility-level-list">{def.levels.map((l,i)=><button key={l.name} className={`${i===level?'current':''} ${i<level?'owned':''} ${i===safeTarget?'target':''}`} disabled={i<=level||project} onClick={()=>setTarget(i)}><span>{i}</span><div><b>{l.name}</b><small>{l.description}</small></div>{i>level&&<em>{money(l.cost)} · {l.weeks} sem.</em>}</button>)}</div>
+  {project?<div className="facility-project"><span>PROYECTO EN CURSO</span><b>{project.name}</b><small>{project.remainingDays} días restantes · objetivo nivel {project.targetLevel}</small><div className="project-progress"><i style={{width:`${Math.max(2,100-project.remainingDays/(project.weeks*7)*100)}%`}}/></div></div>:level<max?<div className="facility-next"><small>PROYECTO SELECCIONADO</small><b>Transformar hasta: {chosen.name}</b><p>Incluye todos los trabajos intermedios desde el nivel {level} al {safeTarget}. No es un “+1”: es un paquete de obra completo.</p><div className="facility-cost"><span>{money(pack.cost)}</span><span>{pack.weeks} sem.</span><span>{pack.upkeep?`${money(pack.upkeep)}/sem. al final`:'sin coste fijo final'}</span></div>{blockers.length?<div className="facility-blockers">{[...new Set(blockers)].map(x=><span key={x}>{x}</span>)}</div>:<button className="primary wide" onClick={()=>onBuild(group,id,safeTarget)}>Aprobar proyecto hasta nivel {safeTarget}</button>}</div>:<div className="facility-max"><b>Desarrollo máximo</b><span>{current.name}</span></div>}</article>;
 }
-
-export function ProjectStrip({game}){
-  return <div className="project-strip"><div><span>PLAN DE INVERSIONES</span><b>{game.infrastructure.projects.length}/{game.infrastructure.maxProjects} proyectos activos</b></div>{game.infrastructure.projects.length?game.infrastructure.projects.map(p=><div className="project-chip" key={p.id}><b>{p.name}</b><span>{p.remainingWeeks} semanas</span></div>):<div className="project-empty">Sin obras en curso. Mantener la caja también es una decisión.</div>}</div>;
-}
+export function ProjectStrip({game}){const projects=activeFacilityProjects(game);return <div className="project-strip"><div><span>PLAN DE OBRAS</span><b>{projects.length}/{game.infrastructure.maxProjects} proyectos activos</b></div>{projects.length?projects.map(p=><div className="project-chip" key={p.id}><b>{p.name}</b><span>{p.remainingDays} días · objetivo {p.targetLevel}</span></div>):<div className="project-empty">Sin obras activas. Conservar caja también puede ser la mejor decisión.</div>}</div>}

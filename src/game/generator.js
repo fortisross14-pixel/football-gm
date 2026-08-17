@@ -139,12 +139,13 @@ export function generateSponsorOffers(club,skill=6,brandScore=null){
 }
 
 export function generateSuppliers(club){
-  const r=rng(hashString(`${club.name}-suppliers-v2`));
+  const r=rng(hashString(`${club.name}-suppliers-v4`));
   const categories=['Catering','Seguridad','Limpieza','Telecomunicaciones','Energía','Viajes','Merchandising','Ticketing','Material médico'];
-  return Object.fromEntries(categories.map((category)=>[category,Array.from({length:3},(_,i)=>{
-    const quality=45+Math.floor(r()*48); const cheap=i===0;
-    const weekly=Math.round((350+club.capacity*(cheap?.06:.09)+quality*18)*(1+i*.08)/50)*50;
-    return {id:`sup-${category}-${i}`,category,name:`${pick(['Grupo','Servicios','Soluciones','Red','Operaciones'],r)} ${pick(localSuffixes,r)}`,quality,weekly,
-      bonus:pick(['Mejor experiencia','Coste estable','Servicio premium','Flexibilidad','Respuesta rápida'],r),contractYears:1+Math.floor(r()*3)};
+  const baseByCat={Catering:1450,Seguridad:2200,Limpieza:1350,Telecomunicaciones:980,Energía:1750,Viajes:1650,Merchandising:1150,Ticketing:820,'Material médico':760};
+  return Object.fromEntries(categories.map((category)=>[category,Array.from({length:4},(_,i)=>{
+    const quality=42+Math.floor(r()*51);const scale=.72+i*.15+r()*.18;const weekly=Math.round((baseByCat[category]*scale+club.capacity*(category==='Seguridad'?.045:category==='Limpieza'?.022:.01)+quality*9)/1)*1;
+    const setupFee=Math.round((250+r()*2100+i*450)/1)*1;const perMatch=Math.round((80+r()*620)*(category==='Seguridad'?1.4:category==='Catering'?1.2:.6));const perAttendee=Number(((category==='Catering'?.018:category==='Seguridad'?.012:category==='Limpieza'?.007:.002)+r()*.006).toFixed(3));
+    return {id:`sup-${category}-${i}`,category,name:`${pick(['Grupo','Servicios','Soluciones','Red','Operaciones'],r)} ${pick(localSuffixes,r)}`,quality,weekly,setupFee,perMatch,perAttendee,
+      sla:pick(['24 h','12 h','4 h','2 h'],r),bonus:pick(['Precio muy estable','Mayor calidad','Flexibilidad de volumen','Respuesta rápida','Tecnología incluida'],r),contractYears:1+Math.floor(r()*4)};
   })]));
 }

@@ -10,7 +10,7 @@ export default function StartFlow({onStart}) {
   const chooseArch=(id)=>{setArch(id);setStats({...archetypes[id].stats});setFree(5);};
   const adjust=(k,d)=>{if(d>0&&free>0&&stats[k]<MAX_GM_STAT){setStats({...stats,[k]:stats[k]+1});setFree(free-1);} if(d<0&&stats[k]>archetypes[arch].stats[k]){setStats({...stats,[k]:stats[k]-1});setFree(free+1);}};
   return <div className="onboarding-shell">
-    <header className="brand-intro"><div className="brand-mark">DG</div><div><b>FÚTBOL</b><span>DIRECTOR GENERAL</span></div><small>v0.2 · Temporada 2026/27</small></header>
+    <header className="brand-intro"><div className="brand-mark">DG</div><div><b>FÚTBOL</b><span>DIRECTOR GENERAL</span></div><small>v0.4 · Temporada 2026/27</small></header>
     <main className="onboarding-card">
       {step===1&&<>
         <div className="kicker">Tu carrera empieza aquí</div><h1>¿Qué clase de General Manager eres?</h1><p className="lead">No entrenas necesariamente al equipo. Construyes el club: fútbol, personas, dinero, marca, estadio y relación con la afición.</p>
