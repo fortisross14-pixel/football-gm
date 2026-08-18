@@ -63,7 +63,27 @@ export function applyTacticalPreset(game,id){const p=tacticalPresets.find(x=>x.i
 function closeness(a,b){return Math.max(0,20-Math.abs(a-b))/20;}
 export function getFanTacticalSatisfaction(game){const t=getActiveTactic(game),f=game.fanCulture;const intensity=(t.pressing+t.aggression+t.transitionAD)/3;const academyShare=game.players.filter(p=>p.academy).length/Math.max(1,game.players.length)*20;const score=(closeness(t.attackIntent,f.attack)*.31+closeness(t.freedom,f.freedom)*.22+closeness(intensity,f.intensity)*.24+closeness(academyShare,f.youth)*.10+closeness(20-t.setPieces*.35,f.stars)*.03)*100;return clamp(Math.round(score),18,98);}
 export function playerTacticalFit(player,tactic){const s=player.style||{directness:10,pressing:10,line:10,freedom:10};const lineWeight=['DFC','LD','LI'].includes(player.pos)?.3:.12;const pressWeight=['POR'].includes(player.pos)?.08:.25;const score=closeness(s.directness,tactic.directness)*.25+closeness(s.pressing,tactic.pressing)*pressWeight+closeness(s.line,tactic.defensiveLine)*lineWeight+closeness(s.freedom,tactic.freedom)*.2;return clamp(Math.round(score*100),25,99);}
-export function bestXI(game){const t=getActiveTactic(game);const youth=game.coachDirectives?.youth?2.2:0;return [...game.players].filter(p=>(p.injuredWeeks??0)<=0).sort((a,b)=>(b.overall+playerTacticalFit(b,t)*.12+b.fitness*.05+(b.age<=21?youth:0))-(a.overall+playerTacticalFit(a,t)*.12+a.fitness*.05+(a.age<=21?youth:0))).slice(0,11);}
+const formationSlots={
+  '4-3-3':['POR','LI','DFC','DFC','LD','MC','MCD','MC','EI','DC','ED'],
+  '4-2-3-1':['POR','LI','DFC','DFC','LD','MCD','MCD','EI','MP','ED','DC'],
+  '4-4-2':['POR','LI','DFC','DFC','LD','EI','MC','MC','ED','DC','DC'],
+  '5-3-2':['POR','LI','DFC','DFC','DFC','LD','MC','MCD','MC','DC','DC'],
+  '3-4-2-1':['POR','DFC','DFC','DFC','LI','MC','MC','LD','MP','MP','DC'],
+  '4-1-4-1':['POR','LI','DFC','DFC','LD','MCD','EI','MC','MC','ED','DC'],
+};
+function selectionScore(p,t,youth){return p.overall+playerTacticalFit(p,t)*.12+(p.fitness??75)*.05+(p.age<=21?youth:0);}
+export function bestXIWithSlots(game){
+  const t=getActiveTactic(game),youth=game.coachDirectives?.youth?2.2:0,slots=formationSlots[t.formation]||formationSlots['4-3-3'];
+  const available=[...game.players].filter(p=>(p.injuredWeeks??0)<=0),used=new Set(),assignments=[];
+  for(const slot of slots){
+    let candidates=available.filter(p=>!used.has(p.id)&&p.pos===slot).sort((a,b)=>selectionScore(b,t,youth)-selectionScore(a,t,youth));
+    let outOfPosition=false;
+    if(!candidates.length){outOfPosition=true;candidates=available.filter(p=>!used.has(p.id)).sort((a,b)=>selectionScore(b,t,youth)-selectionScore(a,t,youth));}
+    const player=candidates[0]||null;if(player)used.add(player.id);assignments.push({slot,player,outOfPosition:!!player&&outOfPosition});
+  }
+  return assignments;
+}
+export function bestXI(game){return bestXIWithSlots(game).map(x=>x.player).filter(Boolean);}
 export function squadTacticalFit(game){const t=getActiveTactic(game),xi=bestXI(game);return xi.length?Math.round(xi.reduce((s,p)=>s+playerTacticalFit(p,t),0)/xi.length):40;}
 export function getCoachRequests(game){
   if(game.controlMode!=='coach'||!game.staff.coach)return [];const t=getActiveTactic(game),req=[];const defenders=game.players.filter(p=>p.pos==='DFC');const attackers=game.players.filter(p=>['DC','ED','EI','MP'].includes(p.pos));

@@ -10,7 +10,7 @@ const formations={
 };
 export function TacticPitch({formation='4-4-2',compact=false}){
   const pts=formations[formation]||formations['4-4-2'];
-  return <div className={`tactic-pitch ${compact?'compact':''}`}><div className="pitch-half"/><div className="pitch-circle"/>{pts.map(([x,y],i)=><span key={i} className={`pitch-player p${i}`} style={{left:`${x}%`,top:`${y}%`}}>{i===0?'P':i}</span>)}</div>;
+  return <div className={`tactic-pitch ${compact?'compact':''}`}><div className="pitch-box top"/><div className="pitch-goal-box top"/><div className="pitch-box bottom"/><div className="pitch-goal-box bottom"/><div className="pitch-circle"/>{pts.map(([x,y],i)=><span key={i} className={`pitch-player p${i}`} style={{left:`${x}%`,top:`${y}%`}}>{i===0?'P':i}</span>)}</div>;
 }
 
 export function MiniRadar({values,labels}){

@@ -198,6 +198,30 @@ export const facilityDefs = {
   },
 };
 
+
+// Additional stadium systems: deliberately physical, descriptive upgrade paths rather than abstract +1s.
+facilityDefs.stadium.pressArea={name:'Prensa y zona mixta',icon:'PRESS',category:'Media',levels:[
+  L('Sin zona de prensa dedicada',0,0,'Ruedas de prensa en una sala multiuso y entrevistas junto al túnel.',{media:0,sponsor:0}),
+  L('Sala de prensa básica',65000,3,'Sala fija para unas 25 personas, atril, fondo de patrocinadores y conexiones básicas.',{media:2,sponsor:1},900),
+  L('Sala de prensa + zona mixta',190000,5,'Espacio para 55 periodistas, zona mixta separada y mejores posiciones de cámara.',{media:5,sponsor:2,fan:1},2600),
+  L('Centro de prensa profesional',620000,8,'Sala para 120 medios, cabinas de radio, posiciones TV y zona de entrevistas flash.',{media:9,sponsor:5},7600),
+  L('Media tribune & press complex',1900000,12,'Tribuna de prensa, estudios, fibra redundante, múltiples zonas mixtas y operación de grandes partidos.',{media:15,sponsor:9,ticketWtp:1},22000,{minCapacity:12000}),
+]};
+facilityDefs.stadium.standHeating={name:'Confort térmico en gradas',icon:'HEAT',category:'Experiencia',levels:[
+  L('Sin calefacción de gradas',0,0,'El confort depende del clima y de la cubierta existente.',{fan:0}),
+  L('Calefactores en VIP',80000,3,'Calefacción radiante en palco y hospitality.',{fan:1,hospitality:2,ticketWtp:.5},1300),
+  L('Calefacción en tribuna principal',310000,5,'Sistemas radiantes sobre las zonas de mayor precio.',{fan:3,hospitality:3,ticketWtp:1.2},4600),
+  L('Dos gradas climatizadas',850000,7,'Confort térmico en laterales principales y hospitality.',{fan:6,ticketWtp:2},12000),
+  L('Confort térmico integral',2300000,10,'Sistema de calefacción distribuido por todo el bowl cubierto.',{fan:9,ticketWtp:3.2,hospitality:4},31000,{minCapacity:15000}),
+]};
+facilityDefs.stadium.roof={name:'Cubierta del estadio',icon:'ROOF',category:'Bowl',levels:[
+  L('Estadio abierto',0,0,'Sin nueva cubierta estructural. La lluvia y el viento afectan plenamente a la experiencia.',{fan:0}),
+  L('Cubierta sobre tribuna principal',850000,10,'Marquesina permanente sobre la lateral principal.',{fan:3,ticketWtp:1},9000),
+  L('Cubiertas en ambas laterales',2900000,16,'Las dos gradas laterales quedan protegidas.',{fan:6,ticketWtp:2,hospitality:2},26000,{minCapacity:7000}),
+  L('Bowl cubierto al 80%',9800000,24,'Cubierta continua sobre la mayor parte de las localidades.',{fan:10,ticketWtp:4,hospitality:4},72000,{minCapacity:15000,minBrand:52}),
+  L('Techo retráctil completo',48000000,40,'Estructura retráctil de máximo nivel para proteger todo el estadio y multiplicar eventos no deportivos.',{fan:16,ticketWtp:7,hospitality:10,nonMatch:25,media:5},310000,{minCapacity:30000,minBrand:72}),
+]};
+
 export function getLevelDef(group,id,level){return facilityDefs[group]?.[id]?.levels?.[level]||null;}
 export function getNextLevelDef(game,group,id){const level=game.infrastructure?.levels?.[group]?.[id]||0;return getLevelDef(group,id,level+1);}
 export function maxLevel(group,id){return Math.max(0,(facilityDefs[group]?.[id]?.levels?.length||1)-1);}
