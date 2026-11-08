@@ -1,3 +1,4 @@
+import { PHILOSOPHIES, clubIdentity } from '../data/philosophies.js';
 // Club squads: a few named cards plus generic Common players (surname only).
 import { makeRng } from './rng.js';
 import { overall, slotFit, FORMATIONS } from './cards.js';
@@ -22,7 +23,8 @@ const STAT_SHAPE = {
 export const FILLER_RATING = { 1: 60, 2: 58, 3: 56 };
 export const AI_SETTLED_BONUS = 0.1;
 // Higher divisions are tougher: their AI squads play with more of an edge.
-export const AI_SETTLED_BY_LEVEL = { 1: 0.2, 2: 0.16, 3: 0.12 };
+export const AI_SETTLED_BY_LEVEL = { 1: 0.18, 2: 0.14, 3: 0.1 };
+export const AI_FIT_BONUS = 0.02;
 
 export function genericName(rng, used = new Set()) {
   let name = rng.pick(SURNAMES);
@@ -110,24 +112,14 @@ export function buildAiTeam(club, seed = 7) {
     loadout: [],
     isAI: true,
     tactics: aiTactics(club, seed),
+    // AI clubs' coaches suit their club's identity: a good, not perfect, fit.
+    fit: { style: clubIdentity(club), distance: 1, bonus: AI_FIT_BONUS },
     // AI squads play together all season: the same edge your cohesion gives you.
     mods: { all: club.settled ?? AI_SETTLED_BY_LEVEL[club.level] ?? AI_SETTLED_BONUS },
   };
 }
 
-// Each AI club has a style: big clubs press and pass, smaller ones sit deeper and go direct.
-const STYLES = [
-  { press: 'high', passing: 'short', line: 'high' },
-  { press: 'mid', passing: 'short', line: 'normal' },
-  { press: 'high', passing: 'mixed', line: 'normal' },
-  { press: 'mid', passing: 'mixed', line: 'normal' },
-  { press: 'low', passing: 'direct', line: 'deep' },
-  { press: 'mid', passing: 'direct', line: 'normal' },
-  { press: 'low', passing: 'mixed', line: 'deep' },
-];
+// Each AI club plays its identity (see data/philosophies.js).
 export function aiTactics(club) {
-  let h = 0;
-  for (const ch of String(club.id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  const top = club.level === 1 ? [0, 1, 2, 3] : club.level === 2 ? [0, 1, 2, 3, 6] : [1, 2, 3, 3, 6];
-  return { ...STYLES[top[h % top.length]] };
+  return { ...PHILOSOPHIES[clubIdentity(club)].t };
 }

@@ -17,6 +17,8 @@ import { matchConfidence, seasonConfidence, security, jobOffers } from '../src/e
 import { archiveSeason, foldRecords, compactEntry, clubHistory, titleTable } from '../src/engine/history.js';
 import { ensureGms, updateGms, gmRanking } from '../src/engine/gms.js';
 import { aiTactics } from '../src/engine/aiTeam.js';
+import { DEFAULT_TACTICS, qualityEdge, styleAdvice } from '../src/engine/tactics.js';
+import { attrs } from '../src/engine/attributes.js';
 import { OPPONENTS } from '../src/data/demo.js';
 import { DIVISION_BY_ID } from '../src/data/world/structure.js';
 import { startingDraw, aiOffseason } from '../src/engine/transfers.js';
@@ -466,15 +468,26 @@ test('a free boost card after a match where a boost was played, none otherwise',
 
 test('tactics change the game and AI clubs have a style', () => {
   const t = aiTactics({ id: 'real-madrid', level: 1 });
-  assert.ok(['mid', 'high'].includes(t.press));
+  assert.equal(t.press, 3); // Real Madrid: pragmatic
   const base = { home: user(fresh()), away: buildAiTeam(opp, 3), seed: 21 };
   const a = createMatch(base);
-  assert.deepEqual(a.teams[0].tactics, { press: 'mid', passing: 'mixed', line: 'normal' });
-  const press = createMatch({ ...base, home: { ...user(fresh()), tactics: { press: 'high' } } });
+  assert.equal(a.teams[0].tactics.press, 3);
+  const press = createMatch({ ...base, home: { ...user(fresh()), tactics: { press: 5 } } });
   let x = a; let y = press;
   for (let i = 0; i < 3; i += 1) { x = playSegment(x); y = playSegment(y); }
   const stamina = (m) => Object.values(m.teams[0].players).filter((p) => p.onPitch && p.card.pos !== 'GK').reduce((s, p) => s + p.stamina, 0);
   assert.ok(stamina(y) < stamina(x), 'high press burns more stamina');
+});
+
+test('tactics read the squad: fast tempo suits good passers and hurts poor ones', () => {
+  const t = { ...DEFAULT_TACTICS, tempo: 5 };
+  const strong = { pas: 82, sho: 70, def: 65, phy: 70, set: 60, wide: 70, central: 70, defPhy: 70, defDef: 70, fwdPhy: 70 };
+  const weak = { ...strong, pas: 52 };
+  assert.ok(qualityEdge(t, DEFAULT_TACTICS, strong, strong) > 0);
+  assert.ok(qualityEdge(t, DEFAULT_TACTICS, weak, strong) < 0);
+  assert.ok(styleAdvice({ ...DEFAULT_TACTICS, offsideTrap: true }, { ...strong, defPhy: 55 }).some((a) => a.tone === 'bad'));
+  const card = PLAYER_POOL.find((c) => c.name === 'David Beckham') || PLAYER_CARDS.find((c) => c.name === 'David Beckham');
+  if (card) assert.ok(attrs(card).set >= 86);
 });
 
 test('confidence: wins lift it, a bad season sacks, sacked top-flight GMs get 3 offers a level lower', () => {

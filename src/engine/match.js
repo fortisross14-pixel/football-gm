@@ -9,6 +9,10 @@ import { makeRng } from './rng.js';
 import { COACH_PASSIVES } from '../data/coachPassives.js';
 import { BOOSTS } from '../data/boosts.js';
 import { SKILLS, MAX_SKILLS, skillOf } from '../data/skills.js';
+import { coachStyle, styleDistance, fitBonus } from '../data/philosophies.js';
+import {
+  DEFAULT_TACTICS, normalizeTactics, sideAttrs, controlEdge, chanceMult, qualityEdge, setPieceChance, drainMult,
+} from './tactics.js';
 import { pickLine, short } from './commentary.js';
 
 export const SEGMENTS = 6;
@@ -26,39 +30,18 @@ const DEFENSE_WEIGHT = { GK: 0, DEF: 1, MID: 0.5, FWD: 0.15 };
 const CONTROL_WEIGHT = { GK: 0, DEF: 0.5, MID: 1, FWD: 0.5 };
 const SHOOTER_WEIGHT = { GK: 0, DEF: 0.4, MID: 1.4, FWD: 3 };
 
-// Team instructions, set before the match (Squad screen). Each has a trade-off.
-export const DEFAULT_TACTICS = { press: 'mid', passing: 'mixed', line: 'normal' };
-export const TACTICS = {
-  press: {
-    label: 'Pressing',
-    options: {
-      low: { name: 'Low block', text: 'Saves legs (−15% stamina drain). Rivals keep the ball more (+5% their control).' },
-      mid: { name: 'Mid', text: 'Balanced.' },
-      high: { name: 'High press', text: 'Rivals lose control (−10%) and you win the ball high (+chance quality), but legs burn: +35% stamina drain. Pairs well with fitness coaches and stamina skills.' },
-    },
-  },
-  passing: {
-    label: 'Passing',
-    options: {
-      short: { name: 'Short', text: '+8% midfield control and better chances, a few fewer shots.' },
-      mixed: { name: 'Mixed', text: 'Balanced.' },
-      direct: { name: 'Direct', text: '+10% shots, worse quality and −8% control. Strong forwards (PHY 78+) turn long balls into good chances.' },
-    },
-  },
-  line: {
-    label: 'Defensive line',
-    options: {
-      deep: { name: 'Deep', text: 'Hard to break down (−rival chance quality), but you sit back: fewer shots of your own, more for them.' },
-      normal: { name: 'Normal', text: 'Balanced.' },
-      high: { name: 'High', text: 'Squeezes the pitch: rivals shoot less, but balls in behind are dangerous (+their quality), worse with slow defenders (PHY under 70). +5% drain.' },
-    },
-  },
-};
+// Team instructions live in engine/tactics.js.
+export { DEFAULT_TACTICS };
+const APPROACH_MENTALITY = { cautious: 'defensive', balanced: 'balanced', attacking: 'attacking' };
 
-const avgPhy = (team, pos) => {
-  const list = onPitch(team).filter(({ slot }) => slot.pos === pos).map(({ p }) => p.card.phy);
-  return list.length ? list.reduce((a, b) => a + b, 0) / list.length : 70;
-};
+// Playing your coach's way: a team-wide bonus, or a penalty when instructions clash.
+export function teamFit(input) {
+  const tactics = normalizeTactics(input.tactics);
+  const style = coachStyle(input.coach);
+  const distance = styleDistance(tactics, style);
+  return { style, distance, bonus: fitBonus(distance, input.coach?.rarity) };
+}
+
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const clone = (v) => structuredClone(v);
@@ -130,8 +113,9 @@ function buildTeam(input, isHome, context) {
     slots,
     bench: [...input.bench],
     players,
-    mentality: 'balanced',
-    tactics: { ...DEFAULT_TACTICS, ...(input.tactics || {}) },
+    mentality: APPROACH_MENTALITY[normalizeTactics(input.tactics).approach] || 'balanced',
+    tactics: normalizeTactics(input.tactics),
+    fit: input.fit || teamFit(input),
     subsLeft: MAX_SUBS,
     boostSlots: BASE_BOOST_SLOTS + Math.floor(tactician),
     loadout: [...(input.loadout || [])],
@@ -340,7 +324,7 @@ export function aiDecide(state, side) {
   const team = next.teams[side];
   const seg = next.segment;
   const [own, opp] = side === 0 ? next.score : [next.score[1], next.score[0]];
-  let mentality = 'balanced';
+  let mentality = APPROACH_MENTALITY[team.tactics?.approach] || 'balanced';
   if (seg >= 3 && own < opp) mentality = 'attacking';
   else if (seg >= 4 && own > opp) mentality = 'defensive';
   if (team.mentality !== mentality) next = setMentality(next, side, mentality);
@@ -377,7 +361,7 @@ function modifiers(state, side, seg) {
   const season = team.mods;
   const opp = state.teams[1 - side];
   const [own, against] = side === 0 ? state.score : [state.score[1], state.score[0]];
-  let all = sum('all') + season.all;
+  let all = sum('all') + season.all + (team.fit?.bonus || 0);
   if (team.isHome) all += HOME_BONUS + season.home;
   if (seg >= 4 && own < against) all += season.comeback;
   if (opp.ovr > team.ovr + 1) all += season.underdog;
@@ -437,13 +421,10 @@ export function playSegment(state) {
   announceEvents(next, seg);
   const powers = [teamPower(next, 0, seg), teamPower(next, 1, seg)];
   const tac = (side) => next.teams[side].tactics || DEFAULT_TACTICS;
+  const attrsOf = [sideAttrs(next.teams[0]), sideAttrs(next.teams[1])];
   const ctrl = (side) => {
-    let v = 1 + powers[side].mods.sum('control') - powers[1 - side].mods.sum('oppControl');
-    if (tac(side).passing === 'short') v += 0.08;
-    if (tac(side).passing === 'direct') v -= 0.08;
-    if (tac(1 - side).press === 'high') v -= tac(side).passing === 'short' ? 0.15 : tac(side).passing === 'direct' ? 0.04 : 0.1;
-    if (tac(1 - side).press === 'low') v += 0.05;
-    return Math.max(0.3, v);
+    const t = controlEdge(tac(side), tac(1 - side), attrsOf[side], attrsOf[1 - side]);
+    return Math.max(0.3, 1 + powers[side].mods.sum('control') - powers[1 - side].mods.sum('oppControl') + t);
   };
   const cA = (powers[0].control * ctrl(0)) ** CONTROL_EXPONENT;
   const cB = (powers[1].control * ctrl(1)) ** CONTROL_EXPONENT;
@@ -459,12 +440,10 @@ export function playSegment(state) {
     const them = powers[opp];
     let lambda = 2 * BASE_CHANCES * share[side];
     lambda *= { attacking: 1.25, balanced: 1, defensive: 0.7 }[team.mentality];
-    lambda *= { attacking: 1.15, balanced: 1, defensive: 0.95 }[oppTeam.mentality];
+    lambda *= { attacking: 1.15, balanced: 1, defensive: 0.85 }[oppTeam.mentality];
     const mine = tac(side);
     const theirs = tac(opp);
-    lambda *= { short: 0.95, mixed: 1, direct: 1.1 }[mine.passing];
-    lambda *= { deep: 0.96, normal: 1, high: 1 }[mine.line];
-    lambda *= { deep: 1.05, normal: 1, high: 0.9 }[theirs.line];
+    lambda *= chanceMult(mine, theirs, attrsOf[side], attrsOf[opp]);
     if (them.mods.active.some((e) => e.type === 'gameManagement')) lambda *= 0.6;
     lambda *= Math.max(0.2, 1 - them.mods.sum('oppChances'));
 
@@ -477,17 +456,8 @@ export function playSegment(state) {
     if (trailing && seg >= 3) lambda *= 1.15;
     if (team.mentality === 'attacking') quality += 0.02;
     if (oppTeam.mentality === 'defensive') quality -= 0.04;
-    // Counters: high press beats short passing, direct beats the press and a high line,
-    // short passing picks a deep block apart.
-    if (mine.press === 'high' && theirs.passing !== 'direct') quality += theirs.passing === 'short' ? 0.03 : 0.02;
-    if (mine.passing === 'short') quality += (theirs.line === 'deep' || theirs.press === 'low') ? 0.04 : 0.02;
-    if (mine.passing === 'direct') {
-      quality += avgPhy(team, 'FWD') >= 78 ? 0.02 : -0.03;
-      if (theirs.line === 'high') quality += 0.05;
-      if (theirs.line === 'deep') quality -= 0.03;
-    }
-    if (theirs.line === 'deep') quality -= 0.06;
-    if (theirs.line === 'high') quality += avgPhy(oppTeam, 'DEF') < 70 ? 0.06 : 0.03;
+    // Instructions read against both squads' numbers (see engine/tactics.js).
+    quality += qualityEdge(mine, theirs, attrsOf[side], attrsOf[opp], oppTeam.mentality);
 
     const chances = [];
     const count = rng.poisson(lambda);
@@ -497,6 +467,8 @@ export function playSegment(state) {
       if (e.type === 'extraChance') chances.push({ kind: 'open', quality: e.quality });
       if (e.type === 'setPiece') chances.push({ kind: 'setPiece', quality: 0.6 });
     }
+    const sp = setPieceChance(mine, attrsOf[side]);
+    if (sp && rng.next() < sp.p) chances.push({ kind: 'setPiece', quality: sp.quality });
 
     for (const chance of chances) {
       const minute = seg * 15 + rng.int(1, 15);
@@ -572,8 +544,7 @@ export function playSegment(state) {
     const guru = teamPassive(team, 'fitnessGuru');
     const mentality = { attacking: 1.15, balanced: 1, defensive: 0.9 }[team.mentality];
     for (const { slot, p } of onPitch(team)) {
-      const t = team.tactics || DEFAULT_TACTICS;
-      const style = { low: 0.85, mid: 1, high: 1.35 }[t.press] * (t.line === 'high' ? 1.05 : 1);
+      const style = drainMult(team.tactics || DEFAULT_TACTICS);
       let drain = 9 * (1.4 - p.card.phy / 100) * mentality * style * (1 - guru) * (1 - team.mods.drain);
       if (p.card.trait === 'engine') drain *= 0.5;
       if (slot.pos === 'GK') drain *= 0.4;

@@ -1,7 +1,7 @@
 // The GM career: board objectives, reputation, job offers and sackings.
 import { makeRng } from './rng.js';
 import { DIVISIONS, DIVISION_BY_ID, TOP_CLUBS } from '../data/world/structure.js';
-import { AI_SETTLED_BY_LEVEL } from './aiTeam.js';
+import { AI_SETTLED_BY_LEVEL, AI_FIT_BONUS } from './aiTeam.js';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
@@ -15,7 +15,7 @@ export function boardObjective(world, divisionId, userClubId, userStrength) {
   const div = DIVISION_BY_ID[divisionId];
   const ids = world.divisions[divisionId].filter((id) => id !== userClubId);
   // Rivals play with a settled-squad edge (bigger in higher divisions); you have cohesion (about +5%).
-  const edge = (1 + (AI_SETTLED_BY_LEVEL[div.level] ?? 0.1)) / 1.05;
+  const edge = (1 + (AI_SETTLED_BY_LEVEL[div.level] ?? 0.1) + AI_FIT_BONUS) / 1.05;
   const rival = (id) => world.clubs[id].strength * edge;
   const stronger = ids.filter((id) => rival(id) > userStrength + 0.5).length;
   const level = ids.filter((id) => Math.abs(rival(id) - userStrength) <= 0.5).length;
