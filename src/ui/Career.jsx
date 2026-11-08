@@ -63,7 +63,7 @@ export default function Career({ state, onAccept, onBack }) {
                 const club = state.world.clubs[o.clubId];
                 return (
                   <div key={o.clubId} className="offer">
-                    <Crest colors={club.colors} short={club.short} size={40} />
+                    <Crest colors={club.colors} short={club.short} size={40} id={o.clubId} />
                     <div className="offer__body">
                       <ClubLink id={o.clubId}><b>{o.name}</b></ClubLink>
                       <span>{o.division} · strength {Math.round(club.strength)} · {club.keyPlayers.length} named players</span>

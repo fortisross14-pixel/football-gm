@@ -108,7 +108,7 @@ export function Table({ state, divId = state.club.divisionId, compact }) {
           return (
             <tr key={r.id} className={`${r.id === state.club.id ? 'is-user' : ''}${pos === 1 ? ' is-top' : ''}${zone}`}>
               <td>{pos}</td>
-              <td className="table__club"><ClubLink id={r.id} className="club-inline"><Crest colors={club.colors} short={club.short} size={18} /> <span>{compact ? club.short : club.name}</span></ClubLink></td>
+              <td className="table__club"><ClubLink id={r.id} className="club-inline"><Crest colors={club.colors} short={club.short} size={18} id={r.id} /> <span>{compact ? club.short : club.name}</span></ClubLink></td>
               <td>{r.p}</td>
               {!compact && <><td>{r.w}</td><td>{r.d}</td><td>{r.l}</td></>}
               <td>{r.gd > 0 ? `+${r.gd}` : r.gd}</td>
@@ -153,9 +153,9 @@ function Fixtures({ state, divId }) {
         return (
           <div key={i} className={`fixture${mine ? ' is-user' : ''}`}>
             <ClubLink id={g.home} className="fixture__team">{h.name}</ClubLink>
-            <Crest colors={h.colors} short={h.short} size={20} />
+            <Crest colors={h.colors} short={h.short} size={20} id={g.home} />
             <b className="fixture__score">{g.score ? `${g.score[0]}–${g.score[1]}` : 'vs'}</b>
-            <Crest colors={a.colors} short={a.short} size={20} />
+            <Crest colors={a.colors} short={a.short} size={20} id={g.away} />
             <ClubLink id={g.away} className="fixture__team is-right">{a.name}</ClubLink>
           </div>
         );
@@ -174,7 +174,7 @@ function Scorers({ state, divId }) {
         return (
           <li key={s.id} className={s.clubId === state.club.id ? 'is-user' : ''}>
             <span className="scorer-list__pos">{i + 1}</span>
-            <Crest colors={club.colors} short={club.short} size={20} />
+            <Crest colors={club.colors} short={club.short} size={20} id={s.clubId} />
             <span className="scorer-list__name">{s.name}<em> · <ClubLink id={s.clubId}>{club.short}</ClubLink></em></span>
             <b>{s.goals}</b>
           </li>

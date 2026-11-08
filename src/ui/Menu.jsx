@@ -27,7 +27,7 @@ export default function Menu({ onContinue, onNew, onImport, settings, setSetting
             {slot.summary ? (
               <>
                 <button type="button" className="slot__main" onClick={() => onContinue(slot.n)}>
-                  <Crest colors={slot.summary.colors} short={slot.summary.short} size={44} />
+                  <Crest colors={slot.summary.colors} short={slot.summary.short} size={44} id={slot.summary.clubId} />
                   <span className="slot__body">
                     <b>{slot.summary.club}</b>
                     <span>{slot.summary.gmName} · Season {slot.summary.season} · Rep {slot.summary.reputation}{slot.summary.trophies ? ` · 🏆 ${slot.summary.trophies}` : ''}</span>
@@ -129,6 +129,7 @@ export function SettingsSheet({ settings, setSettings, onClose }) {
         <Toggle label="Auto-play matches" hint="Matches run on their own; you can still pause to make changes." value={settings.autoplay} onChange={(v) => set({ autoplay: v })} />
         <Toggle label="Reduce motion" hint="Fewer animations (goal banners, card flips)." value={settings.reduceMotion} onChange={(v) => set({ reduceMotion: v })} />
         <Toggle label="Show tips" hint="Short hints the first time you open each screen." value={settings.tips} onChange={(v) => set({ tips: v })} />
+        <Toggle label="Real club badges" hint="Load real club badges from the internet. Off: generated crests in club colours." value={settings.realBadges !== false} onChange={(v) => set({ realBadges: v })} />
       </div>
     </Sheet>
   );

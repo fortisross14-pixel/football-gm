@@ -1,5 +1,13 @@
-// Generated artwork: club crests and player silhouettes. No real logos or photos.
-import React from 'react';
+// Club crests (real badges loaded at runtime, generated shield as fallback) and player silhouettes.
+import React, { createContext, useContext, useState } from 'react';
+import { badgeUrls } from '../data/badges.js';
+
+// Whether to load real club badges (Settings → "Real club badges"). Provided by App.
+export const BadgesContext = createContext(true);
+
+// Shared across every Crest: URLs that failed, and the URL that worked per club.
+const FAILED = new Set();
+const WORKS = new Map();
 
 function hexToRgb(hex) {
   const h = hex.replace('#', '');
@@ -27,7 +35,38 @@ export function kitColors(team, otherTeam, isAway) {
   return { primary: c.primary, secondary: c.secondary };
 }
 
-export function Crest({ colors, short, size = 40 }) {
+// id: the club id (optional). With it, and real badges on, the club's real badge is shown,
+// trying each candidate URL in turn; the generated shield is the fallback.
+export function Crest({ colors, short, size = 40, id, country }) {
+  const enabled = useContext(BadgesContext);
+  const [, setTick] = useState(0);
+  if (enabled && id) {
+    const urls = badgeUrls(id, country);
+    const url = WORKS.get(id) || urls.find((u) => !FAILED.has(u));
+    if (url) {
+      return (
+        <img
+          key={url}
+          className="crest-img"
+          src={url}
+          width={size}
+          height={Math.round(size * 1.15)}
+          alt={`${short} badge`}
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          draggable="false"
+          onLoad={() => WORKS.set(id, url)}
+          onError={() => { FAILED.add(url); if (WORKS.get(id) === url) WORKS.delete(id); setTick((t) => t + 1); }}
+        />
+      );
+    }
+  }
+  return <ShieldCrest colors={colors} short={short} size={size} />;
+}
+
+// The generated shield: club colours and initials.
+function ShieldCrest({ colors, short, size }) {
   const id = `crest-${short}-${size}`;
   const text = isLight(colors.primary) ? '#111' : '#fff';
   return (

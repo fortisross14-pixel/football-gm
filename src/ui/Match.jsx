@@ -300,7 +300,7 @@ export default function Match({ initial, userSide, onFinish, settings = {}, show
 function ScoreTeam({ team, colors, right }) {
   return (
     <div className={`scoreboard__team${right ? ' is-right' : ''}`}>
-      <Crest colors={team.colors} short={team.short} size={34} />
+      <Crest colors={team.colors} short={team.short} size={34} id={team.id} />
       <span className="scoreboard__name">{team.short}</span>
       <span className="kit-dot" style={{ background: colors.primary }} />
     </div>

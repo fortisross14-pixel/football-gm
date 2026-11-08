@@ -1,5 +1,6 @@
 import React from 'react';
-import { Crest, isLight } from './Art.jsx';
+import { Crest } from './Art.jsx';
+import { clubVars } from './clubTheme.js';
 import { Table } from './League.jsx';
 import { teamOverall, RARITIES } from '../engine/cards.js';
 import { clubById, standings } from '../engine/season.js';
@@ -94,8 +95,8 @@ function NextMatch({ state, onPlay }) {
 
 function Side({ team }) {
   return (
-    <div className="matchup__team" style={clubVars(team.colors)}>
-      <Crest colors={team.colors} short={team.short} size={46} />
+    <div className="matchup__team" style={clubVars(team)}>
+      <Crest colors={team.colors} short={team.short} size={46} id={team.id} />
       <ClubLink id={team.id}><b>{team.name}</b></ClubLink>
       <span>{team.ovr} OVR</span>
     </div>
@@ -196,8 +197,8 @@ function Confetti({ colors }) {
   );
 }
 
-// Club colours for the broadcast fixture blocks (text flips to ink on light kits).
-export const clubVars = (colors) => ({ '--club': colors.primary, '--club-ink': isLight(colors.primary) ? '#0B0D12' : '#fff' });
+// Club colours for the broadcast fixture blocks: see clubTheme.js.
+export { clubVars };
 
 const ordinal = (n) => `${n}${['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 < 14) ? 0 : n % 10] || 'th'}`;
 
