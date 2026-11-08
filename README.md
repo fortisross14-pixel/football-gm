@@ -28,17 +28,20 @@ npm run build      # static build in dist/
 - **World:** 38 divisions and 304 real clubs across Europe, the Americas, Asia and Africa. Every division plays each matchday, and clubs go up and down between tiers at season end. Browse any league's table, fixtures and scorers.
 - **Season:** you start in Spain · Division 3 with Racing Santander. Win the league to go up (and earn bigger rewards), finish last to go down.
 - **Competitions:** domestic cups, the European / Americas / Africa–APAC Cups (qualify through your league) and the Club World Cup, all interleaved with league matchdays. Trophies pay prize money and reward packs.
-- **Matches:** 6 blocks of 15 minutes with live commentary, subs, mentality and boosts (up to 3 per match). Penalties in knockout games.
-- **Shop:** Bronze, Silver, Gold, Elite and Coach packs (odds shown), plus boosts.
+- **Matches:** 6 blocks of 15 minutes with live commentary, subs, mentality, boosts (up to 3 per match) and **skills**: elite players and coaches each carry one, and you can fire 2 per match. Penalties in knockout games.
+- **Tactics:** pressing, passing and defensive line, with counters (high press beats short passing, direct beats a high line…) and synergies with cards and coaches. Rivals' styles and skills are shown before kick-off.
+- **Shop:** Bronze, Silver, Gold, Elite and Coach packs (odds shown), plus sealed boost packs. Play a boost in a match and you get a free random boost card afterwards.
 - **Pack opening:**
   - Cards reveal one by one.
   - For each card you choose Keep (pick who it replaces in your 10), Merge a duplicate (+1★, +2 stats, +30 matches) or Discard for coins.
-- **Cards tab:** your squad, items (unopened packs, off-season cards, boosts), a card album with completion %, and the Hall of Fame.
+- **Cards tab:** Owned (squad, items, album) and Shop (packs, boosts, Transfer Market).
+- **League tab:** every league by name, with table, fixtures, scorers, cups and **History**: champion, runner-up, top scorer, MVP and Golden Glove for every season, records by league, country or world, and your career season by season. Tap any club for its page: squad, honours, season-by-season record, all-time scorers.
+- **World tab:** manager rankings (you against 300 AI managers), power ranking and most decorated clubs, world records, Hall of Fame.
 - **Season end:** prize money, reward packs and a free off-season card. Then the **Transfer Market** opens with 25 off-season card types (poach rivals' players, free agents, youth, stadium upgrades, season events…), each with a rarity that sets its strength.
 - **Card wear:** players and coaches lose a match each time they play and retire at 0.
 
 - **Main menu:** 3 save slots, new career (pick your name and one of three small-club job offers), back up / restore, settings (match speed, auto-play, reduced motion, tips).
-- **GM career:** reputation, board objectives, job offers, moving clubs with 2 cards, getting sacked.
+- **GM career:** reputation, board objectives, owners and fans confidence, job offers, moving clubs with 2 cards, getting sacked (3 offers, a level lower if a top-flight club fires you).
 - **Club screen:** facilities, finances, popularity, trophy cabinet.
 
 Progress is saved in the browser, automatically.
@@ -55,6 +58,12 @@ Progress is saved in the browser, automatically.
 | `src/engine/competitions.js` | Cups, continental tournaments, Club World Cup, season calendar |
 | `src/engine/transfers.js` | History pools, academies, AI signings, retirements |
 | `src/engine/packs.js` | Pack odds, guarantees, duplicates |
+| `src/engine/history.js` | Season archive, all-time records, club histories |
+| `src/engine/gms.js` | AI managers: reputation, sackings, rankings |
+| `src/engine/career.js` | Board objective, reputation, owners/fans confidence, job offers |
+| `src/data/skills.js` | Intrinsic skills for Rare+ players and coaches |
+| `scripts/tactics-check.mjs` | Simulates every tactic against a neutral side |
+| `scripts/smoke.cjs` | Clicks through every screen with a save and reports errors |
 | `src/data/pool.js` | Original card pool (112 players, 16 coaches) |
 | `src/data/world/` | World structure and the 4 region files (clubs + their named players) |
 | `scripts/check-world.mjs` | Validates the world data |
