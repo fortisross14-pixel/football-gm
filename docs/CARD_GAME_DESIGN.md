@@ -683,3 +683,15 @@ Tuned with `npm run career-sim`, a bot that plays whole careers the way a sensib
 | The world stays alive | Clubs keep about 3.6 named players each; continental titles spread across many clubs |
 
 **Re-measured after v1.6** (8 bot careers × 12 seasons, `node scripts/career-sim.mjs 8 12`; season 1 also checked with 40 careers): season-1 average finish about 3.9; level-2 club by season 6 (median), level-1 by season 8; about 8% of seasons end in a sacking; favourites win about 67%; 4.0 goals per match (skills add chances). AI club styles were tuned so small clubs' tactics don't cost them points, and the AI settled edge is now 20/16/12% by level.
+
+
+**Skill profiles (v1.7)**, `BOT=great|average|poor|bad node scripts/career-sim.mjs 16 14`, starting at one of the weakest bottom-tier clubs:
+
+| Bot | Season 1 finish | Level-1 club (median) | Reputation for a giant (~85) | Sacked |
+|---|---|---|---|---|
+| Great (green tactics) | 1.4 | season 4 | season 5–6 | 1% of seasons |
+| Average (coach's style) | 6.0, then 2.8 | season 7 | season 8 | 4% |
+| Poor (clashes every other season) | 5.6 | season 7 (13/16) | season 14+ | 12% |
+| Bad (random style, never improves the squad) | 7.1 | never | never | 40% |
+
+Tactics grade (`node scripts/grade-check.mjs`, user-like squad vs equal AI, rival rating gap −4 / 0 / +4 / +8): green wins 80 / 72 / 57 / 45%; grey 64 / 52 / 40 / 32%; red 37 / 27 / 18 / 13% (losing 52% against equals). Team-wide bonus: green +15% (×coach quality), grey +7%, red −8%; AI settled edge 8 / 6 / 4% by level.
