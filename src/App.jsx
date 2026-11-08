@@ -151,7 +151,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
             <b>{state.club.name}</b>
             <span>{state.club.division}</span>
           </div>
-          <div className="topbar__coins" aria-label="Coins">◎ {state.coins.toLocaleString()}</div>
+          <div className="topbar__coins" aria-label="Coins"><span key={state.coins} className="coin-bump">◎ {state.coins.toLocaleString()}</span></div>
           <button type="button" className="icon-btn topbar__menu" onClick={() => setMenuOpen(true)} aria-label="Menu">☰</button>
         </header>
       )}

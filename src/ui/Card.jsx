@@ -153,10 +153,10 @@ export function OffseasonCard({ item, onClick, footer, disabled, selected }) {
   );
 }
 
-export function PackArt({ packId, small }) {
+export function PackArt({ packId, small, big }) {
   const pack = PACKS[packId];
   return (
-    <div className={`pack pack--${packId}${small ? ' pack--small' : ''}`}>
+    <div className={`pack pack--${packId}${small ? ' pack--small' : ''}${big ? ' pack--big' : ''}`}>
       <span className="pack__shine" />
       <span className="pack__name">{pack.name.replace(' Pack', '')}</span>
       <span className="pack__count">{pack.count} {pack.kind === 'coach' ? 'coaches' : 'players'}</span>

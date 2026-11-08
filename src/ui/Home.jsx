@@ -100,6 +100,7 @@ function SeasonEnd({ state, onClose }) {
   const { position, prize, packs, promoted, relegated, upper, lower } = seasonSummary(state);
   return (
     <section className={`season-end${position === 1 ? ' is-champion' : ''}`}>
+      {(position === 1 || promoted) && <Confetti colors={[state.club.colors.primary, state.club.colors.secondary, '#f2b52f']} />}
       <span className="season-end__label">Season {state.season.year} complete</span>
       <b className="season-end__pos">{position === 1 ? '🏆 Champions!' : `${ordinal(position)} place`}</b>
       {(state.season.userTrophies || []).length > 0 && (
@@ -172,6 +173,19 @@ function StatusRow({ state, goTo }) {
         <b>{packs}</b>
         <small>{packs ? 'Tap to open' : 'Buy in shop'}</small>
       </button>
+    </div>
+  );
+}
+
+// Club-colour confetti for titles and promotions (a short burst, then it rests).
+function Confetti({ colors }) {
+  const pieces = Array.from({ length: 22 }, (_, i) => ({
+    x: `${(i * 37) % 100}%`, c: colors[i % colors.length], rot: `${(i % 2 ? 1 : -1) * (180 + i * 23)}deg`,
+    dur: `${1.6 + (i % 5) * 0.25}s`, delay: `${(i % 7) * 0.08}s`,
+  }));
+  return (
+    <div className="confetti" aria-hidden="true">
+      {pieces.map((p, i) => <i key={i} style={{ '--x': p.x, '--c': p.c, '--rot': p.rot, '--dur': p.dur, '--delay': p.delay }} />)}
     </div>
   );
 }

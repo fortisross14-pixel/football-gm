@@ -9,6 +9,7 @@ import { BoostCard } from './Card.jsx';
 import { Segmented } from './Home.jsx';
 import { PitchLines } from './Squad.jsx';
 import Sheet from './Sheet.jsx';
+import { sfx, haptic } from './motion.js';
 
 const REVEAL_MS = { normal: 2600, fast: 1100, instant: 0 };
 
@@ -71,7 +72,8 @@ export default function Match({ initial, userSide, onFinish, settings = {}, show
             setFlash({ side: ev.side, playerId: ev.playerId, key: `${ev.minute}-${i}` });
             after(revealMs ? 1400 : 600, () => setFlash(null));
           }
-          if (ev.side === userSide) navigator.vibrate?.(60);
+          sfx(ev.side === userSide ? 'goal-for' : 'goal-against');
+          if (ev.side === userSide) haptic(60);
         }
       });
     });
@@ -290,6 +292,7 @@ function MatchPitch({ match, userSide, kits, flash, targeting, onPick }) {
   return (
     <div className={`pitch pitch--match${targeting ? ' is-targeting' : ''}`}>
       <PitchLines />
+      {flash && <div key={flash.key} className="pitch-flash" style={{ '--c': kits[flash.side].primary }} />}
       {[0, 1].map((side) => {
         const team = match.teams[side];
         const mine = side === userSide;
