@@ -15,7 +15,7 @@ import { startingDraw, aiOffseason } from '../src/engine/transfers.js';
 import { CLUB_POOLS, PLAYER_CARDS } from '../src/data/world/index.js';
 import {
   newClubState, buildUserTeam, matchRewards, applyMatch, buyPack, keepPending, mergePending, discardPending,
-  pendingCard, duplicateOf, nextUserGame, newSeason, closeSeason, buyMarketCard, useOffseasonCard, startNextSeason, POOLS, POOL_BY_ID,
+  pendingCard, duplicateOf, nextUserGame, newSeason, closeSeason, acceptOffer, carryOptions, buyMarketCard, useOffseasonCard, startNextSeason, POOLS, POOL_BY_ID,
 } from '../src/state/club.js';
 
 let passed = 0;
@@ -313,6 +313,50 @@ test('season events show up in the match and change it', () => {
   let m = createMatch({ home: team, away: buildAiTeam(opp, 3), seed: 4, context: { competition: 'cup', knockout: true } });
   m = playSegment(m);
   assert.ok(m.events.some((e) => e.text.startsWith('Cup Run')));
+});
+
+test('GM career: objective, review, offers and switching clubs with 2 cards', () => {
+  let s = fresh();
+  assert.ok(s.gm.objective && s.gm.objective.text);
+  for (let md = 0; md < 14; md += 1) s = playMatchday(s, 5000 + md);
+  // Force a strong season so offers arrive.
+  s.season.divisions['esp-3'].table.racing.pts = 999;
+  s = resolve(closeSeason(s, 4));
+  assert.equal(s.gm.review.verdict === 'missed', false);
+  assert.ok(s.gm.reputation > 10, `reputation ${s.gm.reputation}`);
+  // Make sure there is at least one offer to test with.
+  if (!s.gm.offers.length) s.gm.offers = [{ clubId: 'sporting', required: 0, name: 'Sporting Gijón', division: 'x', level: 3 }];
+  const offer = s.gm.offers[0];
+  const opts = carryOptions(s);
+  const star = s.squad.find((c) => POOL_BY_ID[c.id]);
+  const carry = [`player:${star.id}`, opts.find((o) => o.kind === 'coach').key];
+  const keptCoach = s.coaches.coach.name;
+  const moved = acceptOffer(s, offer.clubId, carry, 7);
+  assert.equal(moved.club.id, offer.clubId);
+  assert.ok(moved.squad.some((c) => c.id === star.id), 'carried player comes along');
+  assert.equal(moved.coaches.coach.name, keptCoach, 'carried coach comes along');
+  assert.equal(moved.squad.length, 10);
+  assert.equal(moved.inventory.packs.length, 0, 'uncarried packs stay behind');
+  assert.equal(moved.world.clubs[offer.clubId].keyPlayers.length, 0, 'your club has no AI squad');
+  const leftBehind = s.squad.filter((c) => POOL_BY_ID[c.id] && c.id !== star.id).map((c) => c.id);
+  for (const id of leftBehind.slice(0, 1)) assert.ok(moved.world.clubs.racing.keyPlayers.includes(id), 'old club keeps your legends');
+  assert.equal(moved.gm.career.length, 2);
+  const next = startNextSeason(moved, 9);
+  assert.equal(next.phase, 'season');
+  assert.ok(nextUserGame(next));
+  assert.ok(next.gm.objective);
+});
+
+test('two missed objectives in a row get you sacked', () => {
+  let s = fresh();
+  s.gm.missedInRow = 1;
+  s.gm.objective = { target: 1, text: 'Win the league' };
+  for (let md = 0; md < 14; md += 1) s = playMatchday(s, 6000 + md);
+  s.season.divisions['esp-3'].table.racing.pts = -50; // finish last
+  s = resolve(closeSeason(s, 5));
+  assert.equal(s.gm.sacked, true);
+  assert.ok(s.gm.offers.length >= 1);
+  assert.equal(startNextSeason(s, 1).phase, 'offseason', 'must take a job first');
 });
 
 test('a card retires at zero matches and is replaced', () => {

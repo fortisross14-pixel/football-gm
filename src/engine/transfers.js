@@ -94,8 +94,11 @@ export function drawStartingSquads(world, pools, poolById, userIds, seed) {
 
 // The off-season for every AI club: wear and retirement, academy, signings, squad trim.
 // Returns { world, news } where news lists notable moves.
-export function aiOffseason(world, { pools, poolById, allCards, userIds, seed, countryOf }) {
+export function aiOffseason(world, { pools, poolById, allCards, userIds, seed, countryOf, userClubId = null }) {
   const next = structuredClone(world);
+  // The user's own club has no AI squad: the user's cards are its squad.
+  if (userClubId && next.clubs[userClubId]) next.clubs[userClubId].keyPlayers = [];
+  const aiClubs = () => Object.values(next.clubs).filter((c) => c.id !== userClubId);
   const rng = makeRng(seed);
   const news = [];
   // Rested players become available again.
@@ -128,7 +131,7 @@ export function aiOffseason(world, { pools, poolById, allCards, userIds, seed, c
   };
 
   // 2. Academy: 1–3 cards, preferably club legends, while there's room in the squad.
-  for (const club of Object.values(next.clubs)) {
+  for (const club of aiClubs()) {
     const div = DIVISION_BY_ID[club.divisionId];
     const level = aiAcademyLevel(club.id, div);
     for (let i = 0; i < ACADEMY_COUNT[level]; i += 1) {
@@ -142,7 +145,7 @@ export function aiOffseason(world, { pools, poolById, allCards, userIds, seed, c
 
   // 3. Signings from the free market (cards nobody holds).
   const market = allCards.filter((c) => !taken.has(c.id) && !retired.has(c.id) && tierOf(c) >= 1);
-  const clubs = Object.values(next.clubs).sort(() => rng.next() - 0.5);
+  const clubs = aiClubs().sort(() => rng.next() - 0.5);
   for (const club of clubs) {
     const div = DIVISION_BY_ID[club.divisionId];
     const top = TOP_CLUBS.includes(club.id);

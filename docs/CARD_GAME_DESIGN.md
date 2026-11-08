@@ -434,6 +434,8 @@ Your GM reputation runs from **0 to 100** and decides which clubs want you.
 
 ### 7.2 Board objective
 
+The objective comes from where your starting 7's strength ranks in the division: 1st–2nd → win the league, 3rd–4th → top 3, 5th–6th → top 6, lower → avoid relegation. Finishing at least 2 places better than the target (or winning the league when it wasn't expected) counts as exceeded.
+
 Each pre-season, the club sets one objective based on its level and squad strength, for example "Avoid relegation", "Top 3", "Win the league", "Reach the continental semi-finals". It's shown on the Home screen with a progress indicator.
 
 ### 7.3 Job offers
@@ -449,7 +451,7 @@ When you accept an offer, you choose **any 2 cards** to bring. They can be from 
 
 **Everything else stays with your old club:** other players, coaches, inventory, coins and facility levels. The old club goes back to AI control.
 
-At the new club you get its **club squad**: 10 cards from that club's real roster at a rarity matching its level, plus a coach and its treasury.
+At the new club you get its **club squad**: the named cards the club holds right now in the world, plus generic Commons to make 10, a coach of the club's level, its facilities and its treasury. Your old club keeps the named cards you leave behind.
 
 | New club level | Squad | Coach | Treasury |
 |---|---|---|---|
@@ -572,7 +574,8 @@ Your 2 carried cards replace squad cards of your choice. Cards that move with yo
 | M3 Full world | **Done:** 38 divisions and 304 real clubs, 475 player cards (most tagged to their real club), the whole world plays every matchday (fast sim calibrated against the full engine), promotion/relegation with rating drift, world browser in the League tab |
 | M4 Competitions | **Done:** domestic cups (16 or 8 clubs, lower division at home, penalties), European Cup with qualifying round, Americas and Africa–APAC Cups (2 groups of 4 → semis → neutral final), Club World Cup (3-team mini-league + final), all on one season calendar; qualification from last season's tables (season 1: by club strength); trophies with prize money and reward packs; Cups view in the League tab |
 | M5 Club systems | **Done:** Club screen (facilities with current and next-level effects, season finances, popularity, cohesion, season event, trophy cabinet), popularity that grows with goals, man-of-the-match awards and trophies, season events called out in match commentary, active bonuses shown before kick-off, Cup Run and Continental Nights events |
-| M6 GM career | Next |
+| M6 GM career | **Done:** reputation 0–100, board objective each season (from your squad's strength vs the division), season review with reputation changes, job offers by required reputation, take-2-cards move (old club keeps your legends), sacking after 2 missed objectives, Career screen |
+| M7 History and stats | Next |
 
 **Measured economy (M2, 60 simulated seasons with the demo squad):** average finish 3.6th of 8, about 2,200 coins per season (around 4 Silver packs).
 

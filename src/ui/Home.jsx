@@ -16,7 +16,10 @@ export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo
       {phase === 'offseason' && <Offseason state={state} goTo={goTo} onStart={onStartSeason} />}
 
       <StatusRow state={state} goTo={goTo} />
-      <button type="button" className="btn btn--ghost btn--block" onClick={() => goTo('club')}>Club: facilities, finances & trophies ›</button>
+      <div className="cta-row cta-row--tight">
+        <button type="button" className="btn btn--ghost" onClick={() => goTo('club')}>Club ›</button>
+        <button type="button" className="btn btn--ghost" onClick={() => goTo('career')}>Career ›</button>
+      </div>
 
       <section>
         <div className="section-row">
@@ -68,6 +71,12 @@ function NextMatch({ state, onPlay }) {
         <span>Season {season.year} · {game.label}</span>
         {season.matchday > 0 && !cupGame && <span>You're {ordinal(pos)}</span>}
       </div>
+      {state.gm?.objective && (
+        <div className={`objective-bar${season.matchday > 0 && pos > state.gm.objective.target ? ' is-behind' : ''}`}>
+          <span>Board: {state.gm.objective.text}</span>
+          <span>Rep {state.gm.reputation}</span>
+        </div>
+      )}
       <div className="matchup matchup--hero">
         <Side team={left} />
         <div className="matchup__vs"><span>VS</span><small>{venue}{game.knockout ? ' · KO' : ''}</small></div>
@@ -113,10 +122,17 @@ function SeasonEnd({ state, onClose }) {
 
 function Offseason({ state, goTo, onStart }) {
   const ev = state.activeEvent;
-  const move = state.lastSeason?.userMove;
+  const move = state.lastSeason?.userMove?.clubId === state.club.id ? state.lastSeason.userMove : null;
   return (
     <section className="offseason">
       <span className="season-end__label">Off-season · next: {state.club.division}</span>
+      {state.gm?.sacked && <p className="promo is-down">You've been sacked. Choose a new club to continue.</p>}
+      {state.gm?.review && (
+        <button type="button" className="career-link" onClick={() => goTo('career')}>
+          <span>{state.gm.review.verdict === 'missed' ? '✗' : '✓'} Board review: {state.gm.review.verdict} · reputation {state.gm.review.before} → {state.gm.review.after}</span>
+          <b>{state.gm.offers.length ? `${state.gm.offers.length} job offer${state.gm.offers.length > 1 ? 's' : ''} ›` : 'Career ›'}</b>
+        </button>
+      )}
       {move && <p className={`promo ${move.type === 'promoted' ? 'is-up' : 'is-down'}`}>{move.type === 'promoted' ? '▲ Promoted' : '▼ Relegated'} to {state.club.division}</p>}
       <b className="offseason__title">Transfer Market is open</b>
       <p className="hint">Buy off-season cards, then play them from Cards → Items: sign players, extend careers, upgrade the club and pick a season event.</p>
@@ -133,8 +149,8 @@ function Offseason({ state, goTo, onStart }) {
         <button type="button" className="btn btn--ghost" onClick={() => goTo('shop')}>Market</button>
         <button type="button" className="btn btn--ghost" onClick={() => goTo('cards')}>My cards</button>
       </div>
-      <button type="button" className="btn btn--primary btn--block" onClick={onStart} disabled={!!state.pendingOpen}>
-        Start season {state.season.year + 1}
+      <button type="button" className="btn btn--primary btn--block" onClick={onStart} disabled={!!state.pendingOpen || state.gm?.sacked}>
+        {state.gm?.sacked ? 'Take a new job first' : `Start season ${state.season.year + 1}`}
       </button>
     </section>
   );

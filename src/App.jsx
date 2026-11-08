@@ -5,7 +5,7 @@ import { clubById, aiTeamFor } from './engine/season.js';
 import {
   newClubState, loadClubState, saveClubState, clearClubState, buildUserTeam, matchRewards, applyMatch,
   buyPack, buyBoost, openOwnedPack, keepPending, mergePending, discardPending, closeSeason, buyMarketCard,
-  startNextSeason, useOffseasonCard, POOL_BY_ID, nextUserGame,
+  startNextSeason, useOffseasonCard, POOL_BY_ID, nextUserGame, acceptOffer,
 } from './state/club.js';
 import { Crest } from './ui/Art.jsx';
 import Home from './ui/Home.jsx';
@@ -18,6 +18,7 @@ import Collection from './ui/Collection.jsx';
 import League from './ui/League.jsx';
 import PackOpening from './ui/PackOpening.jsx';
 import ClubInfo from './ui/ClubInfo.jsx';
+import Career from './ui/Career.jsx';
 
 const TABS = [
   { id: 'home', label: 'Club', icon: '⌂' },
@@ -81,7 +82,7 @@ export default function App() {
     setScreen('home');
   };
 
-  const isTab = TABS.some((t) => t.id === screen) || screen === 'club';
+  const isTab = TABS.some((t) => t.id === screen) || screen === 'club' || screen === 'career';
 
   return (
     <div className={`app${isTab ? ' app--tabs' : ''}`}>
@@ -123,6 +124,17 @@ export default function App() {
         )}
         {screen === 'league' && <League state={state} />}
         {screen === 'club' && <ClubInfo state={state} onBack={() => setScreen('home')} />}
+        {screen === 'career' && (
+          <Career
+            state={state}
+            onBack={() => setScreen('home')}
+            onAccept={(clubId, keys) => {
+              setState((s) => acceptOffer(s, clubId, keys, randomSeed()));
+              setToast({ text: 'New club, new challenge. Your squad is ready.', tone: 'good' });
+              setScreen('home');
+            }}
+          />
+        )}
         {screen === 'prematch' && fixture && (
           <PreMatch
             state={state}

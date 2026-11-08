@@ -734,3 +734,24 @@ main { padding: 0 16px; }
 .trophies__cup { font-size: 28px; }
 .pcard__pop { font-size: 11px; color: var(--gold); }
 .bonus-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.objective-bar { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; padding: 7px 10px; border-radius: 10px; background: rgba(57,229,140,.1); color: var(--accent); }
+.objective-bar.is-behind { background: rgba(255,107,107,.12); color: var(--danger); }
+.career-link { display: flex; justify-content: space-between; align-items: center; gap: 8px; text-align: left; background: rgba(255,255,255,.05); border: 1px solid var(--line-2); border-radius: 10px; padding: 9px 12px; font-size: 13px; }
+.career-link b { color: var(--gold); white-space: nowrap; }
+.cta-row--tight { margin-top: 0; }
+.cta-row--tight .btn { flex: 1; }
+.rep-ring { flex: none; width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle, var(--bg) 60%, transparent 62%), conic-gradient(var(--gold) var(--rep), rgba(255,255,255,.1) 0); }
+.rep-ring b { font-family: var(--font-display); font-size: 20px; }
+.objective { display: flex; flex-direction: column; gap: 2px; margin: 8px 0; }
+.objective b { font-family: var(--font-display); font-size: 22px; text-transform: uppercase; }
+.sacked { border-color: var(--danger); }
+.offers { display: flex; flex-direction: column; gap: 8px; }
+.offer { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--radius); padding: 10px 12px; }
+.offer__body { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.offer__body b { font-family: var(--font-display); font-size: 19px; text-transform: uppercase; }
+.offer__body span { font-size: 12px; color: var(--muted); }
+.carry-list { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; max-height: 50vh; overflow-y: auto; }
+.carry { display: grid; grid-template-columns: 70px 1fr auto; gap: 8px; align-items: center; text-align: left; background: var(--surface); border: 1.5px solid var(--line); border-left: 3px solid var(--rc, var(--line-2)); border-radius: 10px; padding: 9px 10px; font-size: 13px; }
+.carry.is-selected { border-color: var(--accent); background: rgba(57,229,140,.1); }
+.carry__kind { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.carry__rarity { font-size: 11px; color: var(--rc); font-weight: 700; }
