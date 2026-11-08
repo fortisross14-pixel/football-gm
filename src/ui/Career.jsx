@@ -29,7 +29,7 @@ export default function Career({ state, onAccept, onBack, onLook }) {
       {gm.sacked && (
         <section className="panel sacked">
           <b>You've been sacked.</b>
-          <p className="hint">{gm.missedInRow >= 2 ? 'Two missed objectives in a row.' : `Job security ended the season at ${gm.securityEnd}, under ${SACK_LINE}.`} Three clubs still want you{state.club.level === 1 ? ', one level lower' : ''}. Pick one to carry on; you can take 2 cards with you.</p>
+          <p className="hint">{gm.securityEnd < SACK_LINE ? `Job security ended the season at ${gm.securityEnd}, under ${SACK_LINE}.` : 'Two missed objectives in a row with the owners already unhappy.'} Three clubs still want you{state.club.level === 1 ? ', one level lower' : ''}. Pick one to carry on; you can take 2 cards with you.</p>
         </section>
       )}
 
@@ -39,7 +39,7 @@ export default function Career({ state, onAccept, onBack, onLook }) {
         <section className="panel">
           <h2 className="section-title">Board objective</h2>
           <p className="objective"><b>{gm.objective.text}</b><span className={pos <= gm.objective.target ? 'is-up' : 'is-down'}>Currently {pos}{['th', 'st', 'nd', 'rd'][pos] || 'th'}</span></p>
-          <p className="hint">Miss it two seasons in a row, or end a season with job security under {SACK_LINE}, and you are sacked. Beat it, win trophies and get promoted to raise your reputation.</p>
+          <p className="hint">You're only sacked if job security ends a season under {SACK_LINE}, or you miss the objective twice in a row while security is low. Beat it, win trophies and get promoted to raise your reputation.</p>
         </section>
       )}
 

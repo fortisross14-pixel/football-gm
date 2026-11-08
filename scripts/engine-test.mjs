@@ -373,9 +373,10 @@ test('GM career: objective, review, offers and switching clubs with 2 cards', ()
   assert.ok(next.gm.objective);
 });
 
-test('two missed objectives in a row get you sacked', () => {
+test('two missed objectives in a row with unhappy owners get you sacked', () => {
   let s = fresh();
   s.gm.missedInRow = 1;
+  s.gm.confidence = { board: 30, fans: 30 };
   s.gm.objective = { target: 1, text: 'Win the league' };
   for (let md = 0; md < 14; md += 1) s = playMatchday(s, 6000 + md);
   s.season.divisions['esp-3'].table.racing.pts = -50; // finish last

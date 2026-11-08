@@ -38,7 +38,7 @@ export function judgeObjective(objective, position) {
 // Reputation
 
 export const REPUTATION = {
-  met: 8, exceeded: 12, missed: -10, promotion: 8, cup: 4, league: 8, continental: 12, cwc: 15, sacked: -15,
+  met: 9, exceeded: 13, missed: -8, promotion: 9, cup: 4, league: 9, continental: 10, cwc: 12, sacked: -15,
 };
 
 export function reputationChanges({ verdict, promoted, leagueTitle, trophies }) {
@@ -55,9 +55,9 @@ export function reputationChanges({ verdict, promoted, leagueTitle, trophies }) 
 }
 
 // Gains count for less in smaller leagues and get harder as reputation rises; losses count in full.
-const LEVEL_WEIGHT = { 1: 1, 2: 0.8, 3: 0.6 };
+const LEVEL_WEIGHT = { 1: 1, 2: 0.9, 3: 0.8 };
 export function weighReputation(items, level, rep) {
-  return items.map((i) => (i.value > 0 ? { ...i, value: Math.max(1, Math.round(i.value * LEVEL_WEIGHT[level] * (1 - rep / 140))) } : i));
+  return items.map((i) => (i.value > 0 ? { ...i, value: Math.max(1, Math.round(i.value * LEVEL_WEIGHT[level] * (1 - rep / 150))) } : i));
 }
 export const applyReputation = (rep, items) => clamp(rep + items.reduce((s, i) => s + i.value, 0), 0, 100);
 
@@ -65,7 +65,10 @@ export const applyReputation = (rep, items) => clamp(rep + items.reduce((s, i) =
 // Confidence: the owners (results against the objective) and the fans (wins, goals,
 // trophies). Job security mixes both; below SACK_LINE at the end of a season you are out.
 
-export const SACK_LINE = 30;
+// Sacked only when things go really wrong: security under SACK_LINE, or two missed
+// objectives in a row while security is also below WARNING_LINE. A casual game: failure is the exception.
+export const SACK_LINE = 15;
+export const WARNING_LINE = 35;
 export const START_CONFIDENCE = { board: 60, fans: 55 };
 export const security = (c) => Math.round((c?.board ?? 60) * 0.65 + (c?.fans ?? 55) * 0.35);
 
@@ -80,7 +83,7 @@ export function matchConfidence(conf, { outcome, gf, ga, competition, pos, targe
   if (gf >= 3) next.fans += 1;
   if (ga >= 4) next.fans -= 2;
   // Owners care how you play: the club's identity (see data/philosophies.js).
-  if (styleDist !== null) next.board += styleDist <= 2 ? 0.5 : styleDist > 3.5 ? -1 : 0;
+  if (styleDist !== null) next.board += styleDist <= 2 ? 0.5 : styleDist > 3.5 ? -0.6 : 0;
   if (eliminated) { next.board -= level === 1 ? 3 : 1; next.fans -= 3; }
   if (trophy) { next.board += 12; next.fans += 15; }
   next.board = clamp(next.board, 0, 100);
@@ -91,7 +94,7 @@ export function matchConfidence(conf, { outcome, gf, ga, competition, pos, targe
 // End of season: the verdict on the objective weighs most.
 export function seasonConfidence(conf, verdict, promoted) {
   const next = { ...START_CONFIDENCE, ...(conf || {}) };
-  next.board += { exceeded: 18, met: 8, missed: -22 }[verdict];
+  next.board += { exceeded: 18, met: 10, missed: -16 }[verdict];
   next.fans += { exceeded: 12, met: 4, missed: -10 }[verdict];
   if (promoted) { next.board += 10; next.fans += 12; }
   next.board = clamp(next.board, 0, 100);

@@ -73,4 +73,4 @@ export const OPPONENTS = [
   },
 ];
 
-export const LEVEL_MULTIPLIER = { 1: 1.75, 2: 1.5, 3: 1 };
+export const LEVEL_MULTIPLIER = { 1: 1.75, 2: 1.4, 3: 0.9 };

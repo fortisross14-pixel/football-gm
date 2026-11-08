@@ -4,7 +4,7 @@
 import { USER_CLUB, USER_COACHES, START_INVENTORY, LEVEL_MULTIPLIER } from '../data/demo.js';
 import { PLAYER_CARDS, COACH_CARDS, CARD_BY_ID, CLUBS_BY_DIVISION, CLUB_POOLS } from '../data/world/index.js';
 import { aiOffseason, userAcademyIntake, ACADEMY_COUNT, ACADEMY_MAX_TIER, namedCap } from '../engine/transfers.js';
-import { clubStart, START_REPUTATION, START_CONFIDENCE, SACK_LINE, security, matchConfidence, seasonConfidence, carryConfidence, boardObjective, judgeObjective, reputationChanges, weighReputation, applyReputation, jobOffers, CLUB_START, requiredReputation } from '../engine/career.js';
+import { clubStart, START_REPUTATION, START_CONFIDENCE, SACK_LINE, WARNING_LINE, security, matchConfidence, seasonConfidence, carryConfidence, boardObjective, judgeObjective, reputationChanges, weighReputation, applyReputation, jobOffers, CLUB_START, requiredReputation } from '../engine/career.js';
 import { DIVISIONS, DIVISION_BY_ID } from '../data/world/structure.js';
 import { BOOST_IDS, BOOSTS, BOOST_PACKS, openBoostPack, drawBoost } from '../data/boosts.js';
 import { OFFSEASON_CARDS, OFFSEASON_IDS, MARKET_WEIGHTS, TIERS, tierIndex, cardValue, cardPrice, SIGNING_TIERS } from '../data/offseason.js';
@@ -743,7 +743,7 @@ export function closeSeason(state, seed) {
     next.gm.missedInRow = verdict === 'missed' ? next.gm.missedInRow + 1 : 0;
     next.gm.confidence = seasonConfidence(next.gm.confidence, verdict, summary.promoted);
     next.gm.securityEnd = security(next.gm.confidence);
-    next.gm.sacked = next.gm.missedInRow >= 2 || next.gm.securityEnd < SACK_LINE;
+    next.gm.sacked = next.gm.securityEnd < SACK_LINE || (next.gm.missedInRow >= 2 && next.gm.securityEnd < WARNING_LINE);
     if (next.gm.sacked) items.push({ label: 'Sacked by the board', value: -15 });
     next.gm.reputation = applyReputation(before, items);
     next.gm.review = { season: state.season.year, objective, position, verdict, items, before, after: next.gm.reputation, sacked: next.gm.sacked };
