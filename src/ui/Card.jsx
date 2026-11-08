@@ -4,6 +4,7 @@ import { COACH_PASSIVES } from '../data/coachPassives.js';
 import { BOOSTS } from '../data/boosts.js';
 import { OFFSEASON_CARDS, GROUP_LABEL, cardText } from '../data/offseason.js';
 import { PACKS } from '../engine/packs.js';
+import { skillOf } from '../data/skills.js';
 import { Silhouette } from './Art.jsx';
 
 const MAX_MATCHES = 200;
@@ -46,6 +47,12 @@ export function PlayerCard({ card, colors, stats, size = 'full', onClick, select
           <div className="pcard__trait" title={trait.text}>
             <b>{trait.name}</b>
             {size === 'full' && <span>{trait.text}</span>}
+          </div>
+        )}
+        {skillOf(card) && (
+          <div className="pcard__skill" title={skillOf(card).desc}>
+            <b>{skillOf(card).icon} {skillOf(card).name}</b>
+            {size === 'full' && <span>{skillOf(card).desc}</span>}
           </div>
         )}
         <div className="pcard__matches">
@@ -97,6 +104,7 @@ export function MiniCard({ card, onClick, selected, warn, dim }) {
       <span className="mini__pos">{card.pos}</span>
       <span className="mini__name">{card.name.length <= 9 ? card.name : last}</span>
       {card.stars > 0 && <span className="mini__stars">{'★'.repeat(card.stars)}</span>}
+      {skillOf(card) && <span className="mini__skill" title={skillOf(card).name} aria-hidden="true">{skillOf(card).icon}</span>}
       {warn && <span className="mini__warn" title="Out of position">{warn}</span>}
     </button>
   );
@@ -114,6 +122,7 @@ export function CoachCard({ coach, role, onClick, selected }) {
         <span className="chip chip--soft" title={passive.text}>{passive.name}{strength}</span>
       </div>
       <div className="ccard__text">{passive.text}</div>
+      {skillOf(coach) && <div className="ccard__skill"><b>{skillOf(coach).icon} {skillOf(coach).name}</b><span>{skillOf(coach).desc}</span></div>}
       <div className="ccard__left">{coach.matchesLeft == null ? 'No retirement' : `${coach.matchesLeft} matches left`}</div>
     </button>
   );

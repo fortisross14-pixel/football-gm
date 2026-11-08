@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   SEGMENTS, playSegment, aiDecide, setMentality, substitute, canSubstitute, playBoost, canPlayBoost, runShootout, onPitch,
+  teamSkills, canUseSkill, activateSkill,
 } from '../engine/match.js';
 import { BOOSTS } from '../data/boosts.js';
+import { MAX_SKILLS } from '../data/skills.js';
 import { overall, slotFit } from '../engine/cards.js';
 import { Crest, kitColors, isLight } from './Art.jsx';
 import { BoostCard } from './Card.jsx';
@@ -23,6 +25,7 @@ export default function Match({ initial, userSide, onFinish, settings = {}, show
   const [subsOpen, setSubsOpen] = useState(false);
   const [targeting, setTargeting] = useState(null); // boost id waiting for a player pick
   const [flash, setFlash] = useState(null);
+  const [skillPick, setSkillPick] = useState(null); // card id whose skill is being previewed
   const [kicksShown, setKicksShown] = useState(0);
   const timers = useRef([]);
 
@@ -217,6 +220,14 @@ export default function Match({ initial, userSide, onFinish, settings = {}, show
                 Subs · {user.subsLeft}
               </button>
             </div>
+            <SkillBar
+              match={match}
+              side={userSide}
+              live={live}
+              picked={skillPick}
+              onPick={(id) => setSkillPick(skillPick === id ? null : id)}
+              onUse={(id) => { sfx('reveal-big'); haptic(30); setMatch((m) => activateSkill(m, userSide, id)); setShownEvents((n) => n + 1); setSkillPick(null); }}
+            />
             {user.loadout.length > 0 && (
               <div className="dock__boosts">
                 {user.loadout.map((id, i) => {
@@ -411,5 +422,54 @@ function SubsSheet({ match, side, onClose, onSub }) {
         })}
       </div>
     </Sheet>
+  );
+}
+
+// Intrinsic skills: up to 2 per match. Tap to preview, then Use.
+function SkillBar({ match, side, live, picked, onPick, onUse }) {
+  const team = match.teams[side];
+  const used = team.skillsUsed || [];
+  const list = teamSkills(team);
+  const usedEntries = used.filter((u) => !list.some((e) => e.cardId === u.cardId));
+  if (!list.length && !used.length) return null;
+  const sel = list.find((e) => e.cardId === picked);
+  const selCheck = sel ? canUseSkill(match, side, sel.cardId) : null;
+  return (
+    <div className="skillbar">
+      <div className="skillbar__head">
+        <span>Skills</span>
+        <span className="skillbar__pips" aria-label={`${team.skillsLeft} of ${MAX_SKILLS} left`}>
+          {Array.from({ length: MAX_SKILLS }, (_, i) => <i key={i} className={i < team.skillsLeft ? 'is-on' : ''} />)}
+        </span>
+      </div>
+      <div className="skillbar__row">
+        {list.map((e) => {
+          const done = used.some((u) => u.cardId === e.cardId);
+          const ok = canUseSkill(match, side, e.cardId).ok;
+          return (
+            <button
+              type="button"
+              key={e.cardId}
+              className={`skill r-${e.skill.tier === 2 ? 'legend' : e.skill.tier === 1 ? 'epic' : 'rare'}${done ? ' is-used' : ''}${picked === e.cardId ? ' is-picked' : ''}${ok && live ? ' is-ready' : ''}`}
+              onClick={() => onPick(e.cardId)}
+              disabled={done}
+            >
+              <span className="skill__icon" aria-hidden="true">{e.skill.icon}</span>
+              <span className="skill__name">{e.skill.name}</span>
+              <span className="skill__who">{e.name.split(' ').slice(-1)[0]}</span>
+            </button>
+          );
+        })}
+        {usedEntries.map((u) => <span key={u.cardId} className="skill is-used"><span className="skill__name">Used</span></span>)}
+      </div>
+      {sel && (
+        <div className="skillbar__detail">
+          <p><b>{sel.name}</b> · {sel.skill.desc}</p>
+          <button type="button" className="btn btn--small btn--primary" disabled={!live || !selCheck.ok} onClick={() => onUse(sel.cardId)}>
+            {selCheck.ok ? 'Use now' : selCheck.reason}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import {
   createMatch, playSegment, playBoost, canPlayBoost, substitute, simulateMatch, SEGMENTS,
+  teamSkills, canUseSkill, activateSkill,
 } from '../src/engine/match.js';
 import { buildAiTeam } from '../src/engine/aiTeam.js';
 import { overall, rarityForOverall } from '../src/engine/cards.js';
@@ -9,6 +10,7 @@ import { openPack, PACKS } from '../src/engine/packs.js';
 import { standings, userFixture, aiTeamFor, clubById } from '../src/engine/season.js';
 import { OFFSEASON_IDS, OFFSEASON_CARDS, cardText, TIERS, SIGNING_TIERS } from '../src/data/offseason.js';
 import { PLAYER_POOL, COACH_POOL } from '../src/data/pool.js';
+import { skillOf, MAX_SKILLS } from '../src/data/skills.js';
 import { OPPONENTS } from '../src/data/demo.js';
 import { DIVISION_BY_ID } from '../src/data/world/structure.js';
 import { startingDraw, aiOffseason } from '../src/engine/transfers.js';
@@ -391,6 +393,28 @@ test('a card retires at zero matches and is replaced', () => {
   assert.ok(!next.squad.some((c) => c.id === id));
   assert.equal(next.hallOfFame.length, 1);
   assert.equal(next.squad.length, 10);
+});
+
+test('skills: elite cards carry one, max 2 per match, conditions hold', () => {
+  assert.ok(PLAYER_POOL.filter((c) => c.rarity === 'legend').every((c) => skillOf(c)));
+  assert.ok(PLAYER_POOL.filter((c) => c.rarity === 'common').every((c) => !skillOf(c)));
+  const club = fresh();
+  const legends = PLAYER_POOL.filter((c) => c.rarity === 'legend' && c.pos !== 'GK').slice(0, 3).map((c) => structuredClone(c));
+  const team = user(club);
+  const swap = team.lineup.slice(1, 4);
+  team.players = team.players.map((p) => (swap.includes(p.id) ? { ...legends[swap.indexOf(p.id)], id: p.id, pos: p.pos } : p));
+  let m = createMatch({ home: team, away: buildAiTeam(opp, 3), seed: 5 });
+  const skills = teamSkills(m.teams[0]);
+  assert.ok(skills.length >= 3, 'three legends give three skills');
+  let used = 0;
+  for (const s of skills) {
+    if (canUseSkill(m, 0, s.cardId).ok) { m = activateSkill(m, 0, s.cardId); used += 1; }
+  }
+  assert.ok(used <= MAX_SKILLS);
+  assert.equal(m.teams[0].skillsLeft, MAX_SKILLS - used);
+  // Clutch only from 75'
+  const clutch = { ...legends[0], skill: 'clutch' };
+  assert.equal(skillOf(clutch).id, 'clutch');
 });
 
 console.log(`\n${passed} tests passed`);
