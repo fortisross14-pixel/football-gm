@@ -1,0 +1,525 @@
+// 7v7 match engine. Pure functions: state in, new state out.
+//
+// A match is 6 segments of 15 minutes. Before each segment there is a decision
+// point where a side can change mentality, make substitutions and play boosts.
+// Knockout draws go to a penalty shootout.
+
+import { FORMATIONS, slotFit } from './cards.js';
+import { makeRng } from './rng.js';
+import { COACH_PASSIVES } from '../data/coachPassives.js';
+import { BOOSTS } from '../data/boosts.js';
+import { pickLine, short } from './commentary.js';
+
+export const SEGMENTS = 6;
+export const MAX_SUBS = 3;
+export const BASE_BOOST_SLOTS = 3;
+
+// Tuning knobs (checked by scripts/balance.mjs).
+const BASE_CHANCES = 1.0; // per team per segment at equal midfield control
+const BASE_CONVERSION = 0.3;
+const CONTROL_EXPONENT = 2;
+const HOME_BONUS = 0.03;
+
+const ATTACK_WEIGHT = { GK: 0, DEF: 0.2, MID: 0.6, FWD: 1 };
+const DEFENSE_WEIGHT = { GK: 0, DEF: 1, MID: 0.5, FWD: 0.15 };
+const CONTROL_WEIGHT = { GK: 0, DEF: 0.5, MID: 1, FWD: 0.5 };
+const SHOOTER_WEIGHT = { GK: 0, DEF: 0.4, MID: 1.4, FWD: 3 };
+
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const clone = (v) => structuredClone(v);
+
+// ---------------------------------------------------------------------------
+// Setup
+
+// team input: { id, name, short, colors, formation, players: [cards],
+//   lineup: [playerId x7 in formation slot order], bench: [playerId x<=3],
+//   coach, assistant, loadout: [boostId], isAI }
+export function createMatch({ home, away, context = {}, seed = 1 }) {
+  return {
+    seed: seed >>> 0,
+    segment: 0,
+    phase: 'live', // live → (penalties) → fulltime
+    context: {
+      competition: context.competition || 'league',
+      knockout: !!context.knockout,
+      neutral: !!context.neutral,
+    },
+    teams: [buildTeam(home, true, context), buildTeam(away, false, context)],
+    score: [0, 0],
+    events: [],
+    segmentSummaries: [],
+    shootout: null,
+    result: null,
+  };
+}
+
+function buildTeam(input, isHome, context) {
+  const slots = FORMATIONS[input.formation].map((slot, i) => ({ ...slot, playerId: input.lineup[i] }));
+  const players = {};
+  for (const card of input.players) {
+    players[card.id] = {
+      card,
+      stamina: 100,
+      onPitch: false,
+      enteredAt: null,
+      leftAt: null,
+      superSub: false,
+      goals: 0,
+      assists: 0,
+      shots: 0,
+      saves: 0,
+      conceded: 0,
+    };
+  }
+  for (const slot of slots) {
+    players[slot.playerId].onPitch = true;
+    players[slot.playerId].enteredAt = 0;
+  }
+  const tactician = passiveValue(input.coach, input.assistant, 'tactician');
+  return {
+    id: input.id,
+    name: input.name,
+    short: input.short,
+    colors: input.colors,
+    formation: input.formation,
+    coach: input.coach || null,
+    assistant: input.assistant || null,
+    isAI: !!input.isAI,
+    isHome: isHome && !context.neutral,
+    slots,
+    bench: [...input.bench],
+    players,
+    mentality: 'balanced',
+    subsLeft: MAX_SUBS,
+    boostSlots: BASE_BOOST_SLOTS + Math.floor(tactician),
+    loadout: [...(input.loadout || [])],
+    boostsUsed: [],
+    effects: [],
+    superSubPending: false,
+  };
+}
+
+function passiveValue(coach, assistant, id) {
+  const value = COACH_PASSIVES[id]?.value || 0;
+  return (coach?.passive === id ? value : 0) + (assistant?.passive === id ? value * 0.5 : 0);
+}
+
+const teamPassive = (team, id) => passiveValue(team.coach, team.assistant, id);
+
+export function onPitch(team) {
+  return team.slots.map((slot) => ({ slot, p: team.players[slot.playerId] }));
+}
+
+// ---------------------------------------------------------------------------
+// Decisions
+
+export function setMentality(state, side, mentality) {
+  const next = clone(state);
+  next.teams[side].mentality = mentality;
+  return next;
+}
+
+export function canSubstitute(state, side, outId, inId) {
+  const team = state.teams[side];
+  if (state.phase !== 'live') return { ok: false, reason: 'The match is over.' };
+  if (team.subsLeft <= 0) return { ok: false, reason: 'No substitutions left.' };
+  if (!team.slots.some((s) => s.playerId === outId)) return { ok: false, reason: 'That player is not on the pitch.' };
+  if (!team.bench.includes(inId)) return { ok: false, reason: 'That player is not on the bench.' };
+  return { ok: true };
+}
+
+export function substitute(state, side, outId, inId) {
+  if (!canSubstitute(state, side, outId, inId).ok) return state;
+  const next = clone(state);
+  const team = next.teams[side];
+  const minute = next.segment * 15;
+  const slot = team.slots.find((s) => s.playerId === outId);
+  slot.playerId = inId;
+  team.bench = team.bench.filter((id) => id !== inId);
+  team.subsLeft -= 1;
+  const out = team.players[outId];
+  const incoming = team.players[inId];
+  out.onPitch = false;
+  out.leftAt = minute;
+  incoming.onPitch = true;
+  incoming.enteredAt = minute;
+  incoming.stamina = 100;
+  if (team.superSubPending) {
+    incoming.superSub = true;
+    team.superSubPending = false;
+  }
+  next.events.push({
+    minute,
+    side,
+    type: 'sub',
+    playerId: inId,
+    text: `Substitution ${team.short}: ${incoming.card.name} on for ${out.card.name}.${incoming.superSub ? ' Super Sub!' : ''}`,
+  });
+  return next;
+}
+
+export function canPlayBoost(state, side, boostId, targetId) {
+  const team = state.teams[side];
+  const boost = BOOSTS[boostId];
+  if (!boost) return { ok: false, reason: 'Unknown boost.' };
+  if (state.phase !== 'live' || state.segment >= SEGMENTS) return { ok: false, reason: 'The match is over.' };
+  if (!team.loadout.includes(boostId)) return { ok: false, reason: 'You did not bring this boost.' };
+  const [own, opp] = side === 0 ? state.score : [state.score[1], state.score[0]];
+  if (boost.when === 'losing' && own >= opp) return { ok: false, reason: 'Only when losing.' };
+  if (boost.when === 'leadingLast' && !(own > opp && state.segment === SEGMENTS - 1)) {
+    return { ok: false, reason: 'Only when leading before the last 15\'.' };
+  }
+  if (boostId === 'captainsSpeech' && team.effects.some((e) => e.source === 'captainsSpeech')) {
+    return { ok: false, reason: 'Already active.' };
+  }
+  if (boostId === 'superSub' && (team.superSubPending || team.subsLeft <= 0 || !team.bench.length)) {
+    return { ok: false, reason: 'No substitution available.' };
+  }
+  if (boost.target === 'player') {
+    if (!targetId || !team.slots.some((s) => s.playerId === targetId)) return { ok: false, reason: 'Pick a player on the pitch.' };
+  }
+  return { ok: true };
+}
+
+export function playBoost(state, side, boostId, targetId = null) {
+  if (!canPlayBoost(state, side, boostId, targetId).ok) return state;
+  const next = clone(state);
+  const team = next.teams[side];
+  const seg = next.segment;
+  team.loadout.splice(team.loadout.indexOf(boostId), 1);
+  team.boostsUsed.push(boostId);
+  const add = (effect) => team.effects.push({ source: boostId, from: seg, to: seg, ...effect });
+  switch (boostId) {
+    case 'goldenChance': add({ type: 'goldenChance', playerId: targetId }); break;
+    case 'secondWind':
+      for (const { p } of onPitch(team)) p.stamina = Math.min(100, p.stamina + 40);
+      break;
+    case 'ironWall': add({ type: 'def', value: 0.25 }); break;
+    case 'allOutAttack': add({ type: 'att', value: 0.3 }); add({ type: 'def', value: -0.2 }); break;
+    case 'captainsSpeech': add({ type: 'all', value: 0.1, to: SEGMENTS }); break;
+    case 'setPiece': add({ type: 'setPiece' }); break;
+    case 'superSub': team.superSubPending = true; break;
+    case 'gameManagement': add({ type: 'gameManagement' }); break;
+    default: break;
+  }
+  const target = targetId ? ` (${team.players[targetId].card.name})` : '';
+  next.events.push({ minute: seg * 15, side, type: 'boost', boostId, text: `${team.short} play ${BOOSTS[boostId].name}${target}.` });
+  return next;
+}
+
+// Simple AI: mentality by score/time, substitutes tired players.
+export function aiDecide(state, side) {
+  let next = state;
+  const team = next.teams[side];
+  const seg = next.segment;
+  const [own, opp] = side === 0 ? next.score : [next.score[1], next.score[0]];
+  let mentality = 'balanced';
+  if (seg >= 3 && own < opp) mentality = 'attacking';
+  else if (seg >= 4 && own > opp) mentality = 'defensive';
+  if (team.mentality !== mentality) next = setMentality(next, side, mentality);
+
+  if (seg >= 3) {
+    for (let guard = 0; guard < MAX_SUBS; guard += 1) {
+      const t = next.teams[side];
+      if (t.subsLeft <= 0 || !t.bench.length) break;
+      const tired = onPitch(t)
+        .filter(({ slot, p }) => slot.pos !== 'GK' && p.stamina < 66)
+        .sort((a, b) => a.p.stamina - b.p.stamina)[0];
+      if (!tired) break;
+      const options = t.bench.map((id) => t.players[id]).filter((p) => p.card.pos !== 'GK');
+      if (!options.length) break;
+      const best = options.sort((a, b) => benchScore(b, tired.slot.pos) - benchScore(a, tired.slot.pos))[0];
+      next = substitute(next, side, tired.slot.playerId, best.card.id);
+    }
+  }
+  return next;
+}
+
+const benchScore = (p, pos) => (p.card.att + p.card.def + p.card.phy) * slotFit(p.card.pos, pos);
+
+// ---------------------------------------------------------------------------
+// Simulation
+
+function modifiers(state, side, seg) {
+  const team = state.teams[side];
+  const { competition } = state.context;
+  const field = onPitch(team);
+  const active = team.effects.filter((e) => e.from <= seg && e.to >= seg);
+  const sum = (type) => active.filter((e) => e.type === type).reduce((s, e) => s + e.value, 0);
+  let all = sum('all');
+  if (team.isHome) all += HOME_BONUS;
+  if (seg >= 3) all += teamPassive(team, 'motivator');
+  if (competition === 'cup') all += teamPassive(team, 'cupSpecialist');
+  all += field.filter(({ p }) => p.card.trait === 'leader').length * 0.03;
+  const att = sum('att') + teamPassive(team, 'attackMinded');
+  const def = sum('def') + teamPassive(team, 'ironDiscipline') + field.filter(({ p }) => p.card.trait === 'wall').length * 0.1;
+  return { all, att, def, active };
+}
+
+function effective(p, slotPos, mods, seg, competition) {
+  const fit = slotFit(p.card.pos, slotPos);
+  const fatigue = 0.75 + 0.25 * (p.stamina / 100);
+  let personal = 0;
+  if (p.superSub) personal += 0.15;
+  if (p.card.trait === 'bigGame' && (competition === 'continental' || competition === 'cwc')) personal += 0.1;
+  const clutch = p.card.trait === 'clutch' && seg === SEGMENTS - 1 ? 0.15 : 0;
+  const base = fit * fatigue;
+  return {
+    att: p.card.att * base * (1 + mods.all + mods.att + personal + clutch),
+    def: p.card.def * base * (1 + mods.all + mods.def + personal),
+  };
+}
+
+function teamPower(state, side, seg) {
+  const team = state.teams[side];
+  const mods = modifiers(state, side, seg);
+  const { competition } = state.context;
+  let attack = 0;
+  let defense = 0;
+  let control = 0;
+  let gk = null;
+  const shooters = [];
+  for (const { slot, p } of onPitch(team)) {
+    const e = effective(p, slot.pos, mods, seg, competition);
+    if (slot.pos === 'GK') {
+      gk = { p, def: e.def * (p.card.trait === 'shotStopper' ? 1.1 : 1) };
+      continue;
+    }
+    attack += e.att * ATTACK_WEIGHT[slot.pos];
+    defense += e.def * DEFENSE_WEIGHT[slot.pos];
+    control += ((e.att + e.def) / 2) * CONTROL_WEIGHT[slot.pos];
+    shooters.push({ p, att: e.att, pos: slot.pos });
+  }
+  const playmakers = onPitch(team).filter(({ p }) => p.card.trait === 'playmaker').length;
+  return { attack, defense, control, gk, shooters, mods, playmakers };
+}
+
+export function playSegment(state) {
+  if (state.phase !== 'live' || state.segment >= SEGMENTS) return state;
+  const next = clone(state);
+  const rng = makeRng(next.seed);
+  const seg = next.segment;
+  const powers = [teamPower(next, 0, seg), teamPower(next, 1, seg)];
+  const cA = powers[0].control ** CONTROL_EXPONENT;
+  const cB = powers[1].control ** CONTROL_EXPONENT;
+  const share = [cA / (cA + cB), cB / (cA + cB)];
+  const scoreAtStart = [...next.score];
+  const segEvents = [];
+
+  for (const side of [0, 1]) {
+    const opp = 1 - side;
+    const team = next.teams[side];
+    const oppTeam = next.teams[opp];
+    const me = powers[side];
+    const them = powers[opp];
+    let lambda = 2 * BASE_CHANCES * share[side];
+    lambda *= { attacking: 1.25, balanced: 1, defensive: 0.7 }[team.mentality];
+    lambda *= { attacking: 1.15, balanced: 1, defensive: 0.95 }[oppTeam.mentality];
+    if (them.mods.active.some((e) => e.type === 'gameManagement')) lambda *= 0.6;
+
+    let quality = me.attack / (me.attack + them.defense);
+    quality += me.playmakers * 0.03;
+    const trailing = scoreAtStart[side] < scoreAtStart[opp];
+    if (trailing) quality *= 1 + teamPassive(team, 'counterMaster');
+    // Game state: a trailing side pushes harder in the second half.
+    if (trailing && seg >= 3) lambda *= 1.15;
+    if (team.mentality === 'attacking') quality += 0.02;
+    if (oppTeam.mentality === 'defensive') quality -= 0.04;
+
+    const chances = [];
+    const count = rng.poisson(lambda);
+    for (let i = 0; i < count; i += 1) chances.push({ kind: 'open', quality });
+    for (const e of me.mods.active) {
+      if (e.type === 'goldenChance') chances.push({ kind: 'golden', quality: 0.85, playerId: e.playerId });
+      if (e.type === 'setPiece') chances.push({ kind: 'setPiece', quality: 0.6 });
+    }
+
+    for (const chance of chances) {
+      const minute = seg * 15 + rng.int(1, 15);
+      let shooter;
+      if (chance.kind === 'golden') shooter = me.shooters.find((s) => s.p.card.id === chance.playerId);
+      if (chance.kind === 'setPiece') shooter = rng.weighted(me.shooters, (s) => (s.pos === 'MID' ? 0.6 : 1.2) * (s.p.card.def + s.att));
+      if (!shooter) shooter = rng.weighted(me.shooters, (s) => SHOOTER_WEIGHT[s.pos] * s.att);
+      if (!shooter) continue;
+      const gkDef = them.gk ? them.gk.def : 30;
+      const finish = clamp(2 / (1 + Math.exp(-(shooter.att - gkDef) / 12)), 0.45, 1.7);
+      let p = BASE_CONVERSION * (0.45 + 1.1 * chance.quality) * finish;
+      if (shooter.p.card.trait === 'poacher') p *= 1.15;
+      p = clamp(p, 0.04, 0.8);
+      shooter.p.shots += 1;
+      const name = shooter.p.card.name;
+      if (rng.next() < p) {
+        let assist = null;
+        if (chance.kind !== 'setPiece' && rng.next() < 0.75) {
+          const mates = me.shooters.filter((s) => s !== shooter);
+          const pick = rng.weighted(mates, (s) => (s.pos === 'MID' ? 2 : 1) * s.att * (s.p.card.trait === 'playmaker' ? 1.6 : 1));
+          if (pick) assist = pick.p;
+        }
+        shooter.p.goals += 1;
+        if (assist) assist.assists += 1;
+        segEvents.push({
+          minute, side, type: 'goal', playerId: shooter.p.card.id, assistId: assist?.card.id || null, kind: chance.kind,
+          lineKey: chance.kind === 'golden' ? 'goldenGoal' : chance.kind === 'setPiece' ? 'setPieceGoal' : 'goal',
+          names: [short(name), assist ? short(assist.card.name) : null, team.short],
+        });
+      } else {
+        const roll = rng.next();
+        const saveChance = them.gk ? clamp(0.35 + (them.gk.def - 60) / 100, 0.25, 0.65) : 0.1;
+        let outcome = 'miss';
+        if (roll < saveChance) outcome = 'save';
+        else if (roll < saveChance + 0.08) outcome = 'post';
+        else if (roll < saveChance + 0.3) outcome = 'block';
+        if (outcome === 'save' && them.gk) them.gk.p.saves += 1;
+        segEvents.push({
+          minute, side, type: 'chance', outcome, playerId: shooter.p.card.id, kind: chance.kind,
+          lineKey: outcome,
+          names: outcome === 'save' ? [short(name), them.gk ? short(them.gk.p.card.name) : 'the keeper'] : [short(name)],
+        });
+      }
+    }
+  }
+
+  segEvents.sort((a, b) => a.minute - b.minute);
+  for (const ev of segEvents) {
+    ev.text = pickLine(rng, ev.lineKey, ...ev.names);
+    if (ev.type === 'goal') {
+      next.score[ev.side] += 1;
+      for (const { slot, p } of onPitch(next.teams[1 - ev.side])) {
+        if (slot.pos === 'GK' || slot.pos === 'DEF') p.conceded += 1;
+      }
+    }
+    delete ev.names;
+    delete ev.lineKey;
+    next.events.push(ev);
+  }
+  if (!segEvents.some((e) => e.type === 'goal')) {
+    const dominant = share[0] > 0.58 ? 0 : share[1] > 0.58 ? 1 : null;
+    const text = dominant === null ? pickLine(rng, 'quiet') : pickLine(rng, 'control', next.teams[dominant].short);
+    next.events.push({ minute: seg * 15 + 8, side: dominant, type: 'flavor', text });
+    next.events.sort((a, b) => a.minute - b.minute);
+  }
+
+  // Fatigue
+  for (const side of [0, 1]) {
+    const team = next.teams[side];
+    const guru = teamPassive(team, 'fitnessGuru');
+    const mentality = { attacking: 1.15, balanced: 1, defensive: 0.9 }[team.mentality];
+    for (const { slot, p } of onPitch(team)) {
+      let drain = 9 * (1.4 - p.card.phy / 100) * mentality * (1 - guru);
+      if (p.card.trait === 'engine') drain *= 0.5;
+      if (slot.pos === 'GK') drain *= 0.4;
+      p.stamina = clamp(p.stamina - drain, 0, 100);
+    }
+  }
+
+  next.segmentSummaries.push({ segment: seg, control: share, score: [...next.score] });
+  next.segment += 1;
+  next.seed = rng.seed;
+  if (next.segment >= SEGMENTS) {
+    const drawn = next.score[0] === next.score[1];
+    if (next.context.knockout && drawn) next.phase = 'penalties';
+    else return finalize(next);
+  }
+  return next;
+}
+
+// ---------------------------------------------------------------------------
+// Penalties
+
+export function runShootout(state) {
+  if (state.phase !== 'penalties') return state;
+  const next = clone(state);
+  const rng = makeRng(next.seed);
+  const takers = [0, 1].map((side) => {
+    const field = onPitch(next.teams[side]);
+    const outfield = field.filter(({ slot }) => slot.pos !== 'GK').map(({ p }) => p).sort((a, b) => b.card.att - a.card.att);
+    const keeper = field.find(({ slot }) => slot.pos === 'GK')?.p;
+    return keeper ? [...outfield, keeper] : outfield;
+  });
+  const keepers = [0, 1].map((side) => onPitch(next.teams[side]).find(({ slot }) => slot.pos === 'GK')?.p);
+  const kicks = [];
+  const score = [0, 0];
+  let round = 0;
+  let decided = false;
+  while (round < 30) {
+    for (const side of [0, 1]) {
+      const taker = takers[side][round % takers[side].length];
+      const gk = keepers[1 - side];
+      let p = clamp(0.76 + (taker.card.att - (gk?.card.def ?? 40)) / 150, 0.55, 0.92);
+      if (gk?.card.trait === 'shotStopper') p -= 0.06;
+      if (taker.card.trait === 'clutch') p += 0.04;
+      const scored = rng.next() < p;
+      if (scored) score[side] += 1;
+      kicks.push({ side, playerId: taker.card.id, name: taker.card.name, scored, score: [...score] });
+      // In the first 5 rounds, stop early once one side can't catch up.
+      if (round < 5) {
+        const remaining = [4 - round, side === 0 ? 5 - round : 4 - round];
+        if (score[0] + remaining[0] < score[1] || score[1] + remaining[1] < score[0]) {
+          decided = true;
+          break;
+        }
+      }
+    }
+    if (decided) break;
+    round += 1;
+    if (round >= 5 && score[0] !== score[1]) break;
+  }
+  next.shootout = { kicks, score, winner: score[0] > score[1] ? 0 : 1 };
+  next.seed = rng.seed;
+  return finalize(next);
+}
+
+// ---------------------------------------------------------------------------
+// Result
+
+function finalize(state) {
+  const next = state;
+  const rng = makeRng(next.seed);
+  const winner = next.score[0] !== next.score[1]
+    ? (next.score[0] > next.score[1] ? 0 : 1)
+    : next.shootout ? next.shootout.winner : null;
+  const ratings = [];
+  for (const side of [0, 1]) {
+    const team = next.teams[side];
+    const conceded = next.score[1 - side];
+    for (const p of Object.values(team.players)) {
+      if (p.enteredAt === null) continue;
+      const left = p.leftAt ?? 90;
+      const minutes = left - p.enteredAt;
+      const pos = p.card.pos;
+      let r = 6.2 + p.goals * 1.0 + p.assists * 0.6 + p.saves * 0.25;
+      if (pos === 'GK') r -= p.conceded * 0.35;
+      if (pos === 'DEF') r -= p.conceded * 0.15;
+      if ((pos === 'GK' || pos === 'DEF') && conceded === 0 && minutes >= 45) r += pos === 'GK' ? 0.8 : 0.5;
+      if (winner === side) r += 0.3;
+      if (winner === 1 - side) r -= 0.2;
+      r += (rng.next() - 0.5) * 0.6;
+      p.rating = Math.round(clamp(r, 3, 10) * 10) / 10;
+      p.minutes = minutes;
+      ratings.push({ side, playerId: p.card.id, rating: p.rating });
+    }
+  }
+  const motm = [...ratings].sort((a, b) => b.rating - a.rating || (b.side === winner) - (a.side === winner))[0];
+  next.phase = 'fulltime';
+  next.seed = rng.seed;
+  next.result = {
+    score: [...next.score],
+    shootout: next.shootout ? [...next.shootout.score] : null,
+    winner,
+    motm,
+    appeared: [0, 1].map((side) => Object.values(next.teams[side].players).filter((p) => p.enteredAt !== null).map((p) => p.card.id)),
+  };
+  return next;
+}
+
+// Headless full match, both sides AI-controlled. Used for AI-vs-AI games and balancing.
+export function simulateMatch(options) {
+  let state = createMatch(options);
+  while (state.phase === 'live') {
+    state = aiDecide(state, 0);
+    state = aiDecide(state, 1);
+    state = playSegment(state);
+  }
+  if (state.phase === 'penalties') state = runShootout(state);
+  return state;
+}

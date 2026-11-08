@@ -1,4 +1,4 @@
-# Football Cards — Game Design Document (v1.1 draft)
+# Football Cards — Game Design Document (v1.2)
 
 > Replaces the old management-sim design (`GAME_DESIGN_DOCUMENT.md`), which is kept for reference only.
 > Language: English. Platform: web (React + Vite), mobile-first.
@@ -266,7 +266,7 @@ The shop offers **3 random events** each offseason. You play **1** per season. U
 5. **Fatigue:** stamina drains each segment, reduced by PHY. Effective stats = base × (0.75 + 0.25 × stamina%).
 6. **Modifiers stack:** home (+5%), cohesion, coach, assistant, traits, active event, boosts.
 
-Target: **3–4 goals per match on average** (7v7 is high-scoring), with roughly 1 in 6 matches won by a team that was losing at 70'.
+Target: **3–4 goals per match on average** (7v7 is high-scoring). Comebacks should be possible but special: without boosts, about 1 in 20 teams losing at 60' go on to win, and more with the right boost at the right time.
 
 ### 5.3 Presentation
 
@@ -451,9 +451,26 @@ Your 2 carried cards replace squad cards of your choice. Cards that move with yo
 
 ---
 
-## 12. Open questions
+## 12. Confirmed decisions
 
-1. **Coins when switching clubs:** coins currently stay with the old club's treasury. Should part of them come with you, or is "2 cards" the whole package?
-2. **Cup format:** this draft uses single-match knockout (3 or 4 rounds). Is that what "one game" meant, or do you want a round-robin? A 16-club round-robin would be 15 extra matches.
-3. **Sacking:** keep the "2 missed objectives in a row" rule, or make jobs safe?
-4. **Division size:** 8 clubs (14 league matches) is assumed. Is that confirmed?
+1. **Coins when switching clubs:** they stay with the old club. The 2 cards are everything you take.
+2. **Cup format:** single-match knockout (3 or 4 rounds).
+3. **Sacking:** miss the board objective 2 seasons in a row and you're fired.
+4. **Division size:** 8 clubs, 14 league matches.
+5. **Starting career:** a rookie GM picks from 3 offers from L3 clubs. Sandbox mode is a later stretch goal.
+6. **Asia Other / APAC Other:** West and Central Asia / East Asia and Oceania.
+
+---
+
+## 13. Progress
+
+| Milestone | Status |
+|---|---|
+| M1 Core match + squad | **Done:** playable demo (see `README.md`), engine tests and balance script |
+| M2 One league season | Next |
+
+**Measured balance (M1, `npm run balance`):**
+- About 3.1–3.5 goals per match between equal teams.
+- Home team wins about 46%, draws about 27%.
+- All four formations are viable.
+- A team losing at 60' wins about 5% of the time and avoids defeat about 22% of the time. That's before boosts like Captain's Speech, which the player controls.

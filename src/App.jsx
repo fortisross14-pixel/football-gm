@@ -1,36 +1,91 @@
-import React,{useEffect,useRef,useState} from 'react';
-import StartFlow from './components/StartFlow.jsx';import SaveSlots from './components/SaveSlots.jsx';import Shell from './components/Shell.jsx';
-import Inbox from './screens/Inbox.jsx';import CompetitionsV4 from './screens/CompetitionsV4.jsx';import SquadV4 from './screens/SquadV4.jsx';import CoachV4 from './screens/CoachV4.jsx';import TrainingV4 from './screens/TrainingV4.jsx';import TransfersV4 from './screens/TransfersV4.jsx';import StaffV4 from './screens/StaffV4.jsx';import BoardV4 from './screens/BoardV4.jsx';import GM from './screens/GM.jsx';import BusinessOverviewV4 from './screens/BusinessOverviewV4.jsx';import SponsorsV4 from './screens/SponsorsV4.jsx';import KitV4 from './screens/KitV4.jsx';import MerchV4 from './screens/MerchV4.jsx';import HospitalityV4 from './screens/HospitalityV4.jsx';import MediaV4 from './screens/MediaV4.jsx';import SuppliersV4 from './screens/SuppliersV4.jsx';import FinanceV4 from './screens/FinanceV4.jsx';import TicketsV4 from './screens/TicketsV4.jsx';import MatchDayV43 from './screens/MatchDayV43.jsx';import {InfrastructureOverviewV4,StadiumV4,ClubFacilitiesV4,SportFacilitiesV4} from './screens/InfrastructureV4.jsx';
-import {createGame,advanceDays,advanceToNextMatch,isMatchReady,simulateCurrentMatch,activateSponsorRight,setTactic,coachIntervene,fireCoach,takeControl,appointInterim,startStaffSearch,submitStaffNegotiation,signStaffAgreement,createStaffPosition,dismissStaff,askCoachStaffRecommendation,submitClubOffer,submitPlayerOffer,completeTransfer,startSponsorSearch,submitSponsorNegotiation,signSponsor,startManufacturerSearch,signManufacturer,saveKitDesign,produceMerch,upgradeMerchChannel,setMerchPrice,setMediaProgram,scheduleEvent,signSupplier,startInvestment,takeDebt,requestBoardCapital,requestObjectiveChange,commissionFacilityProject,leaseCommercialUnit,updateTicketZone,setTrainingPlan} from './game/v4.js';
-import {loadGameFromSlot,saveGameToSlot} from './game/storage.js';
+import React, { useEffect, useState } from 'react';
+import { OPPONENTS } from './data/demo.js';
+import { buildAiTeam } from './engine/aiTeam.js';
+import { createMatch } from './engine/match.js';
+import { randomSeed } from './engine/rng.js';
+import {
+  newClubState, loadClubState, saveClubState, clearClubState, buildUserTeam, matchRewards, applyMatch,
+} from './state/club.js';
+import { Crest } from './ui/Art.jsx';
+import Home from './ui/Home.jsx';
+import Squad from './ui/Squad.jsx';
+import PreMatch from './ui/PreMatch.jsx';
+import Match from './ui/Match.jsx';
+import Result from './ui/Result.jsx';
 
-export default function App(){
-  const [view,setView]=useState('slots'),[activeSlot,setActiveSlot]=useState(null),[slotName,setSlotName]=useState(''),[game,setGame]=useState(null),[screen,setScreen]=useState('inbox'),[category,setCategory]=useState(null),[saveState,setSaveState]=useState({status:'idle',message:''}),[startError,setStartError]=useState('');
-  const saveTimer=useRef(null);
-  useEffect(()=>{
-    if(view!=='game'||!game||!activeSlot)return;
-    if(saveTimer.current)clearTimeout(saveTimer.current);
-    setSaveState({status:'saving',message:'Guardando…'});
-    const snapshot=game,slot=activeSlot,name=slotName;
-    saveTimer.current=setTimeout(async()=>{
-      const result=await saveGameToSlot(slot,name,snapshot);
-      setSaveState(result.ok?{status:'saved',message:'Guardado'}:{status:'error',message:result.error||'No se pudo guardar'});
-    },450);
-    return()=>{if(saveTimer.current)clearTimeout(saveTimer.current);};
-  },[game,view,activeSlot,slotName]);
-  const resetNav=()=>{setScreen('inbox');setCategory(null)};
-  const continueSlot=async id=>{const result=await loadGameFromSlot(id);if(!result.ok){setStartError(result.error);return;}setActiveSlot(id);setSlotName(result.meta.slotName);setGame(result.game);resetNav();setView('game');setStartError('');};
-  const newSlot=(id,name)=>{setActiveSlot(id);setSlotName(name);setGame(null);resetNav();setView('new');setStartError('');};
-  const beginCareer=async(club,gm)=>{try{const next=createGame(club,gm);setSaveState({status:'saving',message:'Creando partida…'});const result=await saveGameToSlot(activeSlot,slotName,next);if(!result.ok){setSaveState({status:'error',message:result.error||'No se pudo guardar'});setStartError(result.error||'No se pudo crear el guardado.');return;}setGame(next);setSaveState({status:'saved',message:'Guardado'});resetNav();setView('game');setStartError('');}catch(error){console.error('Career start failed',error);setStartError(`No se pudo iniciar la carrera: ${error?.message||error}`);setView('new');}};
-  const manualSave=async()=>{if(!game||!activeSlot)return {ok:false};if(saveTimer.current)clearTimeout(saveTimer.current);setSaveState({status:'saving',message:'Guardando…'});const result=await saveGameToSlot(activeSlot,slotName,game);setSaveState(result.ok?{status:'saved',message:'Guardado ahora'}:{status:'error',message:result.error||'No se pudo guardar'});return result;};
-  const exitToSlots=async()=>{const result=await manualSave();if(result&&!result.ok)return;setGame(null);setActiveSlot(null);setSlotName('');resetNav();setView('slots');};
-  if(view==='slots')return <><SaveSlots onContinue={continueSlot} onNew={newSlot}/>{startError&&<div className="toast-error">{startError}</div>}</>;
-  if(view==='new')return <><StartFlow saveName={slotName} onCancel={()=>setView('slots')} onStart={beginCareer}/>{startError&&<div className="toast-error">{startError}</div>}</>;
-  if(!game)return <SaveSlots onContinue={continueSlot} onNew={newSlot}/>;
-  const screenCategory={matchday:'sport',competitions:'sport',squad:'sport',coach:'sport',training:'sport',transfers:'sport',staff:'club',board:'club',gm:'club',business:'business',sponsors:'business',kit:'business',merch:'business',hospitality:'business',media:'business',suppliers:'business',finance:'business',infrastructure:'infrastructure',stadium:'infrastructure',tickets:'infrastructure',clubFacilities:'infrastructure',sportFacilities:'infrastructure'};const navigate=id=>{setScreen(id);setCategory(screenCategory[id]||null)};const props={game,setGame};let content=<Inbox {...props} setScreen={navigate}/>;
-  if(screen==='matchday')content=<MatchDayV43 game={game} onSimulate={()=>simulateCurrentMatch(game)} onLeave={g=>{setGame(g);setScreen('inbox');setCategory(null)}}/>;if(screen==='competitions')content=<CompetitionsV4 game={game}/>;if(screen==='squad')content=<SquadV4 game={game}/>;if(screen==='coach')content=<CoachV4 game={game} setTactic={p=>setGame(setTactic(game,p))} intervene={(id,f)=>setGame(coachIntervene(game,id,f))} fire={()=>setGame(fireCoach(game))} takeControl={()=>setGame(takeControl(game))} appointInterim={k=>setGame(appointInterim(game,k))} startSearch={(r,d)=>setGame(startStaffSearch(game,r,d))} negotiate={(r,id,s,e)=>setGame(submitStaffNegotiation(game,r,id,s,e))} sign={(r,id)=>setGame(signStaffAgreement(game,r,id))}/>;
-  if(screen==='training')content=<TrainingV4 game={game} setPlan={(p,f)=>setGame(setTrainingPlan(game,p,f))}/>;if(screen==='transfers')content=<TransfersV4 game={game} offerClub={(id,a)=>setGame(submitClubOffer(game,id,a))} offerPlayer={(id,s,b)=>setGame(submitPlayerOffer(game,id,s,b))} complete={id=>setGame(completeTransfer(game,id))}/>;if(screen==='staff')content=<StaffV4 game={game} createPosition={r=>setGame(createStaffPosition(game,r))} startSearch={(r,d)=>setGame(startStaffSearch(game,r,d))} negotiate={(r,id,s,e)=>setGame(submitStaffNegotiation(game,r,id,s,e))} sign={(r,id)=>setGame(signStaffAgreement(game,r,id))} dismiss={r=>setGame(dismissStaff(game,r))} recommend={r=>setGame(askCoachStaffRecommendation(game,r))}/>;if(screen==='board')content=<BoardV4 game={game} requestCapital={a=>setGame(requestBoardCapital(game,a))} requestObjective={id=>setGame(requestObjectiveChange(game,id))}/>;if(screen==='gm')content=<GM {...props}/>;
-  if(screen==='business')content=<BusinessOverviewV4 game={game} setScreen={navigate}/>;if(screen==='sponsors')content=<SponsorsV4 game={game} startSearch={(slot,scope,d)=>setGame(startSponsorSearch(game,slot,scope,d))} negotiate={(id,a)=>setGame(submitSponsorNegotiation(game,id,a))} sign={id=>setGame(signSponsor(game,id))} activate={id=>setGame(activateSponsorRight(game,id))}/>;if(screen==='kit')content=<KitV4 game={game} startSearch={d=>setGame(startManufacturerSearch(game,d))} signManufacturer={id=>setGame(signManufacturer(game,id))} saveDesign={p=>setGame(saveKitDesign(game,p))}/>;if(screen==='merch')content=<MerchV4 game={game} produce={(k,q)=>setGame(produceMerch(game,k,q))} upgradeChannel={k=>setGame(upgradeMerchChannel(game,k))} setPrice={(k,p)=>setGame(setMerchPrice(game,k,p))}/>;if(screen==='hospitality')content=<HospitalityV4 game={game} schedule={(t,d)=>setGame(scheduleEvent(game,t,d))}/>;if(screen==='media')content=<MediaV4 game={game} setMedia={p=>setGame(setMediaProgram(game,p))}/>;if(screen==='suppliers')content=<SuppliersV4 game={game} sign={(c,o)=>setGame(signSupplier(game,c,o))}/>;if(screen==='finance')content=<FinanceV4 game={game} invest={(t,a,d)=>setGame(startInvestment(game,t,a,d))} debt={a=>setGame(takeDebt(game,a))}/>;
-  if(screen==='infrastructure')content=<InfrastructureOverviewV4 game={game} setScreen={navigate}/>;if(screen==='stadium')content=<StadiumV4 game={game} onBuild={(g,id,t)=>setGame(commissionFacilityProject(game,g,id,t))} onUnit={(slot,type)=>setGame(leaseCommercialUnit(game,slot,type))}/>;if(screen==='tickets')content=<TicketsV4 game={game} updateZone={(z,p)=>setGame(updateTicketZone(game,z,p))}/>;if(screen==='clubFacilities')content=<ClubFacilitiesV4 game={game} onBuild={(g,id,t)=>setGame(commissionFacilityProject(game,g,id,t))}/>;if(screen==='sportFacilities')content=<SportFacilitiesV4 game={game} onBuild={(g,id,t)=>setGame(commissionFacilityProject(game,g,id,t))}/>;
-  return <Shell game={game} screen={screen} setScreen={navigate} category={category} setCategory={setCategory} onAdvance={n=>{const g=advanceDays(game,n);setGame(g);if(isMatchReady(g)){setScreen('matchday');setCategory('sport')}}} onNextMatch={()=>{const g=advanceToNextMatch(game);setGame(g);setScreen('matchday');setCategory('sport')}} saveName={slotName} saveState={saveState} onSave={manualSave} onExit={exitToSlots}>{content}</Shell>;
+export default function App() {
+  const [state, setState] = useState(() => loadClubState() || newClubState());
+  const [screen, setScreen] = useState('home'); // home | squad | prematch | match | result
+  const [setup, setSetup] = useState({ opponentId: OPPONENTS[0].id, knockout: false, home: true });
+  const [loadout, setLoadout] = useState([]);
+  const [live, setLive] = useState(null); // { match, userSide, opponent }
+  const [outcome, setOutcome] = useState(null);
+
+  useEffect(() => { saveClubState(state); }, [state]);
+  useEffect(() => { window.scrollTo(0, 0); }, [screen]);
+
+  const opponent = OPPONENTS.find((o) => o.id === setup.opponentId);
+
+  const kickoff = () => {
+    const seed = randomSeed();
+    const user = buildUserTeam(state, loadout, setup.home);
+    const ai = buildAiTeam(opponent, seed);
+    const [home, away] = setup.home ? [user, ai] : [ai, user];
+    const match = createMatch({ home, away, seed, context: { knockout: setup.knockout, competition: setup.knockout ? 'cup' : 'league' } });
+    setLive({ match, userSide: setup.home ? 0 : 1, opponent });
+    setScreen('match');
+  };
+
+  const finish = (match) => {
+    const { userSide } = live;
+    const rewards = matchRewards(state, match, userSide, opponent.level);
+    const applied = applyMatch(state, match, userSide, opponent, rewards);
+    setState(applied.state);
+    setOutcome({ match, userSide, rewards, retired: applied.retired, coinsAfter: applied.state.coins });
+    setLoadout([]);
+    setScreen('result');
+  };
+
+  const reset = () => {
+    if (!window.confirm('Reset the demo club? Coins, results and card wear will be lost.')) return;
+    clearClubState();
+    setState(newClubState());
+    setScreen('home');
+  };
+
+  const hub = screen === 'home' || screen === 'squad';
+
+  return (
+    <div className="app">
+      {screen !== 'match' && (
+        <header className="topbar">
+          <Crest colors={state.club.colors} short={state.club.short} size={30} />
+          <div className="topbar__club">
+            <b>{state.club.name}</b>
+            <span>{state.club.division}</span>
+          </div>
+          <div className="topbar__coins" aria-label="Coins">◎ {state.coins}</div>
+        </header>
+      )}
+
+      {hub && (
+        <nav className="tabs" aria-label="Main">
+          <button type="button" className={screen === 'home' ? 'is-on' : ''} onClick={() => setScreen('home')}>Club</button>
+          <button type="button" className={screen === 'squad' ? 'is-on' : ''} onClick={() => setScreen('squad')}>Squad</button>
+        </nav>
+      )}
+
+      <main>
+        {screen === 'home' && (
+          <Home state={state} setup={setup} setSetup={setSetup} onKickoff={() => setScreen('prematch')} onSquad={() => setScreen('squad')} onReset={reset} />
+        )}
+        {screen === 'squad' && <Squad state={state} setState={setState} />}
+        {screen === 'prematch' && (
+          <PreMatch state={state} opponent={opponent} setup={setup} loadout={loadout} setLoadout={setLoadout} onStart={kickoff} onBack={() => setScreen('home')} />
+        )}
+        {screen === 'match' && live && <Match initial={live.match} userSide={live.userSide} onFinish={finish} />}
+        {screen === 'result' && outcome && <Result {...outcome} onDone={() => setScreen('home')} />}
+      </main>
+    </div>
+  );
 }
