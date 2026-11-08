@@ -2,22 +2,14 @@
 // Usage: node scripts/balance.mjs [matches]
 import { simulateMatch } from '../src/engine/match.js';
 import { buildAiTeam } from '../src/engine/aiTeam.js';
-import { OPPONENTS, USER_CLUB, USER_SQUAD, USER_LINEUP, USER_BENCH, USER_COACHES } from '../src/data/demo.js';
+import { OPPONENTS } from '../src/data/demo.js';
+import { newClubState, buildUserTeam } from '../src/state/club.js';
 
 const N = Number(process.argv[2]) || 4000;
 
 const club = (id, rating, formation) => ({ id, name: id, short: id.slice(0, 3).toUpperCase(), colors: {}, rating, formation, keyPlayers: [] });
 
-const user = {
-  ...USER_CLUB,
-  formation: USER_COACHES.coach.formation,
-  players: USER_SQUAD,
-  lineup: USER_LINEUP,
-  bench: USER_BENCH,
-  coach: USER_COACHES.coach,
-  assistant: USER_COACHES.assistant,
-  loadout: [],
-};
+const user = buildUserTeam(newClubState(1), [], true);
 
 function run(label, makeHome, makeAway, knockout = false) {
   let saved = 0, goals = 0, home = 0, draw = 0, away = 0, comebacks = 0, trailing75 = 0, shootouts = 0, high = 0;
@@ -48,5 +40,5 @@ run('Strong 76 v weak 64', (i) => buildAiTeam(club('h', 76, '2-3-1'), i), (i) =>
 run('Weak 64 v strong 76', (i) => buildAiTeam(club('h', 64, '2-3-1'), i), (i) => buildAiTeam(club('a', 76, '2-3-1'), i + 1));
 run('Equal 70 v 70 knockout', (i) => buildAiTeam(club('h', 70, '2-3-1'), i), (i) => buildAiTeam(club('a', 70, '2-3-1'), i + 1), true);
 for (const opp of OPPONENTS) {
-  run(`Demo squad v ${opp.name}`, () => ({ ...user, isAI: true }), (i) => buildAiTeam(opp, i));
+  run(`Racing start squad v ${opp.name}`, () => ({ ...user, isAI: true }), (i) => buildAiTeam(opp, i));
 }

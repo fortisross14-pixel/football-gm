@@ -1,35 +1,47 @@
 // World season: every division's fixtures, tables and scorers, fast AI results,
 // and promotion/relegation at the end.
 import { makeRng } from './rng.js';
-import { buildAiTeam } from './aiTeam.js';
-import { DIVISIONS, DIVISION_BY_ID, LEVEL_RATING } from '../data/world/structure.js';
-
-const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+import { buildAiTeam, pickSquad, squadStrength, FILLER_RATING } from './aiTeam.js';
+import { DIVISIONS, DIVISION_BY_ID } from '../data/world/structure.js';
 
 // ---------------------------------------------------------------------------
 // World (clubs and which division they're in). Persists across seasons.
 
-// clubsByDivision: { divId: [club data] }, players: cards with clubId, ownedIds: user's cards.
-export function buildWorld(clubsByDivision, players, ownedIds = []) {
+// clubsByDivision: { divId: [club data] }, squads: { clubId: [card ids] }, ownedIds: the user's cards.
+export function buildWorld(clubsByDivision, squads, poolById, ownedIds = []) {
   const owned = new Set(ownedIds);
   const clubs = {};
   const divisions = {};
   for (const div of DIVISIONS) {
     const list = clubsByDivision[div.id] || [];
     divisions[div.id] = list.map((c) => c.id);
-    for (const c of list) clubs[c.id] = { ...c, divisionId: div.id, keyPlayers: [] };
-  }
-  for (const p of players) {
-    if (p.clubId && clubs[p.clubId] && !owned.has(p.id)) clubs[p.clubId].keyPlayers.push(p.id);
+    for (const c of list) {
+      const keyPlayers = (squads[c.id] || []).filter((id) => poolById[id] && !owned.has(id));
+      clubs[c.id] = { ...c, divisionId: div.id, level: div.level, keyPlayers };
+      clubs[c.id].strength = clubStrength(clubs[c.id], poolById);
+    }
   }
   return { clubs, divisions };
 }
 
+const hash = (str) => [...str].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7);
+
+// Strength = the starting 7's average OVR (named cards plus generic fillers).
+export function clubStrength(club, poolById) {
+  const named = club.keyPlayers.map((id) => poolById[id]).filter(Boolean);
+  const { lineup } = pickSquad(named, club.formation, FILLER_RATING[club.level], makeRng(hash(club.id)), club.id);
+  return squadStrength(lineup, club.formation);
+}
+
 export const clubById = (world, id) => world.clubs[id];
 
-export function removeKeyPlayer(world, playerId) {
+export function removeKeyPlayer(world, playerId, poolById) {
   const next = structuredClone(world);
-  for (const c of Object.values(next.clubs)) c.keyPlayers = c.keyPlayers.filter((id) => id !== playerId);
+  for (const c of Object.values(next.clubs)) {
+    if (!c.keyPlayers.includes(playerId)) continue;
+    c.keyPlayers = c.keyPlayers.filter((id) => id !== playerId);
+    c.strength = clubStrength(c, poolById);
+  }
   return next;
 }
 
@@ -107,7 +119,7 @@ function record(div, homeId, awayId, score, goals) {
 export function quickResult(world, homeId, awayId, poolById, rng) {
   const h = world.clubs[homeId];
   const a = world.clubs[awayId];
-  const diff = h.rating - a.rating;
+  const diff = (h.strength ?? h.rating) - (a.strength ?? a.rating);
   const lh = 1.6 * Math.exp(diff / 17 + 0.07);
   const la = 1.6 * Math.exp(-diff / 17 - 0.07);
   const score = [rng.poisson(lh), rng.poisson(la)];
@@ -115,7 +127,7 @@ export function quickResult(world, homeId, awayId, poolById, rng) {
   [h, a].forEach((club, side) => {
     for (let i = 0; i < score[side]; i += 1) {
       const keys = club.keyPlayers.map((id) => poolById[id]).filter((p) => p && p.pos !== 'GK');
-      if (keys.length && rng.next() < 0.6) {
+      if (keys.length && rng.next() < Math.min(0.7, 0.14 * keys.length)) {
         const p = rng.weighted(keys, (c) => ({ FWD: 3, MID: 1.4, DEF: 0.4 }[c.pos] || 0) * c.att);
         goals.push({ side, playerId: p.id, name: p.name });
       } else goals.push({ side, playerId: null });
@@ -182,14 +194,13 @@ export function topScorers(season, divId, limit = 10) {
 export function aiTeamFor(world, clubId, poolById, seed) {
   const club = world.clubs[clubId];
   const keyPlayers = club.keyPlayers.map((id) => poolById[id]).filter(Boolean);
-  return buildAiTeam({ ...club, coach: { passive: club.passive }, keyPlayers }, seed);
+  return buildAiTeam({ ...club, coach: { passive: club.passive }, keyPlayers }, seed ^ hash(clubId));
 }
 
 // ---------------------------------------------------------------------------
-// End of season: champions, promotion and relegation, rating drift.
+// End of season: champions, promotion and relegation.
 
-export function endOfSeason(season, world, seed) {
-  const rng = makeRng(seed);
+export function endOfSeason(season, world, poolById) {
   const next = structuredClone(world);
   const champions = {};
   const moves = [];
@@ -211,19 +222,11 @@ export function endOfSeason(season, world, seed) {
     moves.push({ clubId: up, from: lower.id, to: div.id, type: 'promoted' });
     moves.push({ clubId: down, from: div.id, to: lower.id, type: 'relegated' });
   }
-  // Ratings drift toward their (new) division and move a little with results.
-  for (const div of DIVISIONS) {
-    const ids = next.divisions[div.id];
-    const [lo, hi] = LEVEL_RATING[div.level];
-    const mean = ids.reduce((s, id) => s + next.clubs[id].rating, 0) / ids.length;
-    const table = standings(season, div.id);
-    for (const id of ids) {
-      const club = next.clubs[id];
-      const pos = table.findIndex((r) => r.id === id);
-      const form = pos >= 0 ? (3.5 - pos) * 0.3 : 0;
-      const drift = (mean - club.rating) * 0.15 + form + rng.int(-1, 1);
-      club.rating = clamp(Math.round(club.rating + drift), lo, hi);
-    }
+  // Moved clubs get generic players of their new division's level.
+  for (const m of moves) {
+    const club = next.clubs[m.clubId];
+    club.level = DIVISION_BY_ID[m.to].level;
+    club.strength = clubStrength(club, poolById);
   }
   return { world: next, champions, moves };
 }

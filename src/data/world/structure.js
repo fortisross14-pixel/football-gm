@@ -54,3 +54,18 @@ export function keyPlayerTarget(div) {
 }
 
 export const CONTINENT_LABEL = { europe: 'Europe', americas: 'Americas', afap: 'Africa–APAC' };
+
+// The world's biggest clubs get the most named (Uncommon+) cards in their squad.
+export const TOP_CLUBS = [
+  'real-madrid', 'barcelona', 'atletico', 'arsenal', 'liverpool', 'man-city', 'chelsea', 'man-united',
+  'inter', 'milan', 'juventus', 'napoli', 'bayern', 'dortmund', 'psg', 'benfica', 'porto', 'ajax',
+  'river-plate', 'boca-juniors', 'flamengo', 'palmeiras', 'galatasaray',
+];
+
+// How many named cards (Uncommon or better) a club's squad has: [min, max].
+// Everyone else in the squad is a generic Common player.
+export function squadTarget(clubId, div) {
+  if (TOP_CLUBS.includes(clubId)) return [5, 6];
+  if (div.tier === 1) return [3, 4];
+  return [0, 2];
+}

@@ -10,6 +10,7 @@ import { standings, userFixture, aiTeamFor, clubById } from '../src/engine/seaso
 import { OFFSEASON_IDS, OFFSEASON_CARDS, cardText, TIERS } from '../src/data/offseason.js';
 import { PLAYER_POOL, COACH_POOL } from '../src/data/pool.js';
 import { OPPONENTS } from '../src/data/demo.js';
+import { squadTarget, DIVISION_BY_ID } from '../src/data/world/structure.js';
 import {
   newClubState, buildUserTeam, matchRewards, applyMatch, buyPack, keepPending, mergePending, discardPending,
   pendingCard, duplicateOf, closeSeason, buyMarketCard, useOffseasonCard, startNextSeason, poachTargets, POOLS, POOL_BY_ID,
@@ -52,12 +53,14 @@ test('a match has 6 segments and a full-time result', () => {
 });
 
 test('substitution and boosts', () => {
-  let m = createMatch({ home: user(fresh(), ['goldenChance', 'captainsSpeech']), away: buildAiTeam(opp, 3), seed: 11 });
+  const club = fresh();
+  const star = club.lineup[6];
+  let m = createMatch({ home: user(club, ['goldenChance', 'captainsSpeech']), away: buildAiTeam(opp, 3), seed: 11 });
   assert.equal(canPlayBoost(m, 0, 'captainsSpeech').ok, false);
-  m = playBoost(m, 0, 'goldenChance', 'p-pedri');
+  m = playBoost(m, 0, 'goldenChance', star);
   m = playSegment(m);
-  assert.ok(m.events.some((e) => e.playerId === 'p-pedri' && e.kind === 'golden'));
-  m = substitute(m, 0, 'p-iago-aspas', 'c-vela');
+  assert.ok(m.events.some((e) => e.playerId === star && e.kind === 'golden'));
+  m = substitute(m, 0, club.lineup[5], club.bench[1]);
   assert.equal(m.teams[0].subsLeft, 2);
 });
 
@@ -90,19 +93,21 @@ test('keep, merge and discard', () => {
   // Keep the first card in place of an academy player.
   const first = pendingCard(s);
   if (!duplicateOf(s, first)) {
-    s = keepPending(s, { replaceId: 'c-mena' });
+    s = keepPending(s, { replaceId: s.bench[0] });
     assert.ok(s.squad.some((c) => c.id === first.id));
     assert.equal(s.squad.length, 10);
   } else s = mergePending(s);
   const coinsBefore = s.coins;
   s = discardPending(s);
   assert.ok(s.coins >= coinsBefore);
-  // Force a duplicate of Pedri and merge it.
-  s.pendingOpen = { source: 'test', cards: [structuredClone(POOL_BY_ID['p-pedri'])], index: 0 };
+  // Force a duplicate of a named card and merge it.
+  const named = s.squad.find((c) => POOL_BY_ID[c.id]);
+  const att = named.att;
+  s.pendingOpen = { source: 'test', cards: [structuredClone(POOL_BY_ID[named.id])], index: 0 };
   s = mergePending(s);
-  const pedri = s.squad.find((c) => c.id === 'p-pedri');
-  assert.equal(pedri.stars, 1);
-  assert.equal(pedri.att, 85);
+  const merged = s.squad.find((c) => c.id === named.id);
+  assert.equal(merged.stars, 1);
+  assert.equal(merged.att, att + 2);
   assert.equal(s.pendingOpen, null);
 });
 
@@ -141,7 +146,7 @@ test('all 25 off-season card types can be used', () => {
       s.inventory.offseason = [{ uid: 'x', type, rarity }];
       s.facilities = { stadium: 0, merch: 0, training: 0, academy: 0 };
       const target = {
-        playerId: 'p-pedri', position: 'FWD', trait: 'clutch', formation: '3-1-2', passive: 'tactician', coachRole: undefined,
+        playerId: s.lineup[3], position: 'FWD', trait: 'clutch', formation: '3-1-2', passive: 'tactician', coachRole: undefined,
         poachId: poachTargets(s)[0]?.card.id,
       };
       const r = useOffseasonCard(s, 'x', target, 9);
@@ -171,17 +176,23 @@ test('the world has 38 full divisions and a big card pool', () => {
   const s = fresh();
   assert.equal(Object.keys(s.world.divisions).length, 38);
   assert.equal(Object.keys(s.world.clubs).length, 304);
-  assert.ok(PLAYER_POOL.length + 0 >= 112);
   assert.ok(POOLS.player.length >= 400, `pool ${POOLS.player.length}`);
-  const named = Object.values(s.world.clubs).filter((c) => c.keyPlayers.length > 0).length;
-  assert.ok(named >= 260, `${named} clubs with named players`);
+  for (const c of Object.values(s.world.clubs)) {
+    const [lo, hi] = squadTarget(c.id, DIVISION_BY_ID[c.divisionId]);
+    if (c.id === 'racing') continue;
+    assert.ok(c.keyPlayers.length >= lo && c.keyPlayers.length <= hi, `${c.id}: ${c.keyPlayers.length} named`);
+  }
+  // The user's club starts with its named cards plus generic commons.
+  assert.equal(s.squad.length, 10);
+  assert.ok(s.squad.filter((c) => c.generic).every((c) => c.rarity === 'common' && !c.name.includes(' ')));
 });
 
 test('a card retires at zero matches and is replaced', () => {
   const worn = fresh();
-  worn.squad.find((c) => c.id === 'p-iago-aspas').matchesLeft = 1;
+  const id = worn.lineup[3];
+  worn.squad.find((c) => c.id === id).matchesLeft = 1;
   const next = playMatchday(worn, 5);
-  assert.ok(!next.squad.some((c) => c.id === 'p-iago-aspas'));
+  assert.ok(!next.squad.some((c) => c.id === id));
   assert.equal(next.hallOfFame.length, 1);
   assert.equal(next.squad.length, 10);
 });

@@ -30,6 +30,7 @@ export function PlayerCard({ card, colors, stats, size = 'full', onClick, select
             <span className="pcard__rarity">{rarity.label}</span>
             {card.stars > 0 && <span className="stars">{'★'.repeat(card.stars)}</span>}
             {card.youth && <span className="pcard__youth">Youth</span>}
+            {card.classic && <span className="pcard__youth pcard__classic">Classic</span>}
           </div>
         </div>
         <div className="pcard__art">

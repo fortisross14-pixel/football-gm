@@ -691,3 +691,4 @@ main { padding: 0 16px; }
 .table td.table__club svg { vertical-align: middle; margin-right: 6px; }
 .res-dot { width: 5px; height: 5px; margin: 0 1px; }
 @media (max-width: 380px) { .table__form { display: none; } }
+.pcard__classic { color: var(--gold); }

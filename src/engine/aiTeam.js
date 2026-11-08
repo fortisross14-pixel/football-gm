@@ -1,76 +1,105 @@
-// Builds a full 10-card squad for an AI club from its rating and named key players.
-// Real data stays small (rating + 3 key players); the rest are generic names.
-
+// Club squads: a few named cards plus generic Common players (surname only).
 import { makeRng } from './rng.js';
+import { overall, slotFit, FORMATIONS } from './cards.js';
 
-const FIRST = ['Alex', 'Leo', 'Marco', 'Lucas', 'Noah', 'Mateo', 'Theo', 'Hugo', 'Adam', 'Nico', 'Sami', 'Jonas', 'Rafa', 'Tiago', 'Emil', 'Kai', 'Iván', 'Oscar', 'Yusuf', 'Diego', 'Andrés', 'Pablo', 'Luca', 'Milan'];
-const LAST = ['Moreno', 'Silva', 'Keller', 'Rossi', 'Novak', 'Duarte', 'Brandt', 'Lindqvist', 'Costa', 'Varga', 'Marín', 'Okafor', 'Petit', 'Haas', 'Blanco', 'Ferri', 'Santos', 'Weber', 'Cruz', 'Navarro', 'Lopes', 'Mendes'];
+const SURNAMES = [
+  'Moreno', 'Silva', 'Keller', 'Rossi', 'Novak', 'Duarte', 'Brandt', 'Lindqvist', 'Costa', 'Varga', 'Marín', 'Okafor',
+  'Petit', 'Haas', 'Blanco', 'Ferri', 'Santos', 'Weber', 'Cruz', 'Navarro', 'Lopes', 'Mendes', 'Herrera', 'Kovač',
+  'Jansen', 'Larsen', 'Moretti', 'Dubois', 'Schulz', 'Pereira', 'Alonso', 'Romero', 'Ivanov', 'Yilmaz', 'Nakamura',
+  'Kim', 'Mensah', 'Diallo', 'Haddad', 'Soto', 'Vidal', 'Gallo', 'Fischer', 'Bakker', 'Nilsson', 'Rocha', 'Vega',
+  'Castro', 'Ortiz', 'Ramos', 'Molina', 'Suárez', 'Bruno', 'Conti', 'Lambert', 'Roux', 'Hoffmann', 'Visser', 'Dahl',
+  'Barros', 'Pinto', 'Acosta', 'Medina', 'Aguilar', 'Salah', 'Adeyemi', 'Tanaka', 'Park', 'Benali', 'Toure', 'Kaya',
+];
 
 const STAT_SHAPE = {
-  GK: { att: -40, def: 2, phy: -6 },
+  GK: { att: -38, def: 3, phy: -5 },
   DEF: { att: -16, def: 4, phy: 1 },
-  MID: { att: 0, def: -4, phy: 2 },
-  FWD: { att: 5, def: -30, phy: 0 },
+  MID: { att: 1, def: -3, phy: 2 },
+  FWD: { att: 5, def: -28, phy: 0 },
 };
 
-// `used` keeps surnames unique within one squad.
+// Generic players are always Common (OVR 55–61); the division sets where in that range.
+export const FILLER_RATING = { 1: 60, 2: 58, 3: 56 };
+
 export function genericName(rng, used = new Set()) {
-  let last = rng.pick(LAST);
-  for (let i = 0; i < 20 && used.has(last); i += 1) last = rng.pick(LAST);
-  used.add(last);
-  return `${rng.pick(FIRST)} ${last}`;
+  let name = rng.pick(SURNAMES);
+  for (let i = 0; i < 30 && used.has(name); i += 1) name = rng.pick(SURNAMES);
+  used.add(name);
+  return name;
 }
 
 export function makeGenericCard(rng, { id, pos, rating, rarity = 'common', used }) {
   const shape = STAT_SHAPE[pos];
-  const spread = () => rng.int(-3, 3);
-  return {
-    id,
-    name: genericName(rng, used),
-    pos,
-    rarity,
-    att: Math.max(20, rating + shape.att + spread()),
-    def: Math.max(20, rating + shape.def + spread()),
-    phy: Math.max(30, rating + shape.phy + spread()),
-    trait: null,
-    matchesLeft: rarity === 'academy' ? null : 160,
-    generic: true,
-  };
+  let card;
+  for (let tries = 0; tries < 12; tries += 1) {
+    const spread = () => rng.int(-2, 2);
+    card = {
+      id,
+      name: genericName(rng, used),
+      pos,
+      rarity,
+      att: Math.max(15, rating + shape.att + spread()),
+      def: Math.max(15, rating + shape.def + spread()),
+      phy: Math.max(30, rating + shape.phy + spread()),
+      trait: null,
+      matchesLeft: rarity === 'academy' ? null : 150 + rng.int(0, 50),
+      generic: true,
+    };
+    const ovr = overall(card);
+    if (rarity !== 'common' || (ovr >= 55 && ovr <= 61)) break;
+    used?.delete(card.name);
+  }
+  return card;
 }
 
-// club: { id, name, short, colors, rating, formation, keyPlayers: [card] }
+// Picks the starting 7 for a formation from the named cards, filling gaps with generics.
+// Returns { lineup: [card x7], bench: [card x3] }.
+export function pickSquad(named, formation, fillerRating, rng, idPrefix) {
+  const slots = FORMATIONS[formation];
+  const used = new Set(named.map((c) => c.name.split(' ').slice(-1)[0]));
+  const left = [...named];
+  const lineup = slots.map((slot, i) => {
+    let bestIdx = -1;
+    let best = fillerRating + 0.5;
+    left.forEach((c, idx) => {
+      const v = overall(c) * slotFit(c.pos, slot.pos);
+      if (v > best) { best = v; bestIdx = idx; }
+    });
+    if (bestIdx >= 0) return left.splice(bestIdx, 1)[0];
+    return makeGenericCard(rng, { id: `${idPrefix}-s${i}`, pos: slot.pos, rating: fillerRating, used });
+  });
+  const bench = left.slice(0, 3);
+  const benchPos = ['GK', 'DEF', 'MID', 'FWD'];
+  let k = 0;
+  while (bench.length < 3) {
+    const pos = benchPos.find((p) => !bench.some((b) => b.pos === p)) || benchPos[k % 4];
+    bench.push(makeGenericCard(rng, { id: `${idPrefix}-b${k}`, pos, rating: fillerRating - 1, used }));
+    k += 1;
+  }
+  return { lineup, bench };
+}
+
+// Average OVR of the starting 7, adjusted for position fit. Drives the fast sim.
+export function squadStrength(lineup, formation) {
+  const slots = FORMATIONS[formation];
+  return Math.round((lineup.reduce((s, c, i) => s + overall(c) * slotFit(c.pos, slots[i].pos), 0) / lineup.length) * 10) / 10;
+}
+
+// club: { id, name, short, colors, formation, coach, keyPlayers: [card], level }
 export function buildAiTeam(club, seed = 7) {
   const rng = makeRng(seed);
   const formation = club.formation || '2-3-1';
-  const [d, m, f] = formation.split('-').map(Number);
-  const needs = ['GK', ...Array(d).fill('DEF'), ...Array(m).fill('MID'), ...Array(f).fill('FWD')];
-  const players = [];
-  const lineup = [];
-  const pool = [...(club.keyPlayers || [])];
-  const used = new Set(pool.map((k) => k.name.split(' ').slice(-1)[0]));
-  needs.forEach((pos, i) => {
-    const keyIndex = pool.findIndex((k) => k.pos === pos);
-    const card = keyIndex >= 0
-      ? pool.splice(keyIndex, 1)[0]
-      : makeGenericCard(rng, { id: `${club.id}-s${i}`, pos, rating: club.rating + rng.int(-3, 2), used });
-    players.push(card);
-    lineup.push(card.id);
-  });
-  const benchPos = ['GK', 'DEF', 'MID'];
-  const bench = benchPos.map((pos, i) => {
-    const card = makeGenericCard(rng, { id: `${club.id}-b${i}`, pos, rating: club.rating - 5, used });
-    players.push(card);
-    return card.id;
-  });
+  const filler = FILLER_RATING[club.level] ?? (club.rating ? Math.min(61, Math.max(55, club.rating - 10)) : 57);
+  const { lineup, bench } = pickSquad(club.keyPlayers || [], formation, filler, rng, club.id);
   return {
     id: club.id,
     name: club.name,
     short: club.short,
     colors: club.colors,
     formation,
-    players,
-    lineup,
-    bench,
+    players: [...lineup, ...bench],
+    lineup: lineup.map((c) => c.id),
+    bench: bench.map((c) => c.id),
     coach: club.coach || null,
     assistant: null,
     loadout: [],
