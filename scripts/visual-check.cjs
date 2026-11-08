@@ -41,7 +41,7 @@ const fs = require('fs');
 
   // Pack opening: open the first unopened pack from Cards → Items.
   await page.click('.tabbar button:nth-child(3)');
-  await page.click('.segmented__opts button:nth-child(2)');
+  await page.click('.screen .segmented__opts button:nth-child(2)');
   await page.click('.pack-btn');
   await page.waitForTimeout(400);
   await shot('03-pack-sealed');
