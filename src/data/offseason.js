@@ -35,12 +35,12 @@ export const OFFSEASON_CARDS = {
   youthIntake: {
     name: 'Youth Intake', group: 'transfer', icon: '🌱', base: 180, target: 'position',
     values: [0, 1, 2, 3, 4],
-    text: (v, r) => `An academy youngster of ${r} level joins in the position you choose. Very long career.`,
+    text: (v, r) => `An academy player of ${r} level in the position you choose: a club legend if one is available.`,
   },
   goldenGeneration: {
     name: 'Golden Generation', group: 'transfer', icon: '✨', base: 450, target: null,
     values: [1, 1, 2, 3, 4],
-    text: (v) => `Your academy produces 2 youngsters of ${['uncommon', 'uncommon', 'rare', 'epic', 'legend'][v]} level.`,
+    text: (v) => `Your academy produces 2 ${['uncommon', 'uncommon', 'rare', 'epic', 'legend'][v]} players: club legends where possible, from elsewhere if not.`,
   },
   veteranSigning: {
     name: 'Veteran Signing', group: 'transfer', icon: '🧓', base: 200, target: 'position',
@@ -87,7 +87,7 @@ export const OFFSEASON_CARDS = {
   youthAcademy: {
     name: 'Youth Academy', group: 'club', icon: '🏫', base: 250, target: null, facility: 'academy',
     values: [2, 3, 4, 5, 5],
-    text: (v, r, t) => (t === 4 ? 'Youth academy +2 levels (max 5).' : `Youth academy +1 level, up to level ${v}. Better academy players.`),
+    text: (v, r, t) => (t === 4 ? 'Youth academy +2 levels (max 5).' : `Youth academy +1 level, up to level ${v}. More and better academy players each off-season.`),
   },
   shirtSponsor: {
     name: 'Shirt Sponsor', group: 'club', icon: '🤝', base: 100, target: null,

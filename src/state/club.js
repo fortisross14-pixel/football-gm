@@ -2,7 +2,8 @@
 // Every function takes the state and returns a new one (plus extra info where useful).
 
 import { USER_CLUB, USER_COACHES, START_INVENTORY, LEVEL_MULTIPLIER } from '../data/demo.js';
-import { PLAYER_CARDS, COACH_CARDS, CARD_BY_ID, CLUBS_BY_DIVISION, CLUB_SQUADS } from '../data/world/index.js';
+import { PLAYER_CARDS, COACH_CARDS, CARD_BY_ID, CLUBS_BY_DIVISION, CLUB_POOLS } from '../data/world/index.js';
+import { aiOffseason, userAcademyIntake, ACADEMY_COUNT, ACADEMY_MAX_TIER } from '../engine/transfers.js';
 import { DIVISIONS, DIVISION_BY_ID } from '../data/world/structure.js';
 import { BOOST_IDS, BOOSTS } from '../data/boosts.js';
 import { OFFSEASON_CARDS, OFFSEASON_IDS, MARKET_WEIGHTS, TIERS, tierIndex, cardValue, cardPrice } from '../data/offseason.js';
@@ -10,7 +11,7 @@ import { makeGenericCard, FILLER_RATING } from '../engine/aiTeam.js';
 import { makeRng } from '../engine/rng.js';
 import { RARITIES, TRAITS, POSITIONS, overall, rarityForOverall, autoArrange } from '../engine/cards.js';
 import { PACKS, openPack, mergeDuplicate, drawFromPool, MAX_STARS } from '../engine/packs.js';
-import { buildWorld, createSeason, playMatchday, goalsFromMatch, standings, removeKeyPlayer, endOfSeason, divisionName } from '../engine/season.js';
+import { buildWorld, createSeason, playMatchday, goalsFromMatch, standings, removeKeyPlayer, endOfSeason, divisionName, refreshStrengths } from '../engine/season.js';
 
 export const SAVE_VERSION = 2;
 
@@ -40,7 +41,9 @@ const uid = (state) => {
 function startingSquad(clubId, divisionId, formation, seed) {
   const rng = makeRng(seed);
   const level = DIVISION_BY_ID[divisionId].level;
-  const named = (CLUB_SQUADS[clubId] || []).map((id) => structuredClone(POOL_BY_ID[id])).filter(Boolean);
+  // Two legends drawn at random from the club's history pool.
+  const pool = (CLUB_POOLS[clubId] || []).filter((id) => POOL_BY_ID[id]);
+  const named = [...pool].sort(() => rng.next() - 0.5).slice(0, 2).map((id) => structuredClone(POOL_BY_ID[id]));
   const used = new Set(named.map((c) => c.name.split(' ').slice(-1)[0]));
   const want = ['GK', 'GK', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'FWD', 'FWD'];
   for (const c of named) {
@@ -96,7 +99,7 @@ export function newClubState(seed = 12345) {
     season: null,
     lastSeason: null,
   };
-  state.world = buildWorld(CLUBS_BY_DIVISION, CLUB_SQUADS, POOL_BY_ID, ownedIds(state));
+  state.world = buildWorld(CLUBS_BY_DIVISION, CLUB_POOLS, POOL_BY_ID, ownedIds(state), seed + 3);
   state.season = createSeason({ year: 1, world: state.world, seed });
   return state;
 }
@@ -232,6 +235,7 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed) {
   const rng = makeRng(seed);
   for (const card of retired) {
     next.hallOfFame.push({ card, stats: next.playerStats[card.id], season: next.season?.year });
+    if (next.world) next.world.resting = { ...(next.world.resting || {}), [card.id]: 3 };
     const replacement = academyPlayer(next, rng, card.pos);
     replaceInSquad(next, card.id, replacement);
   }
@@ -432,7 +436,13 @@ export function closeSeason(state, seed) {
   const champion = next.world.clubs[table[0].id];
   next.trophies.push({ season: next.season.year, competition: state.club.division, position, champion: champion.name });
   const end = endOfSeason(next.season, next.world, POOL_BY_ID);
-  next.world = end.world;
+  // Every AI club: wear and retirement, academy, signings.
+  const off = aiOffseason(end.world, {
+    pools: CLUB_POOLS, poolById: POOL_BY_ID, allCards: PLAYER_CARDS, userIds: ownedIds(next), seed: seed + 11,
+    countryOf: (divId) => DIVISION_BY_ID[divId].code,
+  });
+  next.world = off.world;
+  refreshStrengths(next.world, POOL_BY_ID);
   const userMove = end.moves.find((m) => m.clubId === next.club.id) || null;
   next.club = clubInfo(next.club, next.world.clubs[next.club.id].divisionId);
   next.lastSeason = {
@@ -442,7 +452,16 @@ export function closeSeason(state, seed) {
     userMove,
     champions: Object.fromEntries(Object.entries(end.champions).map(([d, id]) => [d, next.world.clubs[id].name])),
     moves: end.moves.map((m) => ({ ...m, name: next.world.clubs[m.clubId].name, fromName: divisionName(m.from), toName: divisionName(m.to) })),
+    news: off.news.slice(0, 30),
   };
+  // Your academy intake: club legends where possible, waiting for Keep/Discard.
+  const intake = userAcademyIntake(next.world, {
+    level: next.facilities.academy, clubId: next.club.id, nation: DIVISION_BY_ID[next.club.divisionId].code,
+    pools: CLUB_POOLS, poolById: POOL_BY_ID, allCards: PLAYER_CARDS, userIds: ownedIds(next), seed: seed + 23,
+  });
+  const rngYouth = makeRng(seed + 31);
+  const cards = intake.map((c) => (c.fallbackTier !== undefined ? youthPlayer(next, rngYouth, rngYouth.pick(['DEF', 'MID', 'FWD']), c.fallbackTier) : c));
+  if (cards.length) next.pendingOpen = { source: 'Academy intake', cards, index: 0 };
   // One free off-season card as a season reward.
   const rng = makeRng(seed);
   next.inventory.offseason.push(randomOffseasonCard(next, rng));
@@ -637,13 +656,15 @@ export function useOffseasonCard(state, itemUid, target = {}, seed = 1) {
     }
     case 'youthIntake': {
       if (!POSITIONS.includes(target.position)) return { state, message: 'Pick a position.' };
-      queue([youthPlayer(next, rng, target.position, t)], 'Youth Intake');
-      return { state: next, message: 'A new youngster is ready.', success: true };
+      const [found] = t > 0 ? academyCards(next, seed, { count: 1, tier: t, pos: target.position }) : [];
+      const card = found && found.fallbackTier === undefined ? found : null;
+      queue([card || youthPlayer(next, rng, target.position, t)], 'Youth Intake');
+      return { state: next, message: card ? `${card.name} comes through the academy.` : 'A new youngster is ready.', success: true };
     }
     case 'goldenGeneration': {
-      const tier = v;
-      const cards = [0, 1].map(() => youthPlayer(next, rng, rng.pick(['DEF', 'MID', 'FWD']), tier));
-      queue(cards, 'Golden Generation');
+      const found = academyCards(next, seed, { count: 2, tier: v })
+        .map((c) => (c.fallbackTier !== undefined ? youthPlayer(next, rng, rng.pick(['DEF', 'MID', 'FWD']), v) : c));
+      queue(found, 'Golden Generation');
       return { state: next, message: 'Your academy has produced two special talents!', success: true };
     }
     case 'poach': {
@@ -660,6 +681,17 @@ export function useOffseasonCard(state, itemUid, target = {}, seed = 1) {
       return { state, message: 'This card has no effect yet.' };
   }
 }
+
+// Academy cards of an exact rarity: the club's own legends first, then from elsewhere.
+function academyCards(state, seed, { count, tier, pos = null }) {
+  return userAcademyIntake(state.world, {
+    level: null, bonusCards: count, exactTier: tier, pos, clubId: state.club.id,
+    nation: DIVISION_BY_ID[state.club.divisionId].code, pools: CLUB_POOLS, poolById: POOL_BY_ID,
+    allCards: PLAYER_CARDS, userIds: ownedIds(state), seed,
+  });
+}
+
+export const academyInfo = (level) => ({ count: ACADEMY_COUNT[level], best: TIERS[ACADEMY_MAX_TIER[level]] });
 
 const YOUTH_RATING = [58, 64, 71, 78, 85];
 

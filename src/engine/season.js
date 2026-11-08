@@ -3,25 +3,29 @@
 import { makeRng } from './rng.js';
 import { buildAiTeam, pickSquad, squadStrength, FILLER_RATING } from './aiTeam.js';
 import { DIVISIONS, DIVISION_BY_ID } from '../data/world/structure.js';
+import { drawStartingSquads } from './transfers.js';
 
 // ---------------------------------------------------------------------------
 // World (clubs and which division they're in). Persists across seasons.
 
-// clubsByDivision: { divId: [club data] }, squads: { clubId: [card ids] }, ownedIds: the user's cards.
-export function buildWorld(clubsByDivision, squads, poolById, ownedIds = []) {
-  const owned = new Set(ownedIds);
+// clubsByDivision: { divId: [club data] }, pools: { clubId: [card ids of its history] }.
+// Each club's starting named cards are drawn at random from its pool.
+export function buildWorld(clubsByDivision, pools, poolById, ownedIds = [], seed = 1) {
   const clubs = {};
   const divisions = {};
   for (const div of DIVISIONS) {
     const list = clubsByDivision[div.id] || [];
     divisions[div.id] = list.map((c) => c.id);
-    for (const c of list) {
-      const keyPlayers = (squads[c.id] || []).filter((id) => poolById[id] && !owned.has(id));
-      clubs[c.id] = { ...c, divisionId: div.id, level: div.level, keyPlayers };
-      clubs[c.id].strength = clubStrength(clubs[c.id], poolById);
-    }
+    for (const c of list) clubs[c.id] = { ...c, divisionId: div.id, level: div.level, keyPlayers: [] };
   }
-  return { clubs, divisions };
+  const world = { clubs, divisions, cardLeft: {}, resting: {}, retiredCount: 0 };
+  drawStartingSquads(world, pools, poolById, ownedIds, seed);
+  for (const c of Object.values(clubs)) c.strength = clubStrength(c, poolById);
+  return world;
+}
+
+export function refreshStrengths(world, poolById) {
+  for (const c of Object.values(world.clubs)) c.strength = clubStrength(c, poolById);
 }
 
 const hash = (str) => [...str].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7);

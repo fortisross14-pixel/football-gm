@@ -3,7 +3,7 @@
 import { readdirSync } from 'node:fs';
 import { resolve, basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { DIVISION_BY_ID, squadTarget } from '../src/data/world/structure.js';
+import { DIVISION_BY_ID, poolTarget } from '../src/data/world/structure.js';
 import { PLAYER_POOL } from '../src/data/pool.js';
 import * as europeA from '../src/data/world/europe-a.js';
 import * as europeB from '../src/data/world/europe-b.js';
@@ -55,8 +55,8 @@ for (const [name, squads] of squadsByFile) {
   for (const [clubId, ids] of Object.entries(squads)) {
     const div = clubDiv[clubId];
     if (!div) { errors.push(`${name}: unknown club ${clubId}`); continue; }
-    const [lo, hi] = squadTarget(clubId, div);
-    if (ids.length < lo || ids.length > hi) errors.push(`${name} ${clubId}: ${ids.length} named cards, needs ${lo}–${hi}`);
+    const [lo, hi] = poolTarget(clubId, div);
+    if (ids.length < lo || ids.length > hi) errors.push(`${name} ${clubId}: pool has ${ids.length} cards, needs ${lo}–${hi}`);
     for (const id of ids) {
       total += 1;
       const k = known.get(id);
@@ -69,7 +69,7 @@ for (const [name, squads] of squadsByFile) {
 }
 // Clubs with a minimum above 0 must appear.
 for (const [clubId, div] of Object.entries(clubDiv)) {
-  const [lo] = squadTarget(clubId, div);
+  const [lo] = poolTarget(clubId, div);
   const present = squadsByFile.some(([, s]) => s[clubId]);
   if (!present && lo > 0 && process.argv.slice(2).length === 0) warns.push(`${clubId}: no squad entry (needs ${lo}+)`);
 }

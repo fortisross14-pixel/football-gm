@@ -12,19 +12,27 @@ import * as squadsD from './squads-d.js';
 const REGIONS = [europeA, europeB, europeC, rest];
 const SQUAD_FILES = [squadsA, squadsB, squadsC, squadsD];
 
-// Named cards in each club's squad (any era). Everyone else is a generic Common player.
-export const CLUB_SQUADS = Object.assign({}, ...SQUAD_FILES.map((f) => f.SQUADS || {}));
+// Each club's history pool: named cards (any era) it draws its squad and academy players from.
+export const CLUB_POOLS = Object.assign({}, ...SQUAD_FILES.map((f) => f.SQUADS || {}));
 const SQUAD_CLUB = {};
-for (const [clubId, ids] of Object.entries(CLUB_SQUADS)) for (const id of ids) SQUAD_CLUB[id] = clubId;
+for (const [clubId, ids] of Object.entries(CLUB_POOLS)) for (const id of ids) SQUAD_CLUB[id] = clubId;
 
 export const CLUBS_BY_DIVISION = Object.assign({}, ...REGIONS.map((r) => r.CLUBS || {}));
 
-// Every collectible player card. clubId = the club whose squad it belongs to (or null).
+// Every collectible player card. poolClub = the club whose history it belongs to (or null).
 export const PLAYER_CARDS = [
   ...PLAYER_POOL,
   ...REGIONS.flatMap((r) => r.PLAYERS || []),
   ...SQUAD_FILES.flatMap((f) => f.PLAYERS || []),
-].map((p) => ({ ...p, clubId: SQUAD_CLUB[p.id] || null }));
+].map((p) => ({
+  ...p,
+  // Stats top out at 95 so all-time greats stay within the card scale.
+  att: Math.min(95, p.att),
+  def: Math.min(95, p.def),
+  phy: Math.min(95, p.phy),
+  clubId: undefined,
+  poolClub: SQUAD_CLUB[p.id] || null,
+}));
 
 export const COACH_CARDS = COACH_POOL;
 

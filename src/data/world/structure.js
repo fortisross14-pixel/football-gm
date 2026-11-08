@@ -62,10 +62,12 @@ export const TOP_CLUBS = [
   'river-plate', 'boca-juniors', 'flamengo', 'palmeiras', 'galatasaray',
 ];
 
-// How many named cards (Uncommon or better) a club's squad has: [min, max].
-// Everyone else in the squad is a generic Common player.
-export function squadTarget(clubId, div) {
-  if (TOP_CLUBS.includes(clubId)) return [5, 6];
-  if (div.tier === 1) return [3, 4];
-  return [0, 2];
+// Size of a club's history pool (named cards of any era it draws its squad and academy players from).
+// The starting squad draws only part of it (see startingDraw in engine/transfers.js).
+export function poolTarget(clubId, div) {
+  if (TOP_CLUBS.includes(clubId)) return [14, 20];
+  if (div.tier === 1 && div.level === 1) return [7, 10];
+  if (div.tier === 1) return [5, 8];
+  if (clubId === 'racing') return [5, 8];
+  return [3, 5];
 }

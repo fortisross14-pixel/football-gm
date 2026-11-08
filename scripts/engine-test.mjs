@@ -10,7 +10,9 @@ import { standings, userFixture, aiTeamFor, clubById } from '../src/engine/seaso
 import { OFFSEASON_IDS, OFFSEASON_CARDS, cardText, TIERS } from '../src/data/offseason.js';
 import { PLAYER_POOL, COACH_POOL } from '../src/data/pool.js';
 import { OPPONENTS } from '../src/data/demo.js';
-import { squadTarget, DIVISION_BY_ID } from '../src/data/world/structure.js';
+import { DIVISION_BY_ID } from '../src/data/world/structure.js';
+import { startingDraw, aiOffseason } from '../src/engine/transfers.js';
+import { CLUB_POOLS, PLAYER_CARDS } from '../src/data/world/index.js';
 import {
   newClubState, buildUserTeam, matchRewards, applyMatch, buyPack, keepPending, mergePending, discardPending,
   pendingCard, duplicateOf, closeSeason, buyMarketCard, useOffseasonCard, startNextSeason, poachTargets, POOLS, POOL_BY_ID,
@@ -19,6 +21,8 @@ import {
 let passed = 0;
 const test = (name, fn) => { fn(); passed += 1; console.log(`ok - ${name}`); };
 const fresh = () => newClubState(99);
+// Decides on any waiting cards (e.g. the academy intake) by discarding them.
+const resolve = (s) => { let x = s; while (x.pendingOpen) x = discardPending(x); return x; };
 const opp = OPPONENTS[1];
 const user = (club, loadout = []) => buildUserTeam(club, loadout, true);
 
@@ -129,7 +133,8 @@ test('a full season runs, ends and opens the Transfer Market', () => {
   s.coins = 99999;
   s = buyMarketCard(s, s.market.offers[0].uid);
   assert.ok(s.market.offers[0].sold);
-  s = startNextSeason(s, 4);
+  assert.equal(startNextSeason(s, 4).phase, 'offseason', 'academy cards must be decided first');
+  s = startNextSeason(resolve(s), 4);
   assert.equal(s.phase, 'season');
   assert.equal(s.season.year, 2);
 });
@@ -138,7 +143,7 @@ test('all 25 off-season card types can be used', () => {
   assert.equal(OFFSEASON_IDS.length, 25);
   let base = fresh();
   for (let md = 0; md < 14; md += 1) base = playMatchday(base, 300 + md);
-  base = closeSeason(base, 1);
+  base = resolve(closeSeason(base, 1));
   for (const type of OFFSEASON_IDS) {
     for (const rarity of TIERS) {
       assert.ok(cardText(type, rarity).length > 5);
@@ -168,7 +173,7 @@ test('promotion and relegation move clubs between tiers', () => {
   assert.equal(s.lastSeason.moves.length, 26); // 13 pairs of adjacent tiers
   for (const ids of Object.values(s.world.divisions)) assert.equal(ids.length, 8);
   assert.ok(s.world.divisions['esp-2'].includes('racing'));
-  s = startNextSeason(s, 9);
+  s = startNextSeason(resolve(s), 9);
   assert.ok(userFixture(s.season, 'esp-2', 'racing'));
 });
 
@@ -177,14 +182,44 @@ test('the world has 38 full divisions and a big card pool', () => {
   assert.equal(Object.keys(s.world.divisions).length, 38);
   assert.equal(Object.keys(s.world.clubs).length, 304);
   assert.ok(POOLS.player.length >= 400, `pool ${POOLS.player.length}`);
+  const seen = new Set(s.squad.map((c) => c.id));
   for (const c of Object.values(s.world.clubs)) {
-    const [lo, hi] = squadTarget(c.id, DIVISION_BY_ID[c.divisionId]);
     if (c.id === 'racing') continue;
-    assert.ok(c.keyPlayers.length >= lo && c.keyPlayers.length <= hi, `${c.id}: ${c.keyPlayers.length} named`);
+    const [lo, hi] = startingDraw(c.id, DIVISION_BY_ID[c.divisionId]);
+    const pool = (CLUB_POOLS[c.id] || []).length;
+    assert.ok(c.keyPlayers.length >= Math.min(lo, pool) - 2 && c.keyPlayers.length <= hi, `${c.id}: ${c.keyPlayers.length} named`);
+    for (const id of c.keyPlayers) {
+      assert.ok(CLUB_POOLS[c.id].includes(id), `${id} drawn from another club's pool`);
+      assert.ok(!seen.has(id), `${id} held twice`);
+      seen.add(id);
+    }
   }
   // The user's club starts with its named cards plus generic commons.
   assert.equal(s.squad.length, 10);
   assert.ok(s.squad.filter((c) => c.generic).every((c) => c.rarity === 'common' && !c.name.includes(' ')));
+});
+
+test('off-season: academies, signings and retirements keep one card per club', () => {
+  let s = fresh();
+  for (let md = 0; md < 14; md += 1) s = playMatchday(s, 900 + md);
+  s = closeSeason(s, 12);
+  assert.ok(s.lastSeason.news.length > 0, 'expected some notable moves');
+  const holders = new Map();
+  for (const c of Object.values(s.world.clubs)) {
+    assert.ok(c.keyPlayers.length <= 10);
+    for (const id of c.keyPlayers) {
+      assert.ok(!holders.has(id), `${id} at ${holders.get(id)} and ${c.id}`);
+      holders.set(id, c.id);
+    }
+  }
+  for (const card of s.squad) assert.ok(!holders.has(card.id), `${card.id} held by user and ${holders.get(card.id)}`);
+  // Ten more seasons of AI off-seasons keep squads valid and retire old cards.
+  let w = s.world;
+  for (let y = 0; y < 10; y += 1) w = aiOffseason(w, { pools: CLUB_POOLS, poolById: POOL_BY_ID, allCards: PLAYER_CARDS, userIds: [], seed: y, countryOf: (d) => DIVISION_BY_ID[d].code }).world;
+  assert.ok(w.retiredCount > 50, `retired ${w.retiredCount}`);
+  const avg = Object.values(w.clubs).reduce((a, c) => a + c.keyPlayers.length, 0) / 304;
+  assert.ok(avg > 2, `squads ran dry: ${avg.toFixed(2)} named per club`);
+  for (const c of Object.values(w.clubs)) assert.ok(c.keyPlayers.length <= 10);
 });
 
 test('a card retires at zero matches and is replaced', () => {
