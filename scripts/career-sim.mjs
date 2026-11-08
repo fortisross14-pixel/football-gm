@@ -67,6 +67,7 @@ function smartTactics(state) {
 // Decide on every waiting card: merge duplicates, keep upgrades, discard the rest.
 function decide(state) {
   let s = state;
+  if (BOT === 'bad') { while (s.pendingOpen) s = discardPending(s); return smartTactics(s); }
   for (let guard = 0; guard < 20 && s.pendingOpen; guard += 1) {
     const card = pendingCard(s);
     if (duplicateOf(s, card)) { s = canMerge(s, card) ? mergePending(s) : discardPending(s); continue; }
@@ -91,7 +92,7 @@ function shop(state, seed, stats) {
     const reserve = 300;
     let pack = s.coins >= PACKS.gold.price + reserve ? 'gold' : s.coins >= PACKS.silver.price + reserve ? 'silver' : null;
     if (BOT === 'poor') pack = s.coins >= 700 ? 'bronze' : null;
-    if (BOT === 'bad') pack = s.coins >= PACKS.bronze.price ? 'bronze' : null;
+    if (BOT === 'bad') pack = null;
     if (!pack) break;
     s = buyPack(s, pack, seed + i);
     stats.packs[pack] = (stats.packs[pack] || 0) + 1;

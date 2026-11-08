@@ -149,7 +149,8 @@ export function jobOffers(world, { reputation, currentClubId, sacked = false, go
   // Prefer the biggest clubs that would have you.
   const picked = [];
   while (picked.length < count && pool.length) {
-    const c = rng.weighted(pool, (x) => 1 + x.req);
+    // Looking for a job: the biggest clubs that would have you call first.
+    const c = rng.weighted(pool, (x) => (passive ? 1 + x.req : (1 + x.req) ** 3));
     picked.push(c);
     pool = pool.filter((x) => x.id !== c.id);
   }

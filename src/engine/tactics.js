@@ -46,7 +46,7 @@ export function sideAttrs(team) {
 }
 
 // How strongly instructions swing a match. Tuned with scripts/tactics-check.mjs.
-const K = 1;
+const K = 1.5;
 
 // Control adjustment for `me` (fraction added to the control multiplier).
 export function controlEdge(me, them, A, O) {

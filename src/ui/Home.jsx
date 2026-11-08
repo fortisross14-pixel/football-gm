@@ -20,7 +20,7 @@ export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo
 
       <StatusRow state={state} goTo={goTo} />
       <div className="cta-row cta-row--tight">
-        <button type="button" className="btn btn--ghost" onClick={() => goTo('club')}>Club ›</button>
+        <button type="button" className="btn btn--ghost" onClick={() => goTo('club')}>Finances &amp; trophies ›</button>
         <button type="button" className="btn btn--ghost" onClick={() => goTo('career')}>Career ›</button>
       </div>
       </div>

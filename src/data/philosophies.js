@@ -37,7 +37,7 @@ export function nearestPhilosophy(tactics) {
 }
 
 // Team-wide bonus (fraction) for playing your coach's way. Better coaches get more out of it.
-const FIT = [0.025, 0.02, 0.012, 0.005, -0.005, -0.015, -0.025, -0.035, -0.045, -0.055, -0.06];
+const FIT = [0.03, 0.024, 0.015, 0.005, -0.01, -0.025, -0.04, -0.055, -0.07, -0.08, -0.09];
 const COACH_SKILL = { academy: 0.5, common: 0.6, uncommon: 0.8, rare: 1, epic: 1.2, legend: 1.4 };
 export function fitBonus(distance, rarity = 'common') {
   const base = FIT[Math.min(10, Math.round(distance))];
