@@ -5,7 +5,7 @@ import { Table } from './League.jsx';
 import { teamOverall, RARITIES } from '../engine/cards.js';
 import { clubById, standings } from '../engine/season.js';
 import { OFFSEASON_CARDS, cardText } from '../data/offseason.js';
-import { effectiveCohesion, seasonSummary, FACILITY_LABEL, academyInfo, nextUserGame } from '../state/club.js';
+import { effectiveCohesion, cohesionBonus, teamShape, shapeLabel, seasonSummary, FACILITY_LABEL, academyInfo, nextUserGame } from '../state/club.js';
 import { PACKS } from '../engine/packs.js';
 import { ClubLink, LeagueLink } from './nav.jsx';
 import { Confidence } from './Career.jsx';
@@ -176,11 +176,18 @@ function StatusRow({ state, goTo }) {
   const packs = state.inventory.packs.length;
   return (
     <div className="status-row">
-      <div className="status">
+      <button type="button" className="status" onClick={() => goTo('squad')}>
         <span>Cohesion</span>
         <b>{effectiveCohesion(state)}%</b>
         <div className="bar"><i style={{ width: `${effectiveCohesion(state)}%` }} /></div>
-      </div>
+        <small>+{(cohesionBonus(state) * 100).toFixed(1)}% stats</small>
+      </button>
+      <button type="button" className={`status status--shape is-${shapeLabel(teamShape(state)).toLowerCase()}`} onClick={() => goTo('squad')}>
+        <span>Shape</span>
+        <b>{teamShape(state)}%</b>
+        <div className="bar"><i style={{ width: `${teamShape(state)}%` }} /></div>
+        <small>{shapeLabel(teamShape(state))}</small>
+      </button>
       <div className="status">
         <span>Record</span>
         <b>{state.record.w}-{state.record.d}-{state.record.l}</b>

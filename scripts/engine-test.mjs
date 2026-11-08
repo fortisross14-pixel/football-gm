@@ -25,7 +25,7 @@ import { startingDraw, aiOffseason } from '../src/engine/transfers.js';
 import { CLUB_POOLS, PLAYER_CARDS } from '../src/data/world/index.js';
 import {
   newClubState, buildUserTeam, matchRewards, applyMatch, buyPack, keepPending, mergePending, discardPending,
-  pendingCard, duplicateOf, nextUserGame, newSeason, closeSeason, toggleCurse, acceptOffer, carryOptions, starterOffers, discardCommons, buyMarketCard, useOffseasonCard, startNextSeason, POOLS, POOL_BY_ID,
+  pendingCard, duplicateOf, nextUserGame, newSeason, closeSeason, toggleCurse, teamShape, shapeLabel, acceptOffer, carryOptions, starterOffers, discardCommons, buyMarketCard, useOffseasonCard, startNextSeason, POOLS, POOL_BY_ID,
 } from '../src/state/club.js';
 
 let passed = 0;
@@ -165,8 +165,8 @@ test('a full season runs, ends and opens the Transfer Market', () => {
   assert.equal(s.season.year, 2);
 });
 
-test('all 27 off-season card types can be used', () => {
-  assert.equal(OFFSEASON_IDS.length, 27);
+test('all 28 off-season card types can be used', () => {
+  assert.equal(OFFSEASON_IDS.length, 28);
   let base = fresh();
   for (let md = 0; md < 14; md += 1) base = playMatchday(base, 300 + md);
   base = resolve(closeSeason(base, 1));
@@ -540,6 +540,25 @@ test('house rule: a cursed Barcelona loses its stars and at least half its games
   for (const [, row] of Object.entries(s.season.divisions[barca.divisionId].table)) if (row === s.season.divisions[barca.divisionId].table.barcelona) { losses = row.l; games = row.p; }
   assert.ok(games >= 14 && losses / games >= 0.5, `Barcelona lost ${losses}/${games}`);
   assert.ok(!toggleCurse(s, 'barcelona').world.clubs.barcelona.cursed);
+});
+
+test('shape: the same 7 every week lowers it, rotating keeps it up, Sports Science lifts it', () => {
+  const play = (s, ids) => {
+    const next = structuredClone(s);
+    next.loads = { ...(next.loads || {}) };
+    for (const c of next.squad) next.loads[c.id] = (next.loads[c.id] ?? 0.5) * 0.75 + (ids.includes(c.id) ? 0.25 : 0);
+    return next;
+  };
+  let same = fresh();
+  for (let i = 0; i < 12; i += 1) same = play(same, same.lineup);
+  let rotate = fresh();
+  const ids = rotate.squad.map((c) => c.id);
+  for (let i = 0; i < 12; i += 1) rotate = play(rotate, [rotate.lineup[0], ...ids.filter((id) => id !== rotate.lineup[0]).slice(i % 3, (i % 3) + 6)]);
+  assert.ok(teamShape(same) < 65, `same 7: ${teamShape(same)}`);
+  assert.ok(teamShape(rotate) > teamShape(same) + 10, `rotating: ${teamShape(rotate)} vs ${teamShape(same)}`);
+  assert.ok(teamShape({ ...same, perks: { shape: 30 } }) >= teamShape(same) + 25);
+  assert.equal(shapeLabel(90), 'Fresh');
+  assert.equal(shapeLabel(40), 'Exhausted');
 });
 
 console.log(`\n${passed} tests passed`);
