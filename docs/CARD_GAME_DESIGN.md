@@ -663,3 +663,5 @@ Tuned with `npm run career-sim`, a bot that plays whole careers the way a sensib
 | Packs: a few per season, not dozens | About 4–6 a season |
 | Cards matter for several seasons | Kept cards last about 4.8 seasons before retiring |
 | The world stays alive | Clubs keep about 3.6 named players each; continental titles spread across many clubs |
+
+**Re-measured after v1.6** (8 bot careers × 12 seasons, `node scripts/career-sim.mjs 8 12`; season 1 also checked with 40 careers): season-1 average finish about 3.9; level-2 club by season 6 (median), level-1 by season 8; about 8% of seasons end in a sacking; favourites win about 67%; 4.0 goals per match (skills add chances). AI club styles were tuned so small clubs' tactics don't cost them points, and the AI settled edge is now 20/16/12% by level.
