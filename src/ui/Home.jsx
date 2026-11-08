@@ -8,12 +8,14 @@ import { effectiveCohesion, seasonSummary, FACILITY_LABEL, academyInfo, nextUser
 import { PACKS } from '../engine/packs.js';
 import { ClubLink, LeagueLink } from './nav.jsx';
 import { Confidence } from './Career.jsx';
+import { isDerby, derbyName } from '../data/rivals.js';
 
 export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo }) {
   const { season, phase } = state;
   return (
     <div className="screen screen--home">
       <div className="home__main">
+      {phase === 'season' && <DerbyAlert state={state} />}
       {phase === 'season' && <NextMatch state={state} onPlay={onPlay} />}
       {phase === 'seasonEnd' && <SeasonEnd state={state} onClose={onCloseSeason} />}
       {phase === 'offseason' && <Offseason state={state} goTo={goTo} onStart={onStartSeason} />}
@@ -41,7 +43,7 @@ export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo
             {state.history.slice(0, 5).map((h, i) => (
               <li key={i}>
                 <span className={`res res--${h.outcome}`}>{h.outcome}</span>
-                <span className="results__opp">{h.venue === 'H' ? 'vs' : '@'} <ClubLink id={h.opponentId}>{h.opponent}</ClubLink></span>
+                <span className="results__opp">{h.venue === 'H' ? 'vs' : '@'} <ClubLink id={h.opponentId}>{h.opponent}</ClubLink>{h.derby ? ' 🔥' : ''}</span>
                 <span className="results__comp">{h.competition}</span>
                 <b>{h.score[0]}–{h.score[1]}</b>
               </li>
@@ -219,5 +221,23 @@ export function Segmented({ label, value, options, onChange, small }) {
         ))}
       </div>
     </div>
+  );
+}
+
+// "NEXT GAME IS A RIVALRY GAME!" — something big is coming.
+export function DerbyAlert({ state, compact }) {
+  const game = nextUserGame(state);
+  if (!game || !isDerby(state.club.id, game.opponentId)) return null;
+  const opp = clubById(state.world, game.opponentId);
+  const past = (state.history || []).filter((h) => h.opponentId === game.opponentId || h.opponent === opp.name);
+  const rec = { W: 0, D: 0, L: 0 };
+  for (const h of past) rec[h.outcome] += 1;
+  return (
+    <section className={`derby-alert${compact ? ' derby-alert--compact' : ''}`} role="status">
+      <span className="derby-alert__flash">Rivalry game</span>
+      <b className="derby-alert__title">{compact ? `${derbyName(state.club.id, opp.id)}` : 'Next game is a rivalry game!'}</b>
+      {!compact && <span className="derby-alert__name">{derbyName(state.club.id, opp.id)} · {state.club.short} vs {opp.short}</span>}
+      <span className="derby-alert__meta">Double gate and prize money · fans feel it twice as much{past.length ? ` · your record: ${rec.W}W ${rec.D}D ${rec.L}L` : ''}</span>
+    </section>
   );
 }

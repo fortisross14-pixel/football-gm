@@ -1611,3 +1611,25 @@ html.reduce-motion .sealed, html.reduce-motion .flip, html.reduce-motion .pack__
 }
 .house-rule { margin-top: 8px; }
 .house-rules { display: flex; flex-direction: column; gap: 4px; }
+
+/* ---- Derby day ---- */
+.derby-alert {
+  position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 4px;
+  padding: 14px 16px 14px 18px; background: var(--red); color: #fff;
+  clip-path: polygon(0 0, 100% 0, calc(100% - var(--cut)) 100%, 0 100%);
+  animation: derby-in var(--t-reveal) var(--ease-back) both;
+}
+.derby-alert::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(-45deg, transparent 0 14px, rgba(255,255,255,.08) 14px 28px); pointer-events: none; }
+.derby-alert::after { content: ''; position: absolute; top: 0; bottom: 0; width: 40%; left: -50%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent); transform: skewX(-20deg); animation: derby-sweep 2.4s var(--ease-in-out) .4s infinite; pointer-events: none; }
+.derby-alert__flash { align-self: flex-start; background: var(--yellow); color: var(--ink); font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; padding: 3px 8px; transform: skewX(calc(-1 * var(--slant))); animation: derby-blink 1s steps(2, start) infinite; }
+.derby-alert__title { font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1; text-transform: uppercase; letter-spacing: .01em; }
+.derby-alert__name { font-weight: 800; font-size: 14px; text-transform: uppercase; letter-spacing: .06em; }
+.derby-alert__meta { font-size: 12px; opacity: .92; }
+.derby-alert--compact .derby-alert__title { font-size: 22px; }
+@keyframes derby-in { from { transform: translateX(-24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes derby-sweep { from { left: -50%; } to { left: 130%; } }
+@keyframes derby-blink { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .derby-alert, .derby-alert::after, .derby-alert__flash { animation: none; } }
+.reduce-motion .derby-alert, .reduce-motion .derby-alert::after, .reduce-motion .derby-alert__flash { animation: none; }
+.feed__item--derby { background: var(--red); color: #fff; font-weight: 700; }
+.rival-chip { text-decoration: none; }

@@ -8,6 +8,7 @@ import { seasonMods } from '../state/club.js';
 import { BoostCard } from './Card.jsx';
 import { Crest } from './Art.jsx';
 import { ClubLink } from './nav.jsx';
+import { DerbyAlert } from './Home.jsx';
 import { clubVars } from './Home.jsx';
 import { skillOf, MAX_SKILLS } from '../data/skills.js';
 import { aiTeamFor } from '../engine/season.js';
@@ -46,6 +47,7 @@ export default function PreMatch({ state, opponent, setup, loadout, setLoadout, 
         <TeamBlock team={right} />
       </div>
 
+      <DerbyAlert state={state} compact />
       <Bonuses state={state} competition={setup.competition} />
 
       <Scouting state={state} opponent={opponent} starters={starters} />

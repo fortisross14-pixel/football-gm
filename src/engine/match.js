@@ -9,6 +9,7 @@ import { makeRng } from './rng.js';
 import { COACH_PASSIVES } from '../data/coachPassives.js';
 import { BOOSTS } from '../data/boosts.js';
 import { SKILLS, MAX_SKILLS, skillOf } from '../data/skills.js';
+import { derbyName } from '../data/rivals.js';
 import { coachStyle, styleDistance, fitBonus } from '../data/philosophies.js';
 import {
   DEFAULT_TACTICS, normalizeTactics, sideAttrs, controlEdge, chanceMult, qualityEdge, setPieceChance, drainMult,
@@ -62,10 +63,11 @@ export function createMatch({ home, away, context = {}, seed = 1 }) {
       competition: context.competition || 'league',
       knockout: !!context.knockout,
       neutral: !!context.neutral,
+      derby: !!derbyName(home.id, away.id),
     },
     teams: [buildTeam(home, true, context), buildTeam(away, false, context)],
     score: [0, 0],
-    events: [],
+    events: derbyName(home.id, away.id) ? [{ minute: 0, side: null, type: 'derby', text: `🔥 It's derby day: ${derbyName(home.id, away.id)}! ${home.short} vs ${away.short}, and nobody here wants to lose this one.` }] : [],
     segmentSummaries: [],
     shootout: null,
     result: null,

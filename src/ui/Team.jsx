@@ -8,7 +8,8 @@ import { skillOf } from '../data/skills.js';
 import { POOL_BY_ID } from '../state/club.js';
 import { Crest } from './Art.jsx';
 import { Flag } from './Card.jsx';
-import { LeagueLink } from './nav.jsx';
+import { LeagueLink, ClubLink } from './nav.jsx';
+import { rivalsOf, derbyName } from '../data/rivals.js';
 
 const nameOf = (id) => POOL_BY_ID[id]?.name;
 const ordinal = (n) => `${n}${['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 < 14) ? 0 : n % 10] || 'th'}`;
@@ -67,6 +68,18 @@ export default function Team({ state, clubId, onBack, onCurse }) {
       </div>
       {isUser && <p className="hint hint--accent">This is your club.</p>}
       {!isUser && vs.length > 0 && <p className="hint">Your recent record against them: {vsRec.W}W {vsRec.D}D {vsRec.L}L</p>}
+
+      {rivalsOf(clubId).length > 0 && (
+        <section className="rivals">
+          <h2 className="section-title">Rivals</h2>
+          <div className="chip-row">
+            {rivalsOf(clubId).map((id) => state.world.clubs[id] && (
+              <ClubLink key={id} id={id} className="chip-btn rival-chip">🔥 {state.world.clubs[id].name}</ClubLink>
+            ))}
+          </div>
+          <p className="hint">{[...new Set(rivalsOf(clubId).map((id) => derbyName(clubId, id)))].join(' · ')}</p>
+        </section>
+      )}
 
       <section>
         <h2 className="section-title">Squad</h2>

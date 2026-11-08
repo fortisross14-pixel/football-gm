@@ -13,6 +13,7 @@ import { makeRng } from '../engine/rng.js';
 import { archiveSeason, foldRecords, compactEntry } from '../engine/history.js';
 import { ensureGms, updateGms } from '../engine/gms.js';
 import { styleDistance, clubIdentity } from '../data/philosophies.js';
+import { isDerby, derbyName } from '../data/rivals.js';
 import { normalizeTactics } from '../engine/tactics.js';
 import { RARITIES, TRAITS, POSITIONS, overall, rarityForOverall, autoArrange } from '../engine/cards.js';
 import { PACKS, openPack, mergeDuplicate, drawFromPool, MAX_STARS } from '../engine/packs.js';
@@ -338,6 +339,12 @@ export function matchRewards(state, match, userSide, game = { competition: 'leag
     if (prize) items.push({ label: 'Trophy prize', coins: Math.round(prize.coins * (game.competition === 'cup' && state.activeEvent?.type === 'cupRun' ? 1.5 : 1)) });
   } else if (final && game.competition === 'continental') items.push({ label: 'Finalist prize', coins: 500 });
   if (game.label?.endsWith('Qualifying') && winner === userSide) items.push({ label: 'Qualified for the group stage', coins: 150 });
+  // Derby day: double revenue from the game itself (trophy prizes aside).
+  const oppId = match.teams[1 - userSide].id;
+  if (isDerby(state.club.id, oppId)) {
+    const base = items.filter((i) => !/prize|Qualified/i.test(i.label)).reduce((s, i) => s + i.coins, 0);
+    items.push({ label: `Derby day · ${derbyName(state.club.id, oppId)}`, coins: base });
+  }
   return { items, total: items.reduce((s, i) => s + i.coins, 0) };
 }
 
@@ -426,6 +433,7 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
   next.history.unshift({
     opponentId: opponent.id,
     opponent: opponent.name,
+    derby: isDerby(next.club.id, opponent.id),
     opponentShort: opponent.short,
     score: [own, conceded],
     shootout: null,
@@ -468,6 +476,7 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
     const trophyNow = (next.season.userTrophies || []).length > (state.season?.userTrophies || []).length;
     next.gm.confidence = matchConfidence(next.gm.confidence, {
       outcome: winner === userSide ? 'W' : winner === null ? 'D' : 'L', gf: own, ga: conceded, competition, pos,
+      derby: isDerby(next.club.id, opponent.id),
       styleDist: styleDistance(normalizeTactics(state.tactics), clubIdentity(next.world.clubs[next.club.id])),
       target: next.gm.objective?.target, eliminated: !!game?.knockout && winner !== userSide && !trophyNow, trophy: trophyNow, level: next.club.level,
     });
