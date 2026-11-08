@@ -196,6 +196,7 @@ for (let c = 0; c < CAREERS; c += 1) {
     s = startNextSeason(s, seed++);
     if (s.phase !== 'season') { s = decide(s); s = startNextSeason(s, seed++); }
   }
+  if (process.env.DUMP_STATE) (await import('node:fs')).writeFileSync(process.env.DUMP_STATE, JSON.stringify(s));
   stats.firstD2.push(reached.d2);
   stats.firstD1.push(reached.d1);
   stats.firstContinental.push(reached.cont);

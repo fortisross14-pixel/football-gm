@@ -6,6 +6,7 @@ import { clubById, standings } from '../engine/season.js';
 import { OFFSEASON_CARDS, cardText } from '../data/offseason.js';
 import { effectiveCohesion, seasonSummary, FACILITY_LABEL, academyInfo, nextUserGame } from '../state/club.js';
 import { PACKS } from '../engine/packs.js';
+import { ClubLink, LeagueLink } from './nav.jsx';
 
 export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo }) {
   const { season, phase } = state;
@@ -23,8 +24,8 @@ export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo
 
       <section>
         <div className="section-row">
-          <h2 className="section-title">Table</h2>
-          <button type="button" className="link-btn" onClick={() => goTo('league')}>Full table ›</button>
+          <h2 className="section-title"><LeagueLink divId={state.club.divisionId}>{state.club.division}</LeagueLink></h2>
+          <LeagueLink divId={state.club.divisionId} className="link-btn">Full table ›</LeagueLink>
         </div>
         <Table state={state} compact />
       </section>
@@ -36,7 +37,7 @@ export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo
             {state.history.slice(0, 5).map((h, i) => (
               <li key={i}>
                 <span className={`res res--${h.outcome}`}>{h.outcome}</span>
-                <span className="results__opp">{h.venue === 'H' ? 'vs' : '@'} {h.opponent}</span>
+                <span className="results__opp">{h.venue === 'H' ? 'vs' : '@'} <ClubLink id={h.opponentId}>{h.opponent}</ClubLink></span>
                 <span className="results__comp">{h.competition}</span>
                 <b>{h.score[0]}–{h.score[1]}</b>
               </li>
@@ -56,8 +57,8 @@ function NextMatch({ state, onPlay }) {
   const opp = clubById(state.world, game.opponentId);
   const starters = state.lineup.map((id) => state.squad.find((c) => c.id === id));
   const pos = standings(season, state.club.divisionId).findIndex((r) => r.id === state.club.id) + 1;
-  const us = { name: state.club.name, short: state.club.short, colors: state.club.colors, ovr: teamOverall(starters) };
-  const them = { name: opp.name, short: opp.short, colors: opp.colors, ovr: Math.round(opp.strength) };
+  const us = { id: state.club.id, name: state.club.name, short: state.club.short, colors: state.club.colors, ovr: teamOverall(starters) };
+  const them = { id: opp.id, name: opp.name, short: opp.short, colors: opp.colors, ovr: Math.round(opp.strength) };
   const userFirst = game.homeId === state.club.id;
   const [left, right] = userFirst ? [us, them] : [them, us];
   const venue = game.neutral ? 'Neutral' : game.isHome ? 'Home' : 'Away';
@@ -65,7 +66,7 @@ function NextMatch({ state, onPlay }) {
   return (
     <section className={`next-match${cupGame ? ` next-match--${game.competition}` : ''}`}>
       <div className="next-match__meta">
-        <span>Season {season.year} · {game.label}</span>
+        <span>Season {season.year} · {cupGame ? game.label : <><LeagueLink divId={state.club.divisionId}>{state.club.division}</LeagueLink> · {game.label}</>}</span>
         {season.matchday > 0 && !cupGame && <span>You're {ordinal(pos)}</span>}
       </div>
       {state.gm?.objective && (
@@ -90,7 +91,7 @@ function Side({ team }) {
   return (
     <div className="matchup__team">
       <Crest colors={team.colors} short={team.short} size={46} />
-      <b>{team.name}</b>
+      <ClubLink id={team.id}><b>{team.name}</b></ClubLink>
       <span>{team.ovr} OVR</span>
     </div>
   );

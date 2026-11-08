@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { clubById } from '../engine/season.js';
 import { CONTINENTS, CONTINENT_NAME, CUP_ROUND_NAME, groupStandings } from '../engine/competitions.js';
 import { Crest } from './Art.jsx';
+import { ClubLink } from './nav.jsx';
 import { Segmented } from './Home.jsx';
 
 export default function Cups({ state, countryCode }) {
@@ -36,11 +37,11 @@ function Tie({ state, game, label }) {
   const score = game.score ? `${game.score[0]}–${game.score[1]}` : 'vs';
   return (
     <div className={`fixture${mine ? ' is-user' : ''}`}>
-      <span className={`fixture__team${game.winner === game.home ? ' is-winner' : ''}`}>{h.name}</span>
+      <ClubLink id={game.home} className={`fixture__team${game.winner === game.home ? ' is-winner' : ''}`}>{h.name}</ClubLink>
       <Crest colors={h.colors} short={h.short} size={20} />
       <b className="fixture__score">{score}{game.pens ? <small>{game.pens[0]}–{game.pens[1]} pens</small> : null}</b>
       <Crest colors={a.colors} short={a.short} size={20} />
-      <span className={`fixture__team is-right${game.winner === game.away ? ' is-winner' : ''}`}>{a.name}</span>
+      <ClubLink id={game.away} className={`fixture__team is-right${game.winner === game.away ? ' is-winner' : ''}`}>{a.name}</ClubLink>
       {label && <small className="fixture__label">{label}</small>}
     </div>
   );
@@ -78,7 +79,7 @@ function GroupTable({ state, group, name }) {
           return (
             <tr key={r.id} className={`${r.id === state.club.id ? 'is-user' : ''}${i < 2 ? ' is-up' : ''}`}>
               <td>{i + 1}</td>
-              <td className="table__club"><Crest colors={club.colors} short={club.short} size={18} /> <span>{club.name}</span></td>
+              <td className="table__club"><ClubLink id={r.id} className="club-inline"><Crest colors={club.colors} short={club.short} size={18} /> <span>{club.name}</span></ClubLink></td>
               <td>{r.p}</td><td>{r.gd > 0 ? `+${r.gd}` : r.gd}</td><td><b>{r.pts}</b></td>
             </tr>
           );

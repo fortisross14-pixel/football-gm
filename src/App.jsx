@@ -22,6 +22,8 @@ import Career from './ui/Career.jsx';
 import Menu, { SettingsSheet } from './ui/Menu.jsx';
 import NewCareer from './ui/NewCareer.jsx';
 import Tip from './ui/Tip.jsx';
+import Team from './ui/Team.jsx';
+import { NavContext, LeagueLink } from './ui/nav.jsx';
 import Sheet from './ui/Sheet.jsx';
 import { loadSlot, saveSlot, loadSettings, saveSettings } from './state/storage.js';
 
@@ -90,6 +92,13 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
   const [live, setLive] = useState(null);
   const [outcome, setOutcome] = useState(null);
   const [toast, setToast] = useState(null);
+  const [teamId, setTeamId] = useState(null);
+  const [leagueNav, setLeagueNav] = useState(null);
+  const backTo = useRef('home');
+  const nav = {
+    openClub: (id) => { if (screen !== 'team') backTo.current = screen; setTeamId(id); setScreen('team'); window.scrollTo(0, 0); },
+    openLeague: (divId, tab = 'table') => { setLeagueNav({ divId, tab, k: Date.now() }); setScreen('league'); },
+  };
 
   // Save shortly after every change (and right away when leaving).
   useEffect(() => {
@@ -138,10 +147,11 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
     setToast({ text: r.message, tone: r.success === false ? 'bad' : 'good' });
   };
 
-  const isTab = TABS.some((t) => t.id === screen) || screen === 'club' || screen === 'career';
+  const isTab = TABS.some((t) => t.id === screen) || screen === 'club' || screen === 'career' || screen === 'team';
 
   return (
-    <div className={`app${isTab ? ' app--tabs' : ''}`}>
+    <NavContext.Provider value={nav}>
+    <div className={`app${isTab ? ' app--tabs' : ''} app--${screen}`}>
       {screen !== 'match' && (
         <header className="topbar">
           <button type="button" className="topbar__crest" onClick={() => setScreen('club')} aria-label="Club details">
@@ -149,7 +159,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
           </button>
           <div className="topbar__club">
             <b>{state.club.name}</b>
-            <span>{state.club.division}</span>
+            <span><LeagueLink divId={state.club.divisionId}>{state.club.division}</LeagueLink></span>
           </div>
           <div className="topbar__coins" aria-label="Coins"><span key={state.coins} className="coin-bump">◎ {state.coins.toLocaleString()}</span></div>
           <button type="button" className="icon-btn topbar__menu" onClick={() => setMenuOpen(true)} aria-label="Menu">☰</button>
@@ -178,7 +188,8 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
             onBuyOffer={(uid) => setState((s) => buyMarketCard(s, uid))}
           />
         )}
-        {screen === 'league' && <League state={state} />}
+        {screen === 'league' && <League key={leagueNav?.k || 'league'} state={state} nav={leagueNav} />}
+        {screen === 'team' && teamId && state.world.clubs[teamId] && <Team key={teamId} state={state} clubId={teamId} onBack={() => setScreen(backTo.current)} />}
         {screen === 'club' && <ClubInfo state={state} onBack={() => setScreen('home')} />}
         {screen === 'career' && (
           <Career
@@ -209,7 +220,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
       {isTab && (
         <nav className="tabbar" aria-label="Main">
           {TABS.map((t) => (
-            <button key={t.id} type="button" className={screen === t.id ? 'is-on' : ''} onClick={() => setScreen(t.id)}>
+            <button key={t.id} type="button" className={screen === t.id ? 'is-on' : ''} onClick={() => { if (t.id === 'league') setLeagueNav(null); setScreen(t.id); }}>
               <span className="tabbar__icon" aria-hidden="true">{t.icon}</span>
               <span>{t.label}</span>
               {t.id === 'shop' && state.phase === 'offseason' && <i className="tabbar__dot" />}
@@ -249,5 +260,6 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
       )}
       {settingsOpen && <SettingsSheet settings={settings} setSettings={setSettings} onClose={() => setSettingsOpen(false)} />}
     </div>
+    </NavContext.Provider>
   );
 }

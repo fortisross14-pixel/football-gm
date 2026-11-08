@@ -3,6 +3,7 @@ import { RARITIES } from '../engine/cards.js';
 import { carryOptions } from '../state/club.js';
 import { standings } from '../engine/season.js';
 import { Crest } from './Art.jsx';
+import { ClubLink } from './nav.jsx';
 import Sheet from './Sheet.jsx';
 
 const VERDICT = { met: 'Objective met', exceeded: 'Objective exceeded', missed: 'Objective missed' };
@@ -62,7 +63,7 @@ export default function Career({ state, onAccept, onBack }) {
                   <div key={o.clubId} className="offer">
                     <Crest colors={club.colors} short={club.short} size={40} />
                     <div className="offer__body">
-                      <b>{o.name}</b>
+                      <ClubLink id={o.clubId}><b>{o.name}</b></ClubLink>
                       <span>{o.division} · strength {Math.round(club.strength)} · {club.keyPlayers.length} named players</span>
                     </div>
                     <button type="button" className="btn btn--small btn--primary" disabled={!!state.pendingOpen} onClick={() => setPicking(o)}>Accept</button>

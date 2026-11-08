@@ -10,6 +10,7 @@ import { BOOST_IDS, BOOSTS, BOOST_PACKS, openBoostPack, drawBoost } from '../dat
 import { OFFSEASON_CARDS, OFFSEASON_IDS, MARKET_WEIGHTS, TIERS, tierIndex, cardValue, cardPrice, SIGNING_TIERS } from '../data/offseason.js';
 import { makeGenericCard, FILLER_RATING, squadStrength } from '../engine/aiTeam.js';
 import { makeRng } from '../engine/rng.js';
+import { archiveSeason, foldRecords, compactEntry } from '../engine/history.js';
 import { RARITIES, TRAITS, POSITIONS, overall, rarityForOverall, autoArrange } from '../engine/cards.js';
 import { PACKS, openPack, mergeDuplicate, drawFromPool, MAX_STARS } from '../engine/packs.js';
 import { buildWorld, createSeason, playMatchday, goalsFromMatch, standings, removeKeyPlayer, endOfSeason, divisionName, refreshStrengths, userFixture, quickResult } from '../engine/season.js';
@@ -118,6 +119,10 @@ export function newClubState(seed = 12345, { clubId = USER_CLUB.id, gmName = 'Yo
     record: { w: 0, d: 0, l: 0, gf: 0, ga: 0 },
     history: [],
     playerStats: {},
+    seasonStats: {},
+    archive: [], // one entry per finished season, every league and cup (engine/history.js)
+    records: null, // all-time player records folded from the archive
+    careerLog: [], // your seasons: club, league, finish, record, trophies, leaders
     hallOfFame: [],
     album: squad.filter((c) => POOL_BY_ID[c.id]).map((c) => c.id),
     trophies: [],
@@ -360,13 +365,21 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
   const retired = [];
   for (const id of appeared) {
     const p = team.players[id];
-    const s = next.playerStats[id] || { apps: 0, goals: 0, assists: 0, motm: 0, ratingSum: 0 };
-    s.apps += 1;
-    s.goals += p.goals;
-    s.assists += p.assists;
-    s.ratingSum += p.rating || 6;
-    if (id === motmId) s.motm += 1;
-    next.playerStats[id] = s;
+    const cleanSheet = p.card.pos === 'GK' && conceded === 0 && (p.minutes ?? 90) >= 45;
+    next.seasonStats = next.seasonStats || {};
+    for (const book of [next.playerStats, next.seasonStats]) {
+      const s = book[id] || { apps: 0, goals: 0, assists: 0, motm: 0, ratingSum: 0, cs: 0 };
+      s.name = p.card.name;
+      s.pos = p.card.pos;
+      s.rarity = p.card.rarity;
+      s.apps += 1;
+      s.goals += p.goals;
+      s.assists += p.assists;
+      s.ratingSum += p.rating || 6;
+      s.cs = (s.cs || 0) + (cleanSheet ? 1 : 0);
+      if (id === motmId) s.motm += 1;
+      book[id] = s;
+    }
     const card = next.squad.find((c) => c.id === id);
     if (card) addFame(card, p.goals * 0.15 + p.assists * 0.05 + (id === motmId ? 0.4 : 0));
     if (card && card.matchesLeft != null) {
@@ -400,6 +413,7 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
   }
 
   next.history.unshift({
+    opponentId: opponent.id,
     opponent: opponent.name,
     opponentShort: opponent.short,
     score: [own, conceded],
@@ -623,6 +637,31 @@ export function seasonSummary(state) {
   return { table, position, prize, packs, promoted, relegated, upper, lower, division: div };
 }
 
+// The keeper named in the history book for a club's Golden Glove.
+function keeperOf(state, clubId) {
+  if (clubId === state.club.id) {
+    const gk = state.lineup.map((id) => state.squad.find((c) => c.id === id)).find((c) => c?.pos === 'GK');
+    return gk && !gk.generic ? { id: gk.id, name: gk.name } : (gk ? { id: null, name: gk.name } : null);
+  }
+  const club = state.world.clubs[clubId];
+  const gk = (club?.keyPlayers || []).map((id) => POOL_BY_ID[id]).find((c) => c?.pos === 'GK');
+  return gk ? { id: gk.id, name: gk.name } : null;
+}
+
+// Your club's season leaders by category.
+export function seasonLeaders(stats) {
+  const list = Object.entries(stats).map(([id, s]) => ({ id, ...s }));
+  const top = (key) => {
+    const best = [...list].sort((a, b) => (b[key] || 0) - (a[key] || 0) || b.apps - a.apps)[0];
+    return best && best[key] > 0 ? { id: best.id, name: best.name, value: best[key] } : null;
+  };
+  const rated = list.filter((s) => s.apps >= 5).sort((a, b) => b.ratingSum / b.apps - a.ratingSum / a.apps)[0];
+  return {
+    goals: top('goals'), assists: top('assists'), motm: top('motm'), cs: top('cs'),
+    rating: rated ? { id: rated.id, name: rated.name, value: Math.round((rated.ratingSum / rated.apps) * 100) / 100 } : null,
+  };
+}
+
 export function closeSeason(state, seed) {
   if (state.phase !== 'seasonEnd') return state;
   const next = structuredClone(state);
@@ -636,6 +675,15 @@ export function closeSeason(state, seed) {
   next.inventory.packs.push(...packs);
   const champion = next.world.clubs[table[0].id];
   next.trophies.push({ season: next.season.year, competition: state.club.division, position, champion: champion.name });
+  // The history book: every league and cup this season, plus your own season.
+  const entry = archiveSeason(state.season, { gkOf: (clubId) => keeperOf(state, clubId), known: (id) => !!CARD_BY_ID[id] });
+  next.records = foldRecords(next.records, entry, (id) => !!CARD_BY_ID[id]);
+  next.archive = [...(next.archive || []), compactEntry(entry)];
+  next.careerLog = [...(next.careerLog || []), {
+    year: state.season.year, clubId: state.club.id, divId: state.club.divisionId, position,
+    record: { ...state.record }, trophies: [...(state.season.userTrophies || []), ...(position === 1 ? [state.club.division] : [])],
+    leaders: seasonLeaders(state.seasonStats || {}),
+  }];
   const end = endOfSeason(next.season, next.world, POOL_BY_ID);
   // Every AI club: wear and retirement, academy, signings.
   const off = aiOffseason(end.world, {
@@ -740,6 +788,7 @@ export function startNextSeason(state, seed) {
   next.phase = 'season';
   next.market = null;
   next.record = { w: 0, d: 0, l: 0, gf: 0, ga: 0 };
+  next.seasonStats = {};
   return next;
 }
 
@@ -827,6 +876,7 @@ export function acceptOffer(state, clubId, carryKeys = [], seed = 1) {
   next.activeEvent = null;
   next.perks = { shirtSponsor: 0 };
   next.record = { w: 0, d: 0, l: 0, gf: 0, ga: 0 };
+  next.seasonStats = {};
   for (const c of squad) if (POOL_BY_ID[c.id] && !next.album.includes(c.id)) next.album.push(c.id);
 
   const year = next.season.year;

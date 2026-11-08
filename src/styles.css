@@ -1008,3 +1008,42 @@ html.reduce-motion .sealed, html.reduce-motion .flip, html.reduce-motion .btn--p
 .boost-got { animation: slide var(--t-reveal) var(--ease-back); display: flex; flex-direction: column; gap: 8px; }
 .boost-reward { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12px; font-weight: 700; color: var(--gold); text-transform: uppercase; letter-spacing: .08em; animation: slide var(--t-reveal) var(--ease-back); }
 .odds-note summary { cursor: pointer; color: var(--muted); font-size: 13px; padding: 8px 0; }
+
+/* ---- Links, club page, history ---- */
+.xlink { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: inherit; text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); text-underline-offset: 3px; }
+.xlink:hover { text-decoration-color: currentColor; }
+.club-inline { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
+.club-inline:hover span { text-decoration: underline; }
+.stat-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stat-tiles > div { background: var(--surface); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.stat-tiles span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.stat-tiles b { font-family: var(--font-display); font-size: 24px; }
+.stat-tiles small { font-size: 11px; color: var(--muted); }
+.honours { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.honours > div { background: var(--surface); border-radius: 10px; padding: 8px; display: flex; flex-direction: column; }
+.honours b { font-family: var(--font-display); font-size: 26px; }
+.honours span { font-size: 11px; color: var(--muted); }
+.squad-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.squad-list li { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; background: var(--surface); border-left: 3px solid var(--rc, var(--line-2)); font-size: 14px; }
+.squad-list li.is-bench { opacity: .75; }
+.squad-list__pos { width: 32px; font-size: 11px; font-weight: 800; color: var(--muted); }
+.squad-list__ovr { width: 26px; font-family: var(--font-display); font-weight: 700; font-size: 17px; }
+.squad-list__name { flex: 1; min-width: 0; }
+.squad-list__name em { font-style: normal; color: var(--rc); font-size: 11px; }
+.squad-list__skill { font-size: 11px; color: var(--gold); white-space: nowrap; }
+.squad-list__tag { font-size: 10px; color: var(--muted); text-transform: uppercase; }
+.scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.table--history { min-width: 520px; }
+.table--history td, .table--history th { white-space: nowrap; }
+.season-book { display: grid; gap: 10px; }
+.season-card { background: var(--surface); border-radius: 12px; padding: 12px; }
+.season-card header { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 8px; font-size: 13px; }
+.season-card dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 14px; }
+.season-card dt { color: var(--muted); font-size: 12px; }
+.season-card dd { margin: 0; min-width: 0; }
+.season-card small { color: var(--muted); }
+.history, .records, .my-career { display: flex; flex-direction: column; gap: 14px; }
+.scouting__cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.scouting__row { margin: 0 0 4px; font-size: 13px; display: flex; flex-direction: column; }
+.scouting__row b { color: var(--gold); font-size: 12px; }
+.dot-r { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--rc); }

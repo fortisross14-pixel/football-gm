@@ -74,7 +74,7 @@ export function makeFixtures(ids, seed) {
   return [...rounds, ...second].map((games) => games.map((g) => ({ ...g, score: null })));
 }
 
-const emptyRow = () => ({ p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0, form: [] });
+const emptyRow = () => ({ p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0, cs: 0, form: [] });
 
 export function createSeason({ year, world, seed }) {
   const divisions = {};
@@ -104,6 +104,7 @@ function record(div, homeId, awayId, score, goals) {
     row.p += 1;
     row.gf += gf;
     row.ga += ga;
+    if (ga === 0) row.cs = (row.cs || 0) + 1;
     const res = gf > ga ? 'W' : gf === ga ? 'D' : 'L';
     if (res === 'W') { row.w += 1; row.pts += 3; } else if (res === 'D') { row.d += 1; row.pts += 1; } else row.l += 1;
     row.form = [...row.form, res].slice(-5);
