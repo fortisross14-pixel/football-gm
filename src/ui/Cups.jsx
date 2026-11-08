@@ -3,6 +3,7 @@ import { clubById } from '../engine/season.js';
 import { CONTINENTS, CONTINENT_NAME, CUP_ROUND_NAME, groupStandings } from '../engine/competitions.js';
 import { Crest } from './Art.jsx';
 import { ClubLink } from './nav.jsx';
+import CompStats from './CompStats.jsx';
 import { Segmented } from './Home.jsx';
 
 export default function Cups({ state, countryCode }) {
@@ -18,14 +19,15 @@ export default function Cups({ state, countryCode }) {
         options={[{ id: 'domestic', label: 'Domestic cup' }, { id: 'continental', label: 'Continental' }, { id: 'cwc', label: 'Club World Cup' }]}
         onChange={setView}
       />
-      {view === 'domestic' && <DomesticCup state={state} cup={comps.cups[countryCode]} />}
+      {view === 'domestic' && <><DomesticCup state={state} cup={comps.cups[countryCode]} /><CompStats state={state} comp={`C:${countryCode}`} /></>}
       {view === 'continental' && (
         <>
           <Segmented small label="Continent" value={cont} options={CONTINENTS.map((k) => ({ id: k, label: CONTINENT_NAME[k].replace(' Cup', '') }))} onChange={setCont} />
           <Continental state={state} c={comps.continental[cont]} name={CONTINENT_NAME[cont]} />
+          <CompStats state={state} comp={`K:${cont}`} />
         </>
       )}
-      {view === 'cwc' && <ClubWorldCup state={state} cwc={comps.cwc} />}
+      {view === 'cwc' && <><ClubWorldCup state={state} cwc={comps.cwc} /><CompStats state={state} comp="W" /></>}
     </div>
   );
 }
