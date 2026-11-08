@@ -62,6 +62,48 @@ export function weighReputation(items, level, rep) {
 export const applyReputation = (rep, items) => clamp(rep + items.reduce((s, i) => s + i.value, 0), 0, 100);
 
 // ---------------------------------------------------------------------------
+// Confidence: the owners (results against the objective) and the fans (wins, goals,
+// trophies). Job security mixes both; below SACK_LINE at the end of a season you are out.
+
+export const SACK_LINE = 30;
+export const START_CONFIDENCE = { board: 60, fans: 55 };
+export const security = (c) => Math.round((c?.board ?? 60) * 0.65 + (c?.fans ?? 55) * 0.35);
+
+// One match. pos/target: current league position and the board's target (lower is better).
+export function matchConfidence(conf, { outcome, gf, ga, competition, pos, target, eliminated, trophy, level }) {
+  const next = { ...START_CONFIDENCE, ...(conf || {}) };
+  const big = competition !== 'league';
+  const w = { W: 1, D: 0, L: -1 }[outcome];
+  next.board += w > 0 ? 2 : w < 0 ? -3 : 0;
+  if (competition === 'league' && pos && target) next.board += pos <= target ? 0.5 : -1.5;
+  next.fans += w > 0 ? (big ? 4 : 3) : w < 0 ? (big ? -4 : -3) : 0;
+  if (gf >= 3) next.fans += 1;
+  if (ga >= 4) next.fans -= 2;
+  if (eliminated) { next.board -= level === 1 ? 3 : 1; next.fans -= 3; }
+  if (trophy) { next.board += 12; next.fans += 15; }
+  next.board = clamp(next.board, 0, 100);
+  next.fans = clamp(next.fans, 0, 100);
+  return next;
+}
+
+// End of season: the verdict on the objective weighs most.
+export function seasonConfidence(conf, verdict, promoted) {
+  const next = { ...START_CONFIDENCE, ...(conf || {}) };
+  next.board += { exceeded: 18, met: 8, missed: -22 }[verdict];
+  next.fans += { exceeded: 12, met: 4, missed: -10 }[verdict];
+  if (promoted) { next.board += 10; next.fans += 12; }
+  next.board = clamp(next.board, 0, 100);
+  next.fans = clamp(next.fans, 0, 100);
+  return next;
+}
+
+// A new season at the same club: some patience comes back.
+export const carryConfidence = (conf) => ({
+  board: Math.round(50 + ((conf?.board ?? 60) - 50) * 0.6),
+  fans: Math.round(50 + ((conf?.fans ?? 55) - 50) * 0.7),
+});
+
+// ---------------------------------------------------------------------------
 // Job offers
 
 // The reputation a club asks of its GM: by level, and by strength within the level.
@@ -75,7 +117,8 @@ export function requiredReputation(world, clubId) {
   return Math.round(lo + (hi - lo) * (below / Math.max(1, peers.length - 1)));
 }
 
-// Up to 3 offers. Sacked GMs always get at least 2, from clubs below their old one.
+// Up to 3 offers. A sacked GM gets exactly 3: from clubs below the old one, and
+// always from a level lower when sacked by a top-flight club.
 export function jobOffers(world, { reputation, currentClubId, sacked = false, good = true, seed }) {
   const rng = makeRng(seed);
   const current = requiredReputation(world, currentClubId);
@@ -83,8 +126,13 @@ export function jobOffers(world, { reputation, currentClubId, sacked = false, go
   let pool;
   let count;
   if (sacked) {
-    pool = all.filter((c) => c.req < current && c.req <= reputation);
-    count = 2 + (rng.next() < 0.5 ? 1 : 0);
+    const oldLevel = DIVISION_BY_ID[world.clubs[currentClubId].divisionId].level;
+    const levelOf = (id) => DIVISION_BY_ID[world.clubs[id].divisionId].level;
+    pool = oldLevel === 1
+      ? all.filter((c) => levelOf(c.id) === 2)
+      : all.filter((c) => c.req < current && c.req <= reputation && levelOf(c.id) >= oldLevel);
+    if (pool.length < 3) pool = all.filter((c) => levelOf(c.id) > oldLevel || (oldLevel === 3 && c.req < current));
+    count = 3;
   } else {
     const stretch = rng.next() < 0.15 ? 8 : 0;
     // Clubs a step up from where you are now (offers to go sideways or down are rarely worth showing).

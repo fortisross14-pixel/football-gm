@@ -4,12 +4,14 @@ import { DIVISIONS, DIVISION_BY_ID, CONTINENT_LABEL } from '../data/world/struct
 import { Crest } from './Art.jsx';
 import { Segmented } from './Home.jsx';
 import Cups from './Cups.jsx';
+import History from './History.jsx';
+import { ClubLink } from './nav.jsx';
 
 const COUNTRIES = [...new Map(DIVISIONS.map((d) => [d.code, d])).values()];
 
-export default function League({ state }) {
-  const [divId, setDivId] = useState(state.club.divisionId);
-  const [tab, setTab] = useState('table');
+export default function League({ state, nav }) {
+  const [divId, setDivId] = useState(nav?.divId || state.club.divisionId);
+  const [tab, setTab] = useState(nav?.tab || 'table');
   const [picking, setPicking] = useState(false);
   const div = DIVISION_BY_ID[divId];
   const tiers = DIVISIONS.filter((d) => d.code === div.code);
@@ -17,9 +19,10 @@ export default function League({ state }) {
   const md = Math.min(season.matchday + 1, MATCHDAYS);
 
   return (
-    <div className="screen">
+    <div className="screen screen--league">
+      <div className="league__controls">
       <button type="button" className="div-picker" onClick={() => setPicking(!picking)} aria-expanded={picking}>
-        <span className="div-picker__label">{CONTINENT_LABEL[div.continent]} · Level {div.level}</span>
+        <span className="div-picker__label">{div.country} · {CONTINENT_LABEL[div.continent]} · Level {div.level}</span>
         <b>{div.name}</b>
         <span className="div-picker__meta">Season {season.year} · {season.done ? 'Finished' : `Matchday ${md}/${MATCHDAYS}`} {picking ? '▴' : '▾'}</span>
       </button>
@@ -37,7 +40,7 @@ export default function League({ state }) {
           small
           label="Division"
           value={divId}
-          options={tiers.map((d) => ({ id: d.id, label: `Div ${d.tier}${d.id === state.club.divisionId ? ' ★' : ''}` }))}
+          options={tiers.map((d) => ({ id: d.id, label: `${d.name}${d.id === state.club.divisionId ? ' ★' : ''}` }))}
           onChange={setDivId}
         />
       )}
@@ -46,15 +49,18 @@ export default function League({ state }) {
         small
         label="View"
         value={tab}
-        options={[{ id: 'table', label: 'Table' }, { id: 'fixtures', label: 'Fixtures' }, { id: 'scorers', label: 'Scorers' }, { id: 'cups', label: 'Cups' }, { id: 'world', label: 'Past' }]}
+        options={[{ id: 'table', label: 'Table' }, { id: 'fixtures', label: 'Fixtures' }, { id: 'scorers', label: 'Scorers' }, { id: 'cups', label: 'Cups' }, { id: 'history', label: 'History' }]}
         onChange={setTab}
       />
+      </div>
 
+      <div className="league__body">
       {tab === 'table' && <Table state={state} divId={divId} />}
       {tab === 'fixtures' && <Fixtures key={divId} state={state} divId={divId} />}
       {tab === 'scorers' && <Scorers state={state} divId={divId} />}
       {tab === 'cups' && <Cups state={state} countryCode={div.code} />}
-      {tab === 'world' && <LastSeason state={state} />}
+      {tab === 'history' && <History state={state} divId={divId} />}
+      </div>
     </div>
   );
 }
@@ -102,7 +108,7 @@ export function Table({ state, divId = state.club.divisionId, compact }) {
           return (
             <tr key={r.id} className={`${r.id === state.club.id ? 'is-user' : ''}${pos === 1 ? ' is-top' : ''}${zone}`}>
               <td>{pos}</td>
-              <td className="table__club"><Crest colors={club.colors} short={club.short} size={18} /> <span>{compact ? club.short : club.name}</span></td>
+              <td className="table__club"><ClubLink id={r.id} className="club-inline"><Crest colors={club.colors} short={club.short} size={18} /> <span>{compact ? club.short : club.name}</span></ClubLink></td>
               <td>{r.p}</td>
               {!compact && <><td>{r.w}</td><td>{r.d}</td><td>{r.l}</td></>}
               <td>{r.gd > 0 ? `+${r.gd}` : r.gd}</td>
@@ -146,11 +152,11 @@ function Fixtures({ state, divId }) {
         const mine = g.home === state.club.id || g.away === state.club.id;
         return (
           <div key={i} className={`fixture${mine ? ' is-user' : ''}`}>
-            <span className="fixture__team">{h.name}</span>
+            <ClubLink id={g.home} className="fixture__team">{h.name}</ClubLink>
             <Crest colors={h.colors} short={h.short} size={20} />
             <b className="fixture__score">{g.score ? `${g.score[0]}–${g.score[1]}` : 'vs'}</b>
             <Crest colors={a.colors} short={a.short} size={20} />
-            <span className="fixture__team is-right">{a.name}</span>
+            <ClubLink id={g.away} className="fixture__team is-right">{a.name}</ClubLink>
           </div>
         );
       })}
@@ -169,63 +175,11 @@ function Scorers({ state, divId }) {
           <li key={s.id} className={s.clubId === state.club.id ? 'is-user' : ''}>
             <span className="scorer-list__pos">{i + 1}</span>
             <Crest colors={club.colors} short={club.short} size={20} />
-            <span className="scorer-list__name">{s.name}<em> · {club.short}</em></span>
+            <span className="scorer-list__name">{s.name}<em> · <ClubLink id={s.clubId}>{club.short}</ClubLink></em></span>
             <b>{s.goals}</b>
           </li>
         );
       })}
     </ol>
-  );
-}
-
-function LastSeason({ state }) {
-  const last = state.lastSeason;
-  if (!last) return <p className="hint">Champions, promotions and relegations from around the world appear here after your first season.</p>;
-  return (
-    <div className="last-season">
-      {last.userTrophies?.length > 0 && <p className="promo is-up">🏆 Your trophies: {last.userTrophies.join(', ')}</p>}
-      <h3 className="sub-title">Season {last.year} cups</h3>
-      <ul className="champions">
-        {['europe', 'americas', 'afap'].map((k) => last.continental?.[k] && (
-          <li key={k}><span>{{ europe: 'European Cup', americas: 'Americas Cup', afap: 'Africa–APAC Cup' }[k]}</span><b>{last.continental[k]}</b></li>
-        ))}
-        {last.cwc && <li><span>Club World Cup</span><b>{last.cwc}</b></li>}
-        {Object.entries(last.cups || {}).filter(([, w]) => w).map(([code, w]) => (
-          <li key={code}><span>{DIVISIONS.find((d) => d.code === code)?.country} Cup</span><b>{w}</b></li>
-        ))}
-      </ul>
-      <h3 className="sub-title">Season {last.year} champions</h3>
-      <ul className="champions">
-        {DIVISIONS.filter((d) => last.champions[d.id]).map((d) => (
-          <li key={d.id}><span>{d.name}</span><b>{last.champions[d.id]}</b></li>
-        ))}
-      </ul>
-      {last.news?.length > 0 && (
-        <>
-          <h3 className="sub-title">Big moves</h3>
-          <ul className="news">
-            {last.news.slice(0, 12).map((n) => (
-              <li key={`${n.clubId}-${n.cardId}`} className={`r-${n.rarity}`}>
-                <b>{n.name}</b>
-                <span>{n.type === 'academy' ? 'comes through the academy at' : 'signs for'} {n.club}</span>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-      <h3 className="sub-title">Promoted and relegated</h3>
-      <ul className="moves">
-        {last.moves.filter((m) => m.type === 'promoted').map((m) => {
-          const down = last.moves.find((x) => x.type === 'relegated' && x.from === m.to);
-          return (
-            <li key={m.clubId}>
-              <span className="is-up">▲ {m.name}</span>
-              <span className="is-down">▼ {down?.name}</span>
-              <small>{m.toName}</small>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
   );
 }

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { RARITIES } from '../engine/cards.js';
-import { carryOptions } from '../state/club.js';
+import { carryOptions, jobSecurity, SACK_LINE } from '../state/club.js';
 import { standings } from '../engine/season.js';
 import { Crest } from './Art.jsx';
+import { ClubLink } from './nav.jsx';
 import Sheet from './Sheet.jsx';
 
 const VERDICT = { met: 'Objective met', exceeded: 'Objective exceeded', missed: 'Objective missed' };
@@ -28,15 +29,17 @@ export default function Career({ state, onAccept, onBack }) {
       {gm.sacked && (
         <section className="panel sacked">
           <b>You've been sacked.</b>
-          <p className="hint">Two missed objectives in a row. Pick one of the offers below to carry on. You can still take 2 cards with you.</p>
+          <p className="hint">{gm.missedInRow >= 2 ? 'Two missed objectives in a row.' : `Job security ended the season at ${gm.securityEnd}, under ${SACK_LINE}.`} Three clubs still want you{state.club.level === 1 ? ', one level lower' : ''}. Pick one to carry on; you can take 2 cards with you.</p>
         </section>
       )}
+
+      <Confidence state={state} />
 
       {state.phase === 'season' && gm.objective && (
         <section className="panel">
           <h2 className="section-title">Board objective</h2>
           <p className="objective"><b>{gm.objective.text}</b><span className={pos <= gm.objective.target ? 'is-up' : 'is-down'}>Currently {pos}{['th', 'st', 'nd', 'rd'][pos] || 'th'}</span></p>
-          <p className="hint">Miss it two seasons in a row and the board will sack you. Beat it, win trophies and get promoted to raise your reputation.</p>
+          <p className="hint">Miss it two seasons in a row, or end a season with job security under {SACK_LINE}, and you are sacked. Beat it, win trophies and get promoted to raise your reputation.</p>
         </section>
       )}
 
@@ -62,7 +65,7 @@ export default function Career({ state, onAccept, onBack }) {
                   <div key={o.clubId} className="offer">
                     <Crest colors={club.colors} short={club.short} size={40} />
                     <div className="offer__body">
-                      <b>{o.name}</b>
+                      <ClubLink id={o.clubId}><b>{o.name}</b></ClubLink>
                       <span>{o.division} · strength {Math.round(club.strength)} · {club.keyPlayers.length} named players</span>
                     </div>
                     <button type="button" className="btn btn--small btn--primary" disabled={!!state.pendingOpen} onClick={() => setPicking(o)}>Accept</button>
@@ -118,4 +121,28 @@ function repLabel(r) {
   if (r >= 30) return 'Established';
   if (r >= 15) return 'Promising';
   return 'Rookie';
+}
+
+// Owners judge results against the objective; fans want wins, goals and trophies.
+export function Confidence({ state, compact }) {
+  const c = state.gm?.confidence;
+  if (!c) return null;
+  const sec = jobSecurity(state);
+  const tone = (v) => (v < SACK_LINE ? 'is-bad' : v < 50 ? 'is-warn' : 'is-good');
+  const mood = sec < SACK_LINE ? 'Your job is in danger' : sec < 45 ? 'The owners are getting nervous' : sec < 70 ? 'Stable' : 'The owners love you';
+  return (
+    <section className={`confidence${compact ? ' confidence--compact' : ''}`}>
+      {!compact && <h2 className="section-title">Owners & fans</h2>}
+      <div className="confidence__bars">
+        {[['Owners', c.board], ['Fans', c.fans], ['Job security', sec]].map(([label, v]) => (
+          <div key={label} className={`meter ${tone(v)}`}>
+            <span>{label}</span>
+            <div className="bar"><i style={{ width: `${v}%` }} /><em style={{ left: `${SACK_LINE}%` }} /></div>
+            <b>{Math.round(v)}</b>
+          </div>
+        ))}
+      </div>
+      {!compact && <p className="hint">{mood}. Security mixes owners (65%) and fans (35%). Wins, goals and cup runs lift them; defeats and missing the target drop them.</p>}
+    </section>
+  );
 }

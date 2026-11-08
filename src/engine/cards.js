@@ -12,7 +12,7 @@ export const RARITIES = {
 export const POSITIONS = ['GK', 'DEF', 'MID', 'FWD'];
 
 export const TRAITS = {
-  clutch: { name: 'Clutch', text: '+15% ATT after 75\'' },
+  clutch: { name: 'Ice Cold', text: '+15% ATT after 75\', calmer penalties' },
   engine: { name: 'Engine', text: 'Stamina drains 50% slower' },
   wall: { name: 'Wall', text: '+10% team DEF while on the pitch' },
   poacher: { name: 'Poacher', text: '+15% finishing' },

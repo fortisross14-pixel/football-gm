@@ -13,6 +13,24 @@ const single = (code, country, level, continent) => [{
   id: `${code}-1`, country, code: code.toUpperCase(), tier: 1, level, continent,
 }];
 
+// Every league has a name. The "Other" regions get invented ones.
+const LEAGUE_NAMES = {
+  'esp-1': 'LaLiga', 'esp-2': 'Segunda División', 'esp-3': 'Primera Federación',
+  'eng-1': 'Premier League', 'eng-2': 'Championship', 'eng-3': 'League One',
+  'ita-1': 'Serie A', 'ita-2': 'Serie B', 'ita-3': 'Serie C',
+  'ger-1': 'Bundesliga', 'ger-2': '2. Bundesliga', 'ger-3': '3. Liga',
+  'fra-1': 'Ligue 1', 'fra-2': 'Ligue 2',
+  'por-1': 'Primeira Liga', 'por-2': 'Liga Portugal 2',
+  'ned-1': 'Eredivisie', 'ned-2': 'Eerste Divisie',
+  'arg-1': 'Liga Profesional', 'arg-2': 'Primera Nacional',
+  'bra-1': 'Brasileirão', 'bra-2': 'Série B',
+  'tur-1': 'Süper Lig', 'sco-1': 'Scottish Premiership', 'aut-1': 'Austrian Bundesliga', 'gre-1': 'Super League Greece',
+  'eur-1': 'European Frontier League',
+  'mex-1': 'Liga MX', 'usa-1': 'MLS', 'col-1': 'Liga Colombiana', 'sam-1': 'Copa Andina League',
+  'jpn-1': 'J1 League', 'asi-1': 'Asian Super League', 'apc-1': 'Pacific Rim League', 'sau-1': 'Saudi Pro League',
+  'nga-1': 'Nigeria Premier League', 'egy-1': 'Egyptian Premier League', 'afr-1': 'Pan-African League',
+};
+
 export const DIVISIONS = [
   ...big4('esp', 'Spain'),
   ...big4('eng', 'England'),
@@ -39,7 +57,11 @@ export const DIVISIONS = [
   ...single('nga', 'Nigeria', 3, 'afap'),
   ...single('egy', 'Egypt', 3, 'afap'),
   ...single('afr', 'Africa Other', 3, 'afap'),
-].map((d) => ({ ...d, name: d.tier === 1 && !['ESP', 'ENG', 'ITA', 'GER', 'FRA', 'POR', 'NED', 'ARG', 'BRA'].includes(d.code) ? d.country : `${d.country} · Division ${d.tier}` }));
+].map((d) => ({
+  ...d,
+  label: d.tier === 1 && !['ESP', 'ENG', 'ITA', 'GER', 'FRA', 'POR', 'NED', 'ARG', 'BRA'].includes(d.code) ? d.country : `${d.country} · Division ${d.tier}`,
+  name: LEAGUE_NAMES[d.id] || d.country,
+}));
 
 export const DIVISION_BY_ID = Object.fromEntries(DIVISIONS.map((d) => [d.id, d]));
 

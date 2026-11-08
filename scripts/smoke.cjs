@@ -1,0 +1,54 @@
+// Clicks through every tab and sub-tab with a saved game and reports page errors.
+// Usage: (serve the build on :4173) node scripts/smoke.cjs <save.json> [outDir] [width]
+const { chromium } = require('playwright');
+const fs = require('fs');
+
+(async () => {
+  const save = fs.readFileSync(process.argv[2], 'utf8');
+  const out = process.argv[3] || 'smoke';
+  const width = Number(process.argv[4]) || 390;
+  fs.mkdirSync(out, { recursive: true });
+  const browser = await chromium.launch();
+  const ctx = await browser.newContext({ viewport: { width, height: width > 600 ? 900 : 844 }, deviceScaleFactor: 1 });
+  await ctx.addInitScript((s) => {
+    if (sessionStorage.getItem('seeded')) return;
+    sessionStorage.setItem('seeded', '1');
+    const st = JSON.parse(s);
+    st.pendingOpen = null;
+    localStorage.setItem('football-cards-v3-slot-1', JSON.stringify(st));
+    localStorage.setItem('football-cards-v3-slots', JSON.stringify({ 1: { gmName: st.gmName, club: st.club.name, short: st.club.short, colors: st.club.colors, division: st.club.division, season: st.season.year, reputation: st.gm.reputation, trophies: 0, updated: Date.now() } }));
+    localStorage.setItem('football-cards-settings', JSON.stringify({ speed: 'instant', autoplay: false, reduceMotion: true, tips: false }));
+  }, save);
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+  const shot = (name) => page.screenshot({ path: `${out}/${name}.png`, fullPage: true });
+  const step = async (name, fn) => { try { await fn(); await page.waitForTimeout(250); await shot(name); } catch (e) { errors.push(`${name}: ${e.message.split('\n')[0]}`); } };
+
+  await page.goto('http://localhost:4173/');
+  await page.waitForTimeout(500);
+  await page.click('.slot__main');
+  await page.waitForTimeout(400);
+  await step('home', async () => {});
+  await step('squad', () => page.click('.tabbar button:nth-child(2)'));
+  await step('cards-owned', () => page.click('.tabbar button:nth-child(3)'));
+  await step('cards-shop', () => page.click('.hub__switch .segmented__opts button:nth-child(2)'));
+  await step('cards-shop-boosts', () => page.click('.screen .segmented__opts button:nth-child(2)'));
+  await step('league', () => page.click('.tabbar button:nth-child(4)'));
+  await step('league-history', () => page.click('text=History'));
+  await step('league-records', () => page.click('text=Records'));
+  await step('league-career', () => page.click('text=My career'));
+  await step('team', () => page.click('.tabbar button:nth-child(4)').then(() => page.click('.table .xlink >> nth=0')));
+  await step('world', () => page.click('.tabbar button:nth-child(5)'));
+  await step('world-clubs', () => page.click('.screen .segmented__opts button:nth-child(2)'));
+  await step('world-records', () => page.click('.screen .segmented__opts button:nth-child(3)'));
+  await step('world-hof', () => page.click('.screen .segmented__opts button:nth-child(4)'));
+  await step('career', () => page.click('.topbar__menu').then(() => page.click('text=Career')));
+  await step('prematch', () => page.click('.tabbar button:nth-child(1)').then(() => page.click('.next-match .btn--primary')));
+  await step('match', () => page.click('text=Kick off'));
+  await step('match-played', async () => { for (let i = 0; i < 4; i += 1) { await page.click('.dock .btn--primary.btn--grow'); await page.waitForTimeout(150); } });
+  await step('match-skill', () => page.click('.skill >> nth=0'));
+  console.log(errors.length ? `ERRORS:\n${errors.join('\n')}` : 'no errors');
+  await browser.close();
+})();

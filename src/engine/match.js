@@ -8,6 +8,7 @@ import { FORMATIONS, slotFit, overall } from './cards.js';
 import { makeRng } from './rng.js';
 import { COACH_PASSIVES } from '../data/coachPassives.js';
 import { BOOSTS } from '../data/boosts.js';
+import { SKILLS, MAX_SKILLS, skillOf } from '../data/skills.js';
 import { pickLine, short } from './commentary.js';
 
 export const SEGMENTS = 6;
@@ -24,6 +25,40 @@ const ATTACK_WEIGHT = { GK: 0, DEF: 0.2, MID: 0.6, FWD: 1 };
 const DEFENSE_WEIGHT = { GK: 0, DEF: 1, MID: 0.5, FWD: 0.15 };
 const CONTROL_WEIGHT = { GK: 0, DEF: 0.5, MID: 1, FWD: 0.5 };
 const SHOOTER_WEIGHT = { GK: 0, DEF: 0.4, MID: 1.4, FWD: 3 };
+
+// Team instructions, set before the match (Squad screen). Each has a trade-off.
+export const DEFAULT_TACTICS = { press: 'mid', passing: 'mixed', line: 'normal' };
+export const TACTICS = {
+  press: {
+    label: 'Pressing',
+    options: {
+      low: { name: 'Low block', text: 'Saves legs (−15% stamina drain). Rivals keep the ball more (+5% their control).' },
+      mid: { name: 'Mid', text: 'Balanced.' },
+      high: { name: 'High press', text: 'Rivals lose control (−10%) and you win the ball high (+chance quality), but legs burn: +35% stamina drain. Pairs well with fitness coaches and stamina skills.' },
+    },
+  },
+  passing: {
+    label: 'Passing',
+    options: {
+      short: { name: 'Short', text: '+8% midfield control and better chances, a few fewer shots.' },
+      mixed: { name: 'Mixed', text: 'Balanced.' },
+      direct: { name: 'Direct', text: '+10% shots, worse quality and −8% control. Strong forwards (PHY 78+) turn long balls into good chances.' },
+    },
+  },
+  line: {
+    label: 'Defensive line',
+    options: {
+      deep: { name: 'Deep', text: 'Hard to break down (−rival chance quality), but you sit back: fewer shots of your own, more for them.' },
+      normal: { name: 'Normal', text: 'Balanced.' },
+      high: { name: 'High', text: 'Squeezes the pitch: rivals shoot less, but balls in behind are dangerous (+their quality), worse with slow defenders (PHY under 70). +5% drain.' },
+    },
+  },
+};
+
+const avgPhy = (team, pos) => {
+  const list = onPitch(team).filter(({ slot }) => slot.pos === pos).map(({ p }) => p.card.phy);
+  return list.length ? list.reduce((a, b) => a + b, 0) / list.length : 70;
+};
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const clone = (v) => structuredClone(v);
@@ -96,10 +131,13 @@ function buildTeam(input, isHome, context) {
     bench: [...input.bench],
     players,
     mentality: 'balanced',
+    tactics: { ...DEFAULT_TACTICS, ...(input.tactics || {}) },
     subsLeft: MAX_SUBS,
     boostSlots: BASE_BOOST_SLOTS + Math.floor(tactician),
     loadout: [...(input.loadout || [])],
     boostsUsed: [],
+    skillsLeft: MAX_SKILLS,
+    skillsUsed: [], // { cardId, skillId, segment }
     effects: [],
     superSubPending: false,
   };
@@ -206,6 +244,7 @@ export function playBoost(state, side, boostId, targetId = null) {
     case 'setPiece': add({ type: 'setPiece' }); break;
     case 'superSub': team.superSubPending = true; break;
     case 'gameManagement': add({ type: 'gameManagement' }); break;
+    case 'twelfthMan': add({ type: 'all', value: 0.15, to: seg + 1 }); break;
     default: break;
   }
   const target = targetId ? ` (${team.players[targetId].card.name})` : '';
@@ -213,7 +252,89 @@ export function playBoost(state, side, boostId, targetId = null) {
   return next;
 }
 
-// Simple AI: mentality by score/time, substitutes tired players.
+// ---------------------------------------------------------------------------
+// Skills
+
+// Every skill this side could use this match: players on the pitch plus both coaches.
+export function teamSkills(team) {
+  const out = [];
+  for (const { slot, p } of onPitch(team)) {
+    const skill = skillOf(p.card);
+    if (skill) out.push({ cardId: p.card.id, name: p.card.name, source: slot.pos, skill });
+  }
+  for (const [role, coach] of [['Coach', team.coach], ['Assistant', team.assistant]]) {
+    const skill = skillOf(coach);
+    if (skill) out.push({ cardId: coach.id, name: coach.name, source: role, skill });
+  }
+  return out;
+}
+
+export function canUseSkill(state, side, cardId) {
+  const team = state.teams[side];
+  if (state.phase !== 'live' || state.segment >= SEGMENTS) return { ok: false, reason: 'The match is over.' };
+  const entry = teamSkills(team).find((e) => e.cardId === cardId);
+  if (!entry) return { ok: false, reason: 'Not available.' };
+  if (team.skillsUsed.some((u) => u.cardId === cardId)) return { ok: false, reason: 'Already used this match.' };
+  if (team.skillsLeft <= 0) return { ok: false, reason: `Only ${MAX_SKILLS} skills per match.` };
+  const [own, opp] = side === 0 ? state.score : [state.score[1], state.score[0]];
+  const seg = state.segment;
+  const when = entry.skill.when;
+  if (when === 'late' && seg < SEGMENTS - 1) return { ok: false, reason: 'From 75\' only.' };
+  if (when === 'halftime' && seg !== 3) return { ok: false, reason: 'At half time only.' };
+  if (when === 'leading' && own <= opp) return { ok: false, reason: 'Only when leading.' };
+  if (when === 'notWinning' && own > opp) return { ok: false, reason: 'Only when not winning.' };
+  return { ok: true, entry };
+}
+
+export function activateSkill(state, side, cardId) {
+  const check = canUseSkill(state, side, cardId);
+  if (!check.ok) return state;
+  const next = clone(state);
+  const team = next.teams[side];
+  const seg = next.segment;
+  const { skill, name } = check.entry;
+  team.skillsLeft -= 1;
+  team.skillsUsed.push({ cardId, skillId: skill.id, segment: seg });
+  for (const e of SKILLS[skill.id].effects(skill.tier, { cardId })) {
+    if (e.type === 'stamina') {
+      for (const { p } of onPitch(team)) p.stamina = Math.min(100, p.stamina + e.value);
+      continue;
+    }
+    const { len, ...rest } = e;
+    team.effects.push({ source: `skill:${skill.id}`, from: seg, to: rest.to ?? seg + (len || 1) - 1, ...rest });
+  }
+  next.events.push({ minute: seg * 15, side, type: 'skill', skillId: skill.id, cardId, text: `${skill.icon} ${team.short}: ${name} uses ${skill.name}!` });
+  return next;
+}
+
+// AI picks its moments: protect leads late, chase games late, team talks at half time.
+function aiSkills(state, side) {
+  let next = state;
+  const seg = state.segment;
+  const [own, opp] = side === 0 ? state.score : [state.score[1], state.score[0]];
+  const ahead = own > opp;
+  const behind = own < opp;
+  const wants = (id) => {
+    switch (id) {
+      case 'keepResult': case 'lastLine': case 'stopper': case 'wallOfHands': return ahead && seg >= 4;
+      case 'allIn': return behind && seg >= 4;
+      case 'teamTalk': return seg === 3 && !ahead;
+      case 'clutch': return seg === 5 && own - opp < 2;
+      case 'clearChance': case 'killerPass': case 'hunter': return (seg >= 4 && !ahead) || (seg === 2 && own === opp);
+      case 'maestro': case 'pressTrap': return seg === 3 || (seg >= 4 && behind);
+      case 'freshLegs': return seg === 4;
+      default: return false;
+    }
+  };
+  for (const entry of teamSkills(next.teams[side])) {
+    if (next.teams[side].skillsLeft <= 0) break;
+    if (!wants(entry.skill.id)) continue;
+    if (canUseSkill(next, side, entry.cardId).ok) next = activateSkill(next, side, entry.cardId);
+  }
+  return next;
+}
+
+// Simple AI: mentality by score/time, substitutes tired players, uses skills.
 export function aiDecide(state, side) {
   let next = state;
   const team = next.teams[side];
@@ -223,6 +344,7 @@ export function aiDecide(state, side) {
   if (seg >= 3 && own < opp) mentality = 'attacking';
   else if (seg >= 4 && own > opp) mentality = 'defensive';
   if (team.mentality !== mentality) next = setMentality(next, side, mentality);
+  next = aiSkills(next, side);
 
   if (seg >= 3) {
     for (let guard = 0; guard < MAX_SUBS; guard += 1) {
@@ -265,7 +387,7 @@ function modifiers(state, side, seg) {
   all += field.filter(({ p }) => p.card.trait === 'leader').length * 0.03;
   const att = sum('att') + teamPassive(team, 'attackMinded');
   const def = sum('def') + teamPassive(team, 'ironDiscipline') + field.filter(({ p }) => p.card.trait === 'wall').length * 0.1;
-  return { all, att, def, active };
+  return { all, att, def, active, sum };
 }
 
 function effective(p, slotPos, mods, seg, competition) {
@@ -275,6 +397,7 @@ function effective(p, slotPos, mods, seg, competition) {
   if (p.superSub) personal += 0.15;
   if (p.card.trait === 'bigGame' && (competition === 'continental' || competition === 'cwc')) personal += 0.1;
   const clutch = p.card.trait === 'clutch' && seg === SEGMENTS - 1 ? 0.15 : 0;
+  for (const e of mods.active) if (e.type === 'playerAtt' && e.playerId === p.card.id) personal += e.value;
   const base = fit * fatigue;
   return {
     att: p.card.att * base * (1 + mods.all + mods.att + personal + clutch),
@@ -313,8 +436,17 @@ export function playSegment(state) {
   const seg = next.segment;
   announceEvents(next, seg);
   const powers = [teamPower(next, 0, seg), teamPower(next, 1, seg)];
-  const cA = powers[0].control ** CONTROL_EXPONENT;
-  const cB = powers[1].control ** CONTROL_EXPONENT;
+  const tac = (side) => next.teams[side].tactics || DEFAULT_TACTICS;
+  const ctrl = (side) => {
+    let v = 1 + powers[side].mods.sum('control') - powers[1 - side].mods.sum('oppControl');
+    if (tac(side).passing === 'short') v += 0.08;
+    if (tac(side).passing === 'direct') v -= 0.08;
+    if (tac(1 - side).press === 'high') v -= tac(side).passing === 'short' ? 0.15 : tac(side).passing === 'direct' ? 0.04 : 0.1;
+    if (tac(1 - side).press === 'low') v += 0.05;
+    return Math.max(0.3, v);
+  };
+  const cA = (powers[0].control * ctrl(0)) ** CONTROL_EXPONENT;
+  const cB = (powers[1].control * ctrl(1)) ** CONTROL_EXPONENT;
   const share = [cA / (cA + cB), cB / (cA + cB)];
   const scoreAtStart = [...next.score];
   const segEvents = [];
@@ -328,7 +460,13 @@ export function playSegment(state) {
     let lambda = 2 * BASE_CHANCES * share[side];
     lambda *= { attacking: 1.25, balanced: 1, defensive: 0.7 }[team.mentality];
     lambda *= { attacking: 1.15, balanced: 1, defensive: 0.95 }[oppTeam.mentality];
+    const mine = tac(side);
+    const theirs = tac(opp);
+    lambda *= { short: 0.95, mixed: 1, direct: 1.1 }[mine.passing];
+    lambda *= { deep: 0.96, normal: 1, high: 1 }[mine.line];
+    lambda *= { deep: 1.05, normal: 1, high: 0.9 }[theirs.line];
     if (them.mods.active.some((e) => e.type === 'gameManagement')) lambda *= 0.6;
+    lambda *= Math.max(0.2, 1 - them.mods.sum('oppChances'));
 
     // Strength gaps matter, but football stays unpredictable: differences are softened.
     let quality = 0.5 + (me.attack / (me.attack + them.defense) - 0.5) * 0.6;
@@ -339,12 +477,24 @@ export function playSegment(state) {
     if (trailing && seg >= 3) lambda *= 1.15;
     if (team.mentality === 'attacking') quality += 0.02;
     if (oppTeam.mentality === 'defensive') quality -= 0.04;
+    // Counters: high press beats short passing, direct beats the press and a high line,
+    // short passing picks a deep block apart.
+    if (mine.press === 'high' && theirs.passing !== 'direct') quality += theirs.passing === 'short' ? 0.03 : 0.02;
+    if (mine.passing === 'short') quality += (theirs.line === 'deep' || theirs.press === 'low') ? 0.04 : 0.02;
+    if (mine.passing === 'direct') {
+      quality += avgPhy(team, 'FWD') >= 78 ? 0.02 : -0.03;
+      if (theirs.line === 'high') quality += 0.05;
+      if (theirs.line === 'deep') quality -= 0.03;
+    }
+    if (theirs.line === 'deep') quality -= 0.06;
+    if (theirs.line === 'high') quality += avgPhy(oppTeam, 'DEF') < 70 ? 0.06 : 0.03;
 
     const chances = [];
     const count = rng.poisson(lambda);
     for (let i = 0; i < count; i += 1) chances.push({ kind: 'open', quality });
     for (const e of me.mods.active) {
-      if (e.type === 'goldenChance') chances.push({ kind: 'golden', quality: 0.85, playerId: e.playerId });
+      if (e.type === 'goldenChance') chances.push({ kind: 'golden', quality: e.quality ?? 0.85, playerId: e.playerId });
+      if (e.type === 'extraChance') chances.push({ kind: 'open', quality: e.quality });
       if (e.type === 'setPiece') chances.push({ kind: 'setPiece', quality: 0.6 });
     }
 
@@ -360,6 +510,8 @@ export function playSegment(state) {
       let p = BASE_CONVERSION * (0.45 + 1.1 * chance.quality) * finish;
       if (shooter.p.card.trait === 'poacher') p *= 1.15;
       p *= 1 + team.mods.finishing;
+      for (const e of me.mods.active) if (e.type === 'playerFinish' && e.playerId === shooter.p.card.id) p *= 1 + e.value;
+      p *= Math.max(0.3, 1 - them.mods.sum('oppConversion'));
       p = clamp(p, 0.04, 0.8);
       shooter.p.shots += 1;
       const name = shooter.p.card.name;
@@ -420,7 +572,9 @@ export function playSegment(state) {
     const guru = teamPassive(team, 'fitnessGuru');
     const mentality = { attacking: 1.15, balanced: 1, defensive: 0.9 }[team.mentality];
     for (const { slot, p } of onPitch(team)) {
-      let drain = 9 * (1.4 - p.card.phy / 100) * mentality * (1 - guru) * (1 - team.mods.drain);
+      const t = team.tactics || DEFAULT_TACTICS;
+      const style = { low: 0.85, mid: 1, high: 1.35 }[t.press] * (t.line === 'high' ? 1.05 : 1);
+      let drain = 9 * (1.4 - p.card.phy / 100) * mentality * style * (1 - guru) * (1 - team.mods.drain);
       if (p.card.trait === 'engine') drain *= 0.5;
       if (slot.pos === 'GK') drain *= 0.4;
       p.stamina = clamp(p.stamina - drain, 0, 100);

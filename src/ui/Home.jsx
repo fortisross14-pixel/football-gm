@@ -1,16 +1,19 @@
 import React from 'react';
-import { Crest } from './Art.jsx';
+import { Crest, isLight } from './Art.jsx';
 import { Table } from './League.jsx';
 import { teamOverall, RARITIES } from '../engine/cards.js';
 import { clubById, standings } from '../engine/season.js';
 import { OFFSEASON_CARDS, cardText } from '../data/offseason.js';
 import { effectiveCohesion, seasonSummary, FACILITY_LABEL, academyInfo, nextUserGame } from '../state/club.js';
 import { PACKS } from '../engine/packs.js';
+import { ClubLink, LeagueLink } from './nav.jsx';
+import { Confidence } from './Career.jsx';
 
 export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo }) {
   const { season, phase } = state;
   return (
-    <div className="screen">
+    <div className="screen screen--home">
+      <div className="home__main">
       {phase === 'season' && <NextMatch state={state} onPlay={onPlay} />}
       {phase === 'seasonEnd' && <SeasonEnd state={state} onClose={onCloseSeason} />}
       {phase === 'offseason' && <Offseason state={state} goTo={goTo} onStart={onStartSeason} />}
@@ -20,11 +23,13 @@ export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo
         <button type="button" className="btn btn--ghost" onClick={() => goTo('club')}>Club ›</button>
         <button type="button" className="btn btn--ghost" onClick={() => goTo('career')}>Career ›</button>
       </div>
+      </div>
 
+      <div className="home__side">
       <section>
         <div className="section-row">
-          <h2 className="section-title">Table</h2>
-          <button type="button" className="link-btn" onClick={() => goTo('league')}>Full table ›</button>
+          <h2 className="section-title"><LeagueLink divId={state.club.divisionId}>{state.club.division}</LeagueLink></h2>
+          <LeagueLink divId={state.club.divisionId} className="link-btn">Full table ›</LeagueLink>
         </div>
         <Table state={state} compact />
       </section>
@@ -36,7 +41,7 @@ export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo
             {state.history.slice(0, 5).map((h, i) => (
               <li key={i}>
                 <span className={`res res--${h.outcome}`}>{h.outcome}</span>
-                <span className="results__opp">{h.venue === 'H' ? 'vs' : '@'} {h.opponent}</span>
+                <span className="results__opp">{h.venue === 'H' ? 'vs' : '@'} <ClubLink id={h.opponentId}>{h.opponent}</ClubLink></span>
                 <span className="results__comp">{h.competition}</span>
                 <b>{h.score[0]}–{h.score[1]}</b>
               </li>
@@ -44,7 +49,7 @@ export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo
           </ul>
         </section>
       )}
-
+      </div>
     </div>
   );
 }
@@ -56,8 +61,8 @@ function NextMatch({ state, onPlay }) {
   const opp = clubById(state.world, game.opponentId);
   const starters = state.lineup.map((id) => state.squad.find((c) => c.id === id));
   const pos = standings(season, state.club.divisionId).findIndex((r) => r.id === state.club.id) + 1;
-  const us = { name: state.club.name, short: state.club.short, colors: state.club.colors, ovr: teamOverall(starters) };
-  const them = { name: opp.name, short: opp.short, colors: opp.colors, ovr: Math.round(opp.strength) };
+  const us = { id: state.club.id, name: state.club.name, short: state.club.short, colors: state.club.colors, ovr: teamOverall(starters) };
+  const them = { id: opp.id, name: opp.name, short: opp.short, colors: opp.colors, ovr: Math.round(opp.strength) };
   const userFirst = game.homeId === state.club.id;
   const [left, right] = userFirst ? [us, them] : [them, us];
   const venue = game.neutral ? 'Neutral' : game.isHome ? 'Home' : 'Away';
@@ -65,7 +70,7 @@ function NextMatch({ state, onPlay }) {
   return (
     <section className={`next-match${cupGame ? ` next-match--${game.competition}` : ''}`}>
       <div className="next-match__meta">
-        <span>Season {season.year} · {game.label}</span>
+        <span>Season {season.year} · {cupGame ? game.label : <><LeagueLink divId={state.club.divisionId}>{state.club.division}</LeagueLink> · {game.label}</>}</span>
         {season.matchday > 0 && !cupGame && <span>You're {ordinal(pos)}</span>}
       </div>
       {state.gm?.objective && (
@@ -74,6 +79,7 @@ function NextMatch({ state, onPlay }) {
           <span>Rep {state.gm.reputation}</span>
         </div>
       )}
+      <Confidence state={state} compact />
       <div className="matchup matchup--hero">
         <Side team={left} />
         <div className="matchup__vs"><span>VS</span><small>{venue}{game.knockout ? ' · KO' : ''}</small></div>
@@ -88,9 +94,9 @@ function NextMatch({ state, onPlay }) {
 
 function Side({ team }) {
   return (
-    <div className="matchup__team">
+    <div className="matchup__team" style={clubVars(team.colors)}>
       <Crest colors={team.colors} short={team.short} size={46} />
-      <b>{team.name}</b>
+      <ClubLink id={team.id}><b>{team.name}</b></ClubLink>
       <span>{team.ovr} OVR</span>
     </div>
   );
@@ -189,6 +195,9 @@ function Confetti({ colors }) {
     </div>
   );
 }
+
+// Club colours for the broadcast fixture blocks (text flips to ink on light kits).
+export const clubVars = (colors) => ({ '--club': colors.primary, '--club-ink': isLight(colors.primary) ? '#0B0D12' : '#fff' });
 
 const ordinal = (n) => `${n}${['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 < 14) ? 0 : n % 10] || 'th'}`;
 

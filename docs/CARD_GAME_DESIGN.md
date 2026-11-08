@@ -1,7 +1,16 @@
-# Football Cards — Game Design Document (v1.5)
+# Football Cards — Game Design Document (v1.6)
 
 > Replaces the old management-sim design (`GAME_DESIGN_DOCUMENT.md`), which is kept for reference only.
 > Language: English. Platform: web (React + Vite), mobile-first.
+
+**Changes in v1.6**
+- **Skills** (§5.4): Rare, Epic and Legend players and coaches carry an intrinsic skill. Up to 2 activations per match, from any mix of players and coaches. Timing is the tactic.
+- **Tactics** (§5.5): pressing, passing and defensive line, with counters and synergies with cards.
+- **Boosts** have rarities and come in sealed packs; you get one free random boost after every match in which you play at least one (§4.4).
+- **Owners and fans** confidence (§7.5): end a season with job security under 30 and you're sacked; you then get exactly 3 offers, a level lower if sacked by a top-flight club.
+- **History book** (§8): every league and cup, every season: champion, runner-up, relegated, top scorer, MVP, Golden Glove, cup finals; all-time records; your career season by season; AI managers with rankings.
+- Every league has a name, and club and league names link to club pages and tables.
+- Tabs: Club, Squad, Cards (Owned / Shop), League, World. Visual style: Live Broadcast.
 
 **Changes in v1.5**
 - Club squads come from history pools (any era). Each club has a few named cards and generic Commons for the rest.
@@ -219,16 +228,19 @@ Older stars tend toward the low end of the match range, young players toward the
 
 You bring up to **3 boosts** per match (4 with the *Tactician* coach). You can play them at any decision point (see §5).
 
-| Boost | Effect | Price |
+Boosts are never bought one by one. They come in sealed packs (**Boost Pack** 3 random for 120; **Premium Boosts** 4 with at least one Rare for 380), and after every match in which you played **at least one** boost you get **one** free random boost card (one, however many you played). Draw weights: Common 50, Uncommon 30, Rare 14, Epic 5, Legend 1.
+
+| Boost | Rarity | Effect |
 |---|---|---|
-| Golden Chance | Pick a player: a big chance for them in the next segment, converted with their ATT | 80 |
-| Second Wind | Restore 40% stamina to the whole team | 60 |
-| Iron Wall | +25% team DEF for one segment | 50 |
-| All-Out Attack | +30% ATT, −20% DEF for one segment | 50 |
-| Captain's Speech | If losing: +10% all stats for the rest of the match | 100 |
-| Set-Piece Special | One free set-piece chance | 40 |
-| Super Sub | The next substitute comes on with +15% stats | 70 |
-| Game Management | If leading in the last segment: opponent chances −40% | 60 |
+| Iron Wall | Common | +25% team DEF for one segment |
+| All-Out Attack | Common | +30% ATT, −20% DEF for one segment |
+| Set-Piece Special | Common | One free set-piece chance |
+| Second Wind | Uncommon | Restore 40% stamina to the whole team |
+| Super Sub | Uncommon | The next substitute comes on with +15% stats |
+| Captain's Speech | Rare | If losing: +10% all stats for the rest of the match |
+| Game Management | Rare | If leading in the last segment: opponent chances −40% |
+| Golden Chance | Epic | Pick a player: a big chance for them in the next segment |
+| Twelfth Man | Legend | +15% all stats for 30 minutes |
 
 ### 4.5 Facilities (built with off-season cards)
 
@@ -363,6 +375,40 @@ The League tab's "Last season" view lists the biggest signings and academy gradu
 
 Target: **3–4 goals per match on average** (7v7 is high-scoring). Comebacks should be possible but special: without boosts, about 1 in 20 teams losing at 60' go on to win, and more with the right boost at the right time.
 
+### 5.4 Skills
+
+Rare, Epic and Legend cards (players and coaches) carry one intrinsic skill. Epic and Legend always do, Rare about half the time. Skills are not consumed: each card can fire its skill once per match, and **a team can fire 2 skills per match in total**, from any mix (2 players, a player and the coach, coach and assistant…). Using both at 30' leaves nothing for 75'. Strength grows with rarity (Rare / Epic / Legend).
+
+| Skill | Who | When | Effect (Rare / Epic / Legend) |
+|---|---|---|---|
+| Clutch | FWD, MID | From 75' | +12 / 15 / 20% ATT for that player to the end |
+| Clear Chance | FWD, MID | Any time | A clear chance for that player now (quality 0.60 / 0.72 / 0.85) |
+| Box Hunter | FWD | Any time | +20 / 25 / 35% finishing for 30' |
+| Maestro | MID | Any time | +15 / 20 / 25% midfield control for 30' |
+| Killer Pass | MID | Any time | 1 / 1 / 2 extra chances this segment |
+| Last Line | DEF | Any time | Rivals create 30 / 40 / 50% fewer chances for 15' |
+| Man-Marker | DEF, MID | Any time | +20 / 25 / 30% team DEF for 15' (Legend 30') |
+| Wall of Hands | GK | Any time | Rivals convert 30 / 40 / 50% fewer chances for 15' (Legend 30') |
+| Keep the Result | Coach | When leading | +35 / 35 / 45% team DEF for 15' (Legend 30') |
+| All In | Coach | When not winning | +30 / 35 / 45% ATT, −15% DEF for 15' (Legend 30') |
+| Half-Time Talk | Coach | At half time | +10 / 12 / 15% all stats for the second half |
+| Pressing Trap | Coach | Any time | Rival control −15 / 20 / 25% for 30' |
+| Fresh Legs | Coach | Any time | Everyone on the pitch recovers 25 / 35 / 50 stamina |
+
+The AI uses its skills too: it protects leads late, chases games late and gives half-time talks. The pre-match screen shows both sides' skills.
+
+### 5.5 Tactics
+
+Set on the Squad screen; AI clubs have a style (big clubs press and pass, smaller ones sit deeper and go direct), shown in the pre-match scouting.
+
+| Instruction | Options and trade-offs |
+|---|---|
+| Pressing | Low block (−15% stamina drain, rivals +5% control) · Mid · High press (rivals −10% control, better chances, +35% stamina drain) |
+| Passing | Short (+8% control, better chances, fewer shots) · Mixed · Direct (+10% shots, −8% control, worse chances unless forwards have PHY 78+) |
+| Defensive line | Deep (rivals' chances worse, you shoot less) · Normal · High (rivals shoot less, but balls in behind are dangerous, worse with slow defenders; +5% drain) |
+
+Counters: high press beats short passing; direct play beats the press and a high line; short passing picks a deep block apart. Synergies: a high press needs stamina (Fitness Guru coach, Second Wind, Fresh Legs, high-PHY squad). Each choice moves results by a few percent, never more than squad quality (`node scripts/tactics-check.mjs`).
+
 ### 5.3 Presentation
 
 - A top-down 7v7 pitch with player tokens.
@@ -462,10 +508,13 @@ At the new club you get its **club squad**: the named cards the club holds right
 
 Your 2 carried cards replace squad cards of your choice. Cards that move with you keep their matches left, stars and stats.
 
-### 7.5 Getting sacked
+### 7.5 Owners, fans and getting sacked
 
-- If you **miss the board objective 2 seasons in a row**, you're fired, and reputation drops by 15.
-- You must accept one of at least 2 offers from lower clubs. You still take 2 cards with you.
+- Two meters, 0–100: **Owners** (results against the objective: +2 a win, −3 a defeat, −1.5 a league match spent below target, cup exits) and **Fans** (wins, 3+ goal games, heavy defeats, trophies). The season verdict moves both (exceeded +18/+12, met +8/+4, missed −22/−10; promotion +10/+12). A new season at the same club brings back some patience.
+- **Job security** = 65% owners + 35% fans, shown on Home and Career.
+- You're sacked if security ends a season **under 30**, or if you **miss the objective 2 seasons in a row**. Reputation drops by 15.
+- A sacked GM gets **exactly 3 offers**: from clubs below the old one, and always from a **level lower** if sacked by a top-flight club. You still take 2 cards with you.
+- AI managers (one per club) gain and lose reputation by finishing above or below what their squad should achieve, win trophies, and get sacked after big misses. World → Managers ranks everyone, you included.
 
 ### 7.6 Starting a career
 
@@ -476,6 +525,10 @@ Your 2 carried cards replace squad cards of your choice. Cards that move with yo
 ---
 
 ## 8. Stats and history (kept forever)
+
+**Implemented (v1.6):** at every season end the whole world is archived (about 27 KB per season): for every league its final table (points, goals, clean sheets, W/D/L), top 8 scorers, Golden Boot, MVP (goals plus a bonus for the club's finish) and Golden Glove (best defence, named keeper where known); every cup and continental final (winner and runner-up) and the Club World Cup. All-time player records (league goals, MVPs, Golden Boots, Golden Gloves, best season, goals per club) fold in season by season. Your squad keeps all-time and current-season stats (apps, goals, assists, MOTM, clean sheets, average rating), and your career log keeps every season's club, finish, record, trophies and leaders. Screens: League → History (by season, records by league/country/world, my career, last summer), club pages, World (managers, clubs, records, Hall of Fame).
+
+The original plan, kept for reference:
 
 **Per player card:** appearances, goals, assists, clean sheets (GK/DEF), man of the match awards, average rating, trophies. Broken down per season, per club and over the whole career.
 
@@ -578,7 +631,7 @@ Your 2 carried cards replace squad cards of your choice. Cards that move with yo
 | M6 GM career | **Done:** reputation 0–100, board objective each season (from your squad's strength vs the division), season review with reputation changes, job offers by required reputation, take-2-cards move (old club keeps your legends), sacking after 2 missed objectives, Career screen |
 | Polish (GUI/UX) | **Done:** main menu with 3 save slots, new-career flow (name + 3 small-club offers), back up / restore saves (file or text), settings (match speed normal/fast/instant, auto-play, reduced motion, tips), one-time tips per screen, skip-to-full-time, quick-sell Commons and tap-to-reveal in pack opening, varied player portraits, installable app (manifest, offline cache, icons) and a GitHub Pages deploy workflow |
 | Balance | **Done:** see §14 |
-| History and stats | Next |
+| Depth wave | **Done:** skills, tactics, boost rarities and packs, owners/fans confidence, AI managers, history book and records, league names, links to club pages, Cards hub, World tab, Live Broadcast style, wide layout for tablet and laptop |
 
 **Measured economy (M2, 60 simulated seasons with the demo squad):** average finish 3.6th of 8, about 2,200 coins per season (around 4 Silver packs).
 
@@ -610,3 +663,5 @@ Tuned with `npm run career-sim`, a bot that plays whole careers the way a sensib
 | Packs: a few per season, not dozens | About 4–6 a season |
 | Cards matter for several seasons | Kept cards last about 4.8 seasons before retiring |
 | The world stays alive | Clubs keep about 3.6 named players each; continental titles spread across many clubs |
+
+**Re-measured after v1.6** (8 bot careers × 12 seasons, `node scripts/career-sim.mjs 8 12`; season 1 also checked with 40 careers): season-1 average finish about 3.9; level-2 club by season 6 (median), level-1 by season 8; about 8% of seasons end in a sacking; favourites win about 67%; 4.0 goals per match (skills add chances). AI club styles were tuned so small clubs' tactics don't cost them points, and the AI settled edge is now 20/16/12% by level.
