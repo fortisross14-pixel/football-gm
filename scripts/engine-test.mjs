@@ -521,6 +521,12 @@ test('history: a season is archived with champions, awards and cup finals; recor
   assert.ok(titleTable(played.archive).length >= 38);
   assert.ok(Object.keys(played.world.gms).length > 290);
   assert.ok(gmRanking(played.world).length > 290);
+  // Live stats and the yearly awards
+  assert.ok(Object.keys(played.stats.lastSeason.players).length > 300);
+  assert.equal(Object.keys(played.stats.season.players).length, 0, 'a fresh season page');
+  const aw = played.awards[0];
+  assert.ok(aw.best && aw.gk && aw.young && aw.scorer, JSON.stringify(aw));
+  assert.equal(aw.gk.pos, 'GK');
 });
 
 test('house rule: a cursed Barcelona loses its stars and at least half its games', () => {

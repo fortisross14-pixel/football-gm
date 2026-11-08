@@ -252,7 +252,10 @@ export function quickKnockout(rng, world, entry, quickResult, poolById) {
     const base = 3 + rng.int(0, 2);
     pens = homeWins ? [base + 1, base] : [base, base + 1];
   }
-  return { score: r.score, pens };
+  return { score: r.score, pens, goals: r.goals };
 }
+
+// The stats-book key for a competition entry.
+export const compKey = (entry) => (entry.comp === 'cup' ? `C:${entry.key}` : entry.comp === 'cont' ? `K:${entry.key}` : 'W');
 
 export const involves = (entry, clubId) => entry.game.home === clubId || entry.game.away === clubId;

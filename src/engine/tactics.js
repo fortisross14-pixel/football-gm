@@ -46,7 +46,7 @@ export function sideAttrs(team) {
 }
 
 // How strongly instructions swing a match. Tuned with scripts/tactics-check.mjs.
-const K = 1;
+const K = 1.5;
 
 // Control adjustment for `me` (fraction added to the control multiplier).
 export function controlEdge(me, them, A, O) {
@@ -137,4 +137,16 @@ export function suitability(t, A) {
   const adv = styleAdvice(t, A);
   if (!adv.length) return 60;
   return Math.round((adv.filter((a) => a.tone === 'good').length / adv.length) * 100);
+}
+
+// One verdict for the instructions: do they suit the coach AND the squad?
+//   green: close to the coach's philosophy and the squad's numbers back it up
+//   red:   far from the coach, or the squad can't play it
+//   grey:  in between
+// The team-wide bonus is the main lever on results (tuned with scripts/grade-check.mjs).
+export const GRADE_BONUS = { green: 0.15, grey: 0.07, red: -0.08 };
+export function tacticsGrade(distance, suit) {
+  if (distance > 4 || suit < 34) return 'red';
+  if (distance <= 2 && suit >= 67) return 'green';
+  return 'grey';
 }

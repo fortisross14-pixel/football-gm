@@ -1,5 +1,6 @@
 // World season: every division's fixtures, tables and scorers, fast AI results,
 // and promotion/relegation at the end.
+import { recordGame as recordStats } from './statsbook.js';
 import { makeRng } from './rng.js';
 import { buildAiTeam, pickSquad, squadStrength, FILLER_RATING } from './aiTeam.js';
 import { DIVISIONS, DIVISION_BY_ID } from '../data/world/structure.js';
@@ -166,7 +167,8 @@ export function quickResult(world, homeId, awayId, poolById, rng, neutral = fals
 
 // Plays the matchday: records the user's game (already played) and quick-sims every other game.
 // userGame: { divisionId, homeId, awayId, score, goals }
-export function playMatchday(season, world, userGame, poolById, seed) {
+// stats: optional live stats book (engine/statsbook.js); the user's own game is recorded elsewhere with full detail.
+export function playMatchday(season, world, userGame, poolById, seed, stats = null, userClubId = null) {
   const next = structuredClone(season);
   const rng = makeRng(seed);
   for (const [divId, div] of Object.entries(next.divisions)) {
@@ -176,6 +178,7 @@ export function playMatchday(season, world, userGame, poolById, seed) {
       } else {
         const r = quickResult(world, g.home, g.away, poolById, rng);
         record(div, g.home, g.away, r.score, r.goals);
+        recordStats(stats, { world, poolById, comp: `L:${divId}`, homeId: g.home, awayId: g.away, score: r.score, goals: r.goals, userClubId });
       }
     }
   }

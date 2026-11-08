@@ -25,7 +25,7 @@ export default function NewCareer({ onStart, onCancel }) {
       <div className="offers">
         {offers.map((o) => (
           <button key={o.clubId} type="button" className={`offer offer--pick${pick === o.clubId ? ' is-selected' : ''}`} onClick={() => setPick(o.clubId)}>
-            <Crest colors={o.colors} short={o.short} size={44} />
+            <Crest colors={o.colors} short={o.short} size={44} id={o.clubId} />
             <span className="offer__body">
               <b>{o.name}</b>
               <span>{o.division} · {o.legends} club legends in its history</span>

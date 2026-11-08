@@ -1,6 +1,7 @@
 // Save slots and settings in browser storage. Every call is wrapped so the game
 // still runs (without saving) when storage is blocked or full.
 import { SAVE_VERSION } from './club.js';
+import { compressToUTF16, decompressFromUTF16 } from 'lz-string';
 import { managerEntry, makeCareerId } from './managers.js';
 
 export const SLOT_COUNT = 3;
@@ -11,17 +12,22 @@ const SETTINGS_KEY = 'football-cards-settings';
 // Every career ever played, separate from the slots (survives deletes and overwrites).
 const MANAGERS_KEY = 'football-cards-managers';
 
+// Saves are compressed (a career's history book gets big); older plain-JSON saves still load.
+const PACKED = 'lz1:';
 const read = (key) => {
   try {
     const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    if (raw.startsWith(PACKED)) return JSON.parse(decompressFromUTF16(raw.slice(PACKED.length)));
+    return JSON.parse(raw);
   } catch {
     return null;
   }
 };
-const write = (key, value) => {
+const write = (key, value, pack = false) => {
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    const json = JSON.stringify(value);
+    localStorage.setItem(key, pack ? PACKED + compressToUTF16(json) : json);
     return true;
   } catch {
     return false;
@@ -39,6 +45,7 @@ function summary(state) {
   return {
     gmName: state.gmName || 'GM',
     club: state.club.name,
+    clubId: state.club.id,
     short: state.club.short,
     colors: state.club.colors,
     division: state.club.division,
@@ -78,7 +85,7 @@ export function saveSlot(n, state) {
   if (state && !state.careerId) {
     try { state.careerId = makeCareerId(n, state.gmName, Date.now()); } catch { /* frozen state: book uses a slot-based id */ }
   }
-  const ok = write(slotKey(n), state);
+  const ok = write(slotKey(n), state, true);
   if (ok) {
     const meta = migrate();
     meta[n] = summary(state);
@@ -167,7 +174,7 @@ export function importSave(text) {
   }
 }
 
-export const DEFAULT_SETTINGS = { speed: 'normal', autoplay: false, reduceMotion: false, tips: true };
+export const DEFAULT_SETTINGS = { speed: 'normal', autoplay: false, reduceMotion: false, tips: true, realBadges: true };
 
 export function loadSettings() {
   return { ...DEFAULT_SETTINGS, ...(read(SETTINGS_KEY) || {}) };

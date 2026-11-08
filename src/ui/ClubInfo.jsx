@@ -3,6 +3,7 @@ import { RARITIES } from '../engine/cards.js';
 import { OFFSEASON_CARDS, cardText } from '../data/offseason.js';
 import { effectiveCohesion, squadPopularity, cardPopularity, FACILITY_LABEL, academyInfo, seasonMods } from '../state/club.js';
 import { Crest } from './Art.jsx';
+import { clubVars } from './clubTheme.js';
 
 const FACILITY_EFFECT = {
   stadium: (l) => `Home gate ${[40, 70, 110, 160, 230, 320][l]} coins × division multiplier`,
@@ -27,12 +28,13 @@ export default function ClubInfo({ state, onBack }) {
 
   return (
     <div className="screen">
-      <div className="club-head">
-        <Crest colors={state.club.colors} short={state.club.short} size={56} />
+      <div className="club-head" style={clubVars(state.club)}>
+        <Crest colors={state.club.colors} short={state.club.short} size={56} id={state.club.id} />
         <div>
           <b>{state.club.name}</b>
           <span>{state.club.division} · Season {state.season.year}</span>
         </div>
+        <i className="club-stripes" aria-hidden="true" />
         <button type="button" className="btn btn--small btn--ghost" onClick={onBack}>Back</button>
       </div>
 

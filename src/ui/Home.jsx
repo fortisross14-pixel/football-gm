@@ -1,5 +1,6 @@
 import React from 'react';
-import { Crest, isLight } from './Art.jsx';
+import { Crest } from './Art.jsx';
+import { clubVars } from './clubTheme.js';
 import { Table } from './League.jsx';
 import { teamOverall, RARITIES } from '../engine/cards.js';
 import { clubById, standings } from '../engine/season.js';
@@ -8,19 +9,21 @@ import { effectiveCohesion, seasonSummary, FACILITY_LABEL, academyInfo, nextUser
 import { PACKS } from '../engine/packs.js';
 import { ClubLink, LeagueLink } from './nav.jsx';
 import { Confidence } from './Career.jsx';
+import { isDerby, derbyName } from '../data/rivals.js';
 
 export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo }) {
   const { season, phase } = state;
   return (
     <div className="screen screen--home">
       <div className="home__main">
+      {phase === 'season' && <DerbyAlert state={state} />}
       {phase === 'season' && <NextMatch state={state} onPlay={onPlay} />}
       {phase === 'seasonEnd' && <SeasonEnd state={state} onClose={onCloseSeason} />}
       {phase === 'offseason' && <Offseason state={state} goTo={goTo} onStart={onStartSeason} />}
 
       <StatusRow state={state} goTo={goTo} />
       <div className="cta-row cta-row--tight">
-        <button type="button" className="btn btn--ghost" onClick={() => goTo('club')}>Club ›</button>
+        <button type="button" className="btn btn--ghost" onClick={() => goTo('club')}>Finances &amp; trophies ›</button>
         <button type="button" className="btn btn--ghost" onClick={() => goTo('career')}>Career ›</button>
       </div>
       </div>
@@ -41,7 +44,7 @@ export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo
             {state.history.slice(0, 5).map((h, i) => (
               <li key={i}>
                 <span className={`res res--${h.outcome}`}>{h.outcome}</span>
-                <span className="results__opp">{h.venue === 'H' ? 'vs' : '@'} <ClubLink id={h.opponentId}>{h.opponent}</ClubLink></span>
+                <span className="results__opp">{h.venue === 'H' ? 'vs' : '@'} <ClubLink id={h.opponentId}>{h.opponent}</ClubLink>{h.derby ? ' 🔥' : ''}</span>
                 <span className="results__comp">{h.competition}</span>
                 <b>{h.score[0]}–{h.score[1]}</b>
               </li>
@@ -94,8 +97,8 @@ function NextMatch({ state, onPlay }) {
 
 function Side({ team }) {
   return (
-    <div className="matchup__team" style={clubVars(team.colors)}>
-      <Crest colors={team.colors} short={team.short} size={46} />
+    <div className="matchup__team" style={clubVars(team)}>
+      <Crest colors={team.colors} short={team.short} size={46} id={team.id} />
       <ClubLink id={team.id}><b>{team.name}</b></ClubLink>
       <span>{team.ovr} OVR</span>
     </div>
@@ -138,6 +141,15 @@ function Offseason({ state, goTo, onStart }) {
         </button>
       )}
       {move && <p className={`promo ${move.type === 'promoted' ? 'is-up' : 'is-down'}`}>{move.type === 'promoted' ? '▲ Promoted' : '▼ Relegated'} to {state.club.division}</p>}
+      {state.awards?.length > 0 && (() => {
+        const y = state.awards[state.awards.length - 1];
+        return (
+          <button type="button" className="career-link" onClick={() => goTo('world')}>
+            <span>🏅 Season {y.year} awards · Best Player {y.best?.name || '—'} · Top Scorer {y.scorer?.name || '—'} ({y.scorer?.goals || 0}) · Best GK {y.gk?.name || '—'} · Young {y.young?.name || '—'}</span>
+            <b>Awards ›</b>
+          </button>
+        );
+      })()}
       <b className="offseason__title">Transfer Market is open</b>
       <p className="hint">Buy off-season cards, then play them from Cards → Items: sign players, extend careers, upgrade the club and pick a season event.</p>
       <div className="offseason__facilities">
@@ -196,8 +208,8 @@ function Confetti({ colors }) {
   );
 }
 
-// Club colours for the broadcast fixture blocks (text flips to ink on light kits).
-export const clubVars = (colors) => ({ '--club': colors.primary, '--club-ink': isLight(colors.primary) ? '#0B0D12' : '#fff' });
+// Club colours for the broadcast fixture blocks: see clubTheme.js.
+export { clubVars };
 
 const ordinal = (n) => `${n}${['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 < 14) ? 0 : n % 10] || 'th'}`;
 
@@ -219,5 +231,23 @@ export function Segmented({ label, value, options, onChange, small }) {
         ))}
       </div>
     </div>
+  );
+}
+
+// "NEXT GAME IS A RIVALRY GAME!" — something big is coming.
+export function DerbyAlert({ state, compact }) {
+  const game = nextUserGame(state);
+  if (!game || !isDerby(state.club.id, game.opponentId)) return null;
+  const opp = clubById(state.world, game.opponentId);
+  const past = (state.history || []).filter((h) => h.opponentId === game.opponentId || h.opponent === opp.name);
+  const rec = { W: 0, D: 0, L: 0 };
+  for (const h of past) rec[h.outcome] += 1;
+  return (
+    <section className={`derby-alert${compact ? ' derby-alert--compact' : ''}`} role="status">
+      <span className="derby-alert__flash">Rivalry game</span>
+      <b className="derby-alert__title">{compact ? `${derbyName(state.club.id, opp.id)}` : 'Next game is a rivalry game!'}</b>
+      {!compact && <span className="derby-alert__name">{derbyName(state.club.id, opp.id)} · {state.club.short} vs {opp.short}</span>}
+      <span className="derby-alert__meta">Double gate and prize money · fans feel it twice as much{past.length ? ` · your record: ${rec.W}W ${rec.D}D ${rec.L}L` : ''}</span>
+    </section>
   );
 }

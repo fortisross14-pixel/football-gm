@@ -13,6 +13,7 @@
     "check:nations": "node scripts/check-nations.mjs"
   },
   "dependencies": {
+    "lz-string": "^1.5.0",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },

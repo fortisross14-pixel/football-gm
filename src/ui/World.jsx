@@ -8,26 +8,30 @@ import { Crest } from './Art.jsx';
 import { ClubLink, LeagueLink } from './nav.jsx';
 import { Records } from './History.jsx';
 import { HallOfFame } from './Collection.jsx';
+import Stats from './Stats.jsx';
+import Awards from './Awards.jsx';
 
 const nameOf = (id) => POOL_BY_ID[id]?.name;
 
 // The wider world: managers' rankings, the strongest clubs, all-time records and legends.
 export default function World({ state }) {
-  const [view, setView] = useState('gms');
+  const [view, setView] = useState('stats');
   return (
     <div className="screen">
       <Segmented
         small
         label="World"
         value={view}
-        options={[{ id: 'gms', label: 'Managers' }, { id: 'clubs', label: 'Clubs' }, { id: 'records', label: 'Records' }, { id: 'hof', label: 'Hall of Fame' }]}
+        options={[{ id: 'stats', label: 'Stats' }, { id: 'awards', label: 'Awards' }, { id: 'gms', label: 'Managers' }, { id: 'clubs', label: 'Clubs' }, { id: 'records', label: 'Records' }, { id: 'hof', label: 'Hall of Fame' }]}
         onChange={setView}
       />
       {view === 'gms' && <Managers state={state} />}
       {view === 'clubs' && <Clubs state={state} />}
+      {view === 'stats' && <Stats state={state} />}
+      {view === 'awards' && <Awards state={state} />}
       {view === 'records' && (state.archive?.length
         ? <Records state={state} archive={state.archive} divId={state.club.divisionId} initialScope="world" />
-        : <p className="hint">World records start after your first season.</p>)}
+        : <p className="hint">Season-by-season records (titles, best seasons) start after your first season. For live numbers, open Stats.</p>)}
       {view === 'hof' && <Legends state={state} />}
     </div>
   );
@@ -64,7 +68,7 @@ function Managers({ state }) {
                 <tr key={`${g.clubId}-${g.name}`} className={g.isUser ? 'is-user' : ''}>
                   <td>{all.indexOf(g) + 1}</td>
                   <td className="table__club"><b>{g.name}</b></td>
-                  <td className="table__club"><ClubLink id={g.clubId} className="club-inline"><Crest colors={club.colors} short={club.short} size={16} /> <span>{club.short}</span></ClubLink></td>
+                  <td className="table__club"><ClubLink id={g.clubId} className="club-inline"><Crest colors={club.colors} short={club.short} size={16} id={g.clubId} /> <span>{club.short}</span></ClubLink></td>
                   <td><b>{g.rep}</b></td>
                   <td>{g.titles}</td>
                   <td>{(g.cups || 0) + (g.intl || 0)}</td>
@@ -102,7 +106,7 @@ function Clubs({ state }) {
           {power.map((c, i) => (
             <li key={c.id} className={c.id === state.club.id ? 'is-user' : ''}>
               <span className="scorer-list__pos">{i + 1}</span>
-              <Crest colors={c.colors} short={c.short} size={20} />
+              <Crest colors={c.colors} short={c.short} size={20} id={c.id} />
               <span className="scorer-list__name"><ClubLink id={c.id}>{c.name}</ClubLink><em> · <LeagueLink divId={c.divisionId}>{DIVISION_BY_ID[c.divisionId].name}</LeagueLink>{TOP_CLUBS.includes(c.id) ? ' · giant' : ''}</em></span>
               <b>{Math.round(c.strength)}</b>
             </li>

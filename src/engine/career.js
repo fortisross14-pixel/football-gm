@@ -73,8 +73,9 @@ export const START_CONFIDENCE = { board: 60, fans: 55 };
 export const security = (c) => Math.round((c?.board ?? 60) * 0.65 + (c?.fans ?? 55) * 0.35);
 
 // One match. pos/target: current league position and the board's target (lower is better).
-export function matchConfidence(conf, { outcome, gf, ga, competition, pos, target, eliminated, trophy, level, styleDist = null }) {
-  const next = { ...START_CONFIDENCE, ...(conf || {}) };
+export function matchConfidence(conf, { outcome, gf, ga, competition, pos, target, eliminated, trophy, level, styleDist = null, derby = false }) {
+  const before = { ...START_CONFIDENCE, ...(conf || {}) };
+  const next = { ...before };
   const big = competition !== 'league';
   const w = { W: 1, D: 0, L: -1 }[outcome];
   next.board += w > 0 ? 2 : w < 0 ? -3 : 0;
@@ -86,6 +87,11 @@ export function matchConfidence(conf, { outcome, gf, ga, competition, pos, targe
   if (styleDist !== null) next.board += styleDist <= 2 ? 0.5 : styleDist > 3.5 ? -0.6 : 0;
   if (eliminated) { next.board -= level === 1 ? 3 : 1; next.fans -= 3; }
   if (trophy) { next.board += 12; next.fans += 15; }
+  // Derbies: the fans feel it twice as much; the owners a little more.
+  if (derby) {
+    next.fans += next.fans - before.fans;
+    next.board += (next.board - before.board) * 0.25;
+  }
   next.board = clamp(next.board, 0, 100);
   next.fans = clamp(next.fans, 0, 100);
   return next;
@@ -149,7 +155,8 @@ export function jobOffers(world, { reputation, currentClubId, sacked = false, go
   // Prefer the biggest clubs that would have you.
   const picked = [];
   while (picked.length < count && pool.length) {
-    const c = rng.weighted(pool, (x) => 1 + x.req);
+    // Looking for a job: the biggest clubs that would have you call first.
+    const c = rng.weighted(pool, (x) => (passive ? 1 + x.req : (1 + x.req) ** 3));
     picked.push(c);
     pool = pool.filter((x) => x.id !== c.id);
   }

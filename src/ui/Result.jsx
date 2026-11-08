@@ -23,9 +23,9 @@ export default function Result({ match, userSide, rewards, retired, boostReward,
       <div className={`result-hero result-hero--${won ? 'win' : drew ? 'draw' : 'loss'}`}>
         <span className="result-hero__label">{headline}</span>
         <div className="result-hero__score">
-          <Crest colors={match.teams[0].colors} short={match.teams[0].short} size={40} />
+          <Crest colors={match.teams[0].colors} short={match.teams[0].short} size={40} id={match.teams[0].id} />
           <b>{result.score[0]}–{result.score[1]}</b>
-          <Crest colors={match.teams[1].colors} short={match.teams[1].short} size={40} />
+          <Crest colors={match.teams[1].colors} short={match.teams[1].short} size={40} id={match.teams[1].id} />
         </div>
         {result.shootout && <span className="result-hero__pens">{result.shootout[0]}–{result.shootout[1]} on penalties</span>}
         <div className="scorers">
