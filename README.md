@@ -8,7 +8,7 @@ A 7v7 football card game. You are the club's GM: collect player and coach cards,
 ## Play it on your phone
 
 1. In the GitHub repository: **Settings → Pages → Source: GitHub Actions** (one-time).
-2. Merge to `main`: the `Deploy to GitHub Pages` workflow builds, tests and publishes the game.
+2. Merge to `main`: the `Deploy Vite site to GitHub Pages` workflow (`.github/workflows/deploy.yml`) tests, builds and publishes the game.
 3. Open the Pages link on your phone, then **Add to Home Screen** (Safari share menu, or Chrome's ⋮ menu → Install app). It runs full-screen and works offline.
 
 Careers are saved on the device. Use **Back up** in the main menu to move a career between devices (download the file or copy the text, then **Restore** on the other device).
