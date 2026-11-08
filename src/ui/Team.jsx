@@ -15,7 +15,7 @@ const ordinal = (n) => `${n}${['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 
 const TROPHY_ICON = { league: '🏆', cup: '🥇', continental: '🌍', cwc: '🌐' };
 
 // Any club's page: squad, coach, honours, season-by-season record and all-time scorers.
-export default function Team({ state, clubId, onBack }) {
+export default function Team({ state, clubId, onBack, onCurse }) {
   const club = state.world.clubs[clubId];
   const isUser = clubId === state.club.id;
   const div = DIVISION_BY_ID[club.divisionId];
@@ -144,6 +144,15 @@ export default function Team({ state, clubId, onBack }) {
           </ol>
         </section>
       )}
+      {!isUser && onCurse && (
+        <section className="house-rule">
+          <label className={`switch${club.cursed ? ' is-on' : ''}`}>
+            <input type="checkbox" checked={!!club.cursed} onChange={() => onCurse(clubId)} />
+            <span className="switch__track" aria-hidden="true"><i /></span>
+            <span className="switch__body"><b>Curse this club (house rule)</b><small>Its Rare, Epic and Legend players leave every summer and it loses at least half its games.</small></span>
+          </label>
+        </section>
+      )}
       {hist.seasons.length === 0 && <p className="hint">History builds up season by season: titles, finishes and scorers appear here after each season ends.</p>}
     </div>
   );
@@ -152,4 +161,29 @@ export default function Team({ state, clubId, onBack }) {
 function squadOvr(lineup) {
   const list = lineup.filter(Boolean);
   return list.reduce((s, c) => s + overall(c), 0) / Math.max(1, list.length);
+}
+
+// Menu → House rules: personal tweaks to the world.
+export function HouseRules({ state, onToggle }) {
+  const cursed = state.houseRules?.cursed || [];
+  const barca = state.world.clubs.barcelona;
+  return (
+    <div className="house-rules">
+      {barca && state.club.id !== 'barcelona' && (
+        <label className={`switch${cursed.includes('barcelona') ? ' is-on' : ''}`}>
+          <input type="checkbox" checked={cursed.includes('barcelona')} onChange={() => onToggle('barcelona')} />
+          <span className="switch__track" aria-hidden="true"><i /></span>
+          <span className="switch__body"><b>Barcelona curse</b><small>Barcelona lose their stars every summer and lose at least half their games.</small></span>
+        </label>
+      )}
+      {cursed.filter((id) => id !== 'barcelona').map((id) => (
+        <label key={id} className="switch is-on">
+          <input type="checkbox" checked onChange={() => onToggle(id)} />
+          <span className="switch__track" aria-hidden="true"><i /></span>
+          <span className="switch__body"><b>{state.world.clubs[id]?.name} curse</b><small>Tap to lift it.</small></span>
+        </label>
+      ))}
+      <p className="hint">You can curse any other club from its club page.</p>
+    </div>
+  );
 }

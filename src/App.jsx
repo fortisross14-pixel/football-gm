@@ -5,7 +5,7 @@ import { clubById, aiTeamFor } from './engine/season.js';
 import {
   newClubState, buildUserTeam, matchRewards, applyMatch,
   buyPack, buyBoostPack, openOwnedPack, keepPending, mergePending, discardPending, closeSeason, buyMarketCard,
-  startNextSeason, useOffseasonCard, POOL_BY_ID, nextUserGame, acceptOffer, discardCommons, lookForOffers,
+  startNextSeason, useOffseasonCard, POOL_BY_ID, nextUserGame, acceptOffer, discardCommons, lookForOffers, toggleCurse,
 } from './state/club.js';
 import { Crest } from './ui/Art.jsx';
 import Home from './ui/Home.jsx';
@@ -20,7 +20,7 @@ import Career from './ui/Career.jsx';
 import Menu, { SettingsSheet } from './ui/Menu.jsx';
 import NewCareer from './ui/NewCareer.jsx';
 import Tip from './ui/Tip.jsx';
-import Team from './ui/Team.jsx';
+import Team, { HouseRules } from './ui/Team.jsx';
 import World from './ui/World.jsx';
 import CardsHub from './ui/CardsHub.jsx';
 import { NavContext, LeagueLink } from './ui/nav.jsx';
@@ -93,6 +93,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
   const [outcome, setOutcome] = useState(null);
   const [toast, setToast] = useState(null);
   const [teamId, setTeamId] = useState(null);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const [leagueNav, setLeagueNav] = useState(null);
   const backTo = useRef('home');
   const nav = {
@@ -192,7 +193,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
         )}
         {screen === 'world' && <World state={state} />}
         {screen === 'league' && <League key={leagueNav?.k || 'league'} state={state} nav={leagueNav} />}
-        {screen === 'team' && teamId && state.world.clubs[teamId] && <Team key={teamId} state={state} clubId={teamId} onBack={() => setScreen(backTo.current)} />}
+        {screen === 'team' && teamId && state.world.clubs[teamId] && <Team key={teamId} state={state} clubId={teamId} onBack={() => setScreen(backTo.current)} onCurse={(id) => setState((s) => toggleCurse(s, id))} />}
         {screen === 'club' && <ClubInfo state={state} onBack={() => setScreen('home')} />}
         {screen === 'career' && (
           <Career
@@ -256,9 +257,15 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
             <button type="button" className="btn btn--ghost btn--block" onClick={() => { setMenuOpen(false); setScreen('career'); }}>Career</button>
             <button type="button" className="btn btn--ghost btn--block" onClick={() => { setMenuOpen(false); setScreen('club'); }}>Club, finances & trophies</button>
             <button type="button" className="btn btn--ghost btn--block" onClick={() => { setMenuOpen(false); setSettingsOpen(true); }}>Settings</button>
+            <button type="button" className="btn btn--ghost btn--block" onClick={() => { setMenuOpen(false); setRulesOpen(true); }}>House rules</button>
             <button type="button" className="btn btn--ghost btn--block" onClick={() => setState((s) => ({ ...s, seenTips: [] }))}>Show tips again</button>
             <button type="button" className="btn btn--primary btn--block" onClick={exit}>Save & exit to main menu</button>
           </div>
+        </Sheet>
+      )}
+      {rulesOpen && (
+        <Sheet title="House rules" onClose={() => setRulesOpen(false)}>
+          <HouseRules state={state} onToggle={(id) => setState((s) => toggleCurse(s, id))} />
         </Sheet>
       )}
       {settingsOpen && <SettingsSheet settings={settings} setSettings={setSettings} onClose={() => setSettingsOpen(false)} />}

@@ -121,6 +121,20 @@ function record(div, homeId, awayId, score, goals) {
 
 // Fast rating-based result for AI-vs-AI games, calibrated against the full engine:
 // about 3.3 goals per game, home side wins ~45% between equal teams.
+export const CURSE_LOSS = 0.6;
+
+// House rule (Menu → House rules): cursed clubs lose their Rare+ stars every summer and
+// play with a heavy handicap. The owner's request: "make Barcelona a bad team".
+export function applyCurses(world, cursed = [], poolById = {}) {
+  for (const [id, club] of Object.entries(world.clubs)) {
+    club.cursed = cursed.includes(id);
+    if (!club.cursed) continue;
+    club.keyPlayers = (club.keyPlayers || []).filter((pid) => ['common', 'uncommon'].includes(poolById[pid]?.rarity));
+    club.strength = clubStrength(club, poolById);
+  }
+  return world;
+}
+
 export function quickResult(world, homeId, awayId, poolById, rng, neutral = false) {
   const h = world.clubs[homeId];
   const a = world.clubs[awayId];
@@ -129,6 +143,14 @@ export function quickResult(world, homeId, awayId, poolById, rng, neutral = fals
   const lh = 1.6 * Math.exp(diff / 27 + home);
   const la = 1.6 * Math.exp(-diff / 27 - home);
   const score = [rng.poisson(lh), rng.poisson(la)];
+  // House rule: a cursed club loses at least half its games.
+  for (const side of [0, 1]) {
+    if (![h, a][side].cursed || [h, a][1 - side].cursed) continue;
+    if (score[side] >= score[1 - side] && rng.next() < CURSE_LOSS) {
+      score[side] = Math.max(0, Math.min(score[side], score[1 - side] - 1));
+      if (score[side] >= score[1 - side]) score[1 - side] = score[side] + 1;
+    }
+  }
   const goals = [];
   [h, a].forEach((club, side) => {
     for (let i = 0; i < score[side]; i += 1) {
@@ -200,7 +222,9 @@ export function topScorers(season, divId, limit = 10) {
 export function aiTeamFor(world, clubId, poolById, seed) {
   const club = world.clubs[clubId];
   const keyPlayers = club.keyPlayers.map((id) => poolById[id]).filter(Boolean);
-  return buildAiTeam({ ...club, coach: { passive: club.passive }, keyPlayers }, seed ^ hash(clubId));
+  const team = buildAiTeam({ ...club, coach: { passive: club.passive }, keyPlayers }, seed ^ hash(clubId));
+  if (club.cursed) team.mods = { ...team.mods, all: (team.mods.all || 0) - 0.3 };
+  return team;
 }
 
 // ---------------------------------------------------------------------------

@@ -1609,3 +1609,5 @@ html.reduce-motion .sealed, html.reduce-motion .flip, html.reduce-motion .pack__
   .attr-strip__item:last-child { grid-column: 1 / -1; flex-direction: row; justify-content: center; gap: 8px; }
   .fit-tile b { font-size: 15px; }
 }
+.house-rule { margin-top: 8px; }
+.house-rules { display: flex; flex-direction: column; gap: 4px; }
