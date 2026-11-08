@@ -17,7 +17,8 @@
   --r-common: #b3bcc2;
   --r-rare: #3f8cff;
   --r-epic: #a95cff;
-  --r-legendary: #f2b52f;
+  --r-uncommon: #2fc7a3;
+  --r-legend: #f2b52f;
 
   --pitch-a: #13492f;
   --pitch-b: #165236;
@@ -187,7 +188,8 @@ main { padding: 0 16px; }
 .r-common { --rc: var(--r-common); }
 .r-rare { --rc: var(--r-rare); }
 .r-epic { --rc: var(--r-epic); }
-.r-legendary { --rc: var(--r-legendary); }
+.r-uncommon { --rc: var(--r-uncommon); }
+.r-legend { --rc: var(--r-legend); }
 
 .bench { display: flex; gap: 10px; justify-content: center; padding: 6px 0 2px; }
 .squad-head { display: flex; justify-content: space-between; align-items: flex-end; }
@@ -209,7 +211,7 @@ main { padding: 0 16px; }
   background: linear-gradient(145deg, var(--rc), color-mix(in srgb, var(--rc) 35%, #000) 60%, var(--rc));
   box-shadow: 0 14px 30px -12px rgba(0,0,0,.9);
 }
-.r-legendary.pcard { background: linear-gradient(145deg, #fff3c4, var(--r-legendary) 30%, #7a5208 65%, #ffe28a); }
+.r-legend.pcard { background: linear-gradient(145deg, #fff3c4, var(--r-legend) 30%, #7a5208 65%, #ffe28a); }
 .r-epic.pcard { background: linear-gradient(145deg, #e6cbff, var(--r-epic) 35%, #3b1670 70%, #c995ff); }
 .pcard--full { width: 260px; }
 .pcard--medium { width: 160px; }

@@ -3,6 +3,7 @@
 import { USER_CLUB, USER_SQUAD, USER_LINEUP, USER_BENCH, USER_COACHES, START_INVENTORY, LEVEL_MULTIPLIER } from '../data/demo.js';
 import { makeGenericCard } from '../engine/aiTeam.js';
 import { makeRng } from '../engine/rng.js';
+import { RARITIES } from '../engine/cards.js';
 
 export const SAVE_VERSION = 1;
 
@@ -55,7 +56,7 @@ export function matchRewards(state, match, userSide, opponentLevel) {
   if (conceded === 0) items.push({ label: 'Clean sheet', coins: 20 * mult });
   if (own >= 3) items.push({ label: '3+ goals', coins: 20 * mult });
   if (match.teams[userSide].isHome) items.push({ label: 'Home gate', coins: 40 * mult });
-  const popularity = state.squad.reduce((sum, c) => sum + ({ common: 1, rare: 3, epic: 8, legendary: 20 }[c.rarity] || 0), 0);
+  const popularity = state.squad.reduce((sum, c) => sum + (RARITIES[c.rarity]?.popularity || 0), 0);
   items.push({ label: 'Merchandise', coins: Math.round(popularity * 0.5 * 2) });
   if (opponentLevel < state.club.level && winner === userSide) items.push({ label: 'Giant killing', coins: 50 * mult });
   return { items, total: items.reduce((s, i) => s + i.coins, 0) };

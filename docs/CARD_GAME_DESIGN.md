@@ -1,7 +1,13 @@
-# Football Cards — Game Design Document (v1.2)
+# Football Cards — Game Design Document (v1.3)
 
 > Replaces the old management-sim design (`GAME_DESIGN_DOCUMENT.md`), which is kept for reference only.
 > Language: English. Platform: web (React + Vite), mobile-first.
+
+**Changes in v1.3**
+- 5 rarities: **Common, Uncommon, Rare, Epic, Legend**.
+- New **off-season cards**: season events plus **Transfer Market** cards (Career Extension, Stadium Evolution, Poach). They can only be played in the off-season.
+- Poaching a player from another club succeeds more often the lower the player's rarity.
+- Infrastructure cards are now also played in the off-season only.
 
 **Changes in v1.1**
 - "Other" divisions are now the top 8 clubs from countries without their own league.
@@ -118,7 +124,7 @@ Clubs qualify through **last season's** league results. For season 1, the seeded
 
 | Phase | Events |
 |---|---|
-| Pre-season | Play 1 event card, shop |
+| Off-season | **Transfer Market** opens: play transfer cards (extend careers, evolve the stadium, poach players), play 1 season event, shop |
 | Weeks 1–2 | League MD 1–2 · Europe qualifying |
 | Weeks 3–4 | League MD 3–4 · Continental group game 1 · Cup R16 (16-club cups) |
 | Weeks 5–6 | League MD 5–6 · Continental group game 2 · Cup QF |
@@ -143,8 +149,9 @@ Clubs qualify through **last season's** league results. For season 1, the seeded
 | **Players** | Player packs | Plays matches until it retires | **10** (7 starters + 3 bench) |
 | **Coaches** | Coach packs | Head coach + assistant, retire like players | **2** |
 | **In-game boosts** | Shop | Used during a match, then gone | Unlimited |
-| **Infrastructure** | Shop | Raises a facility at your current club by 1 level, then gone | Unlimited |
-| **Events** | Shop (offseason rotating offer) | Played in the offseason, lasts 1 season, then gone | Unlimited (1 played per season) |
+| **Off-season: Transfer Market** | Off-season market offer, rewards | Played in the off-season, then gone (§4.6) | Unlimited |
+| **Off-season: Infrastructure** | Off-season market offer | Raises a facility at your current club by 1 level, then gone (§4.5) | Unlimited |
+| **Off-season: Season events** | Off-season market offer (3 random) | Played in the off-season, lasts 1 season, then gone (§4.7) | Unlimited (1 played per season) |
 
 **Pack opening:** for each player or coach card you choose **Keep** or **Discard**. Keeping one when your slots are full means releasing an owned card. Discarded or released cards give quick-sell coins.
 
@@ -178,11 +185,12 @@ Clubs qualify through **last season's** league results. For season 1, the seeded
 
 | Rarity | Frame | OVR range | Matches | Base popularity | Quick sell |
 |---|---|---|---|---|---|
-| Academy (generic) | Plain | 45–55 | Unlimited | 0 | 0 |
-| Common | Grey | 55–64 | 140–200 | 1 | 10 |
-| Rare | Blue | 65–73 | 120–180 | 3 | 40 |
-| Epic | Purple | 74–82 | 110–160 | 8 | 120 |
-| Legendary | Gold | 83–92 | 100–140 | 20 | 400 |
+| Academy (generic) | Plain | 45–54 | Unlimited | 0 | 0 |
+| Common | Grey | 55–61 | 150–200 | 1 | 10 |
+| Uncommon | Teal | 62–67 | 140–190 | 2 | 25 |
+| Rare | Blue | 68–74 | 120–180 | 4 | 50 |
+| Epic | Purple | 75–82 | 110–160 | 8 | 120 |
+| Legend | Gold | 83–92 | 100–140 | 20 | 400 |
 
 Older stars tend toward the low end of the match range, young players toward the high end.
 
@@ -196,7 +204,7 @@ Older stars tend toward the low end of the match range, young players toward the
   - Tactician: +1 boost slot per match.
   - Cup Specialist: +10% in cup matches.
 - **Assistant:** gives its own passive at **50% strength**. When the head coach retires, the assistant is promoted automatically if you have no replacement.
-- **Retirement:** same rule as players. Both coaches lose 1 match for every match the team plays. Rarity sets the match range (Common 140–200 … Legendary 100–140).
+- **Retirement:** same rule as players. Both coaches lose 1 match for every match the team plays. Rarity sets the match range (Common 150–200 … Legend 100–140).
 - **No coach:** if you have no coach card, a generic coach takes over with a 2-2-2 formation and no passive.
 
 ### 4.4 In-game boosts (consumable)
@@ -214,13 +222,13 @@ You bring up to **3 boosts** per match (4 with the *Tactician* coach). You can p
 | Super Sub | The next substitute comes on with +15% stats | 70 |
 | Game Management | If leading in the last segment: opponent chances −40% | 60 |
 
-### 4.5 Infrastructure (consumable → permanent level at the club)
+### 4.5 Infrastructure (off-season, consumable → permanent level at the club)
 
-Facility levels **belong to the club**, not to you. If you leave, the levels stay behind. Each card raises a facility by 1 level, up to level 5, and gets more expensive per level.
+Building work happens in the summer, so these cards can only be played in the off-season. Facility levels **belong to the club**, not to you. If you leave, the levels stay behind. Each card raises a facility by 1 level, up to level 5, and gets more expensive per level.
 
 | Facility | Effect per level | Price L1→L5 |
 |---|---|---|
-| **Stadium Expansion** | Base home-game income: 40 / 70 / 110 / 160 / 230 / 320 (L0–L5) × division multiplier | 300 / 700 / 1500 / 3000 / 6000 |
+| **Stadium Evolution** (sold in the Transfer Market) | Base home-game income: 40 / 70 / 110 / 160 / 230 / 320 (L0–L5) × division multiplier | 300 / 700 / 1500 / 3000 / 6000 |
 | **Merchandise Expansion** | Merch multiplier ×0.5 / 1 / 1.5 / 2 / 2.5 / 3 on squad popularity | 250 / 600 / 1300 / 2600 / 5000 |
 | **Training Ground** | Cohesion gain per match +2 / 3 / 4 / 5 / 6 / 7, max cohesion bonus 4 / 5 / 6 / 7 / 8 / 10% | 300 / 700 / 1500 / 3000 / 6000 |
 | *(optional)* Youth Academy | Generic replacements get better (OVR cap 55 → 64), and Golden Generation is stronger | 400 / 900 / 1800 / 3500 / 7000 |
@@ -229,7 +237,27 @@ Clubs start with levels that match their size: L3 clubs around 1/0/1, L2 around 
 
 **Cohesion (0–100):** goes up each match with an unchanged starting 7. Each new starter costs −10. At 100 cohesion the team gets the full bonus from the Training Ground level.
 
-### 4.6 Events (offseason, one season long)
+### 4.6 Transfer Market (off-season)
+
+When the season ends, the **Transfer Market** opens. It offers a rotating selection of off-season cards: transfer cards, infrastructure and the 3 season events. Transfer cards also drop as rewards. They are played before the new season starts.
+
+| Card | Effect | Price |
+|---|---|---|
+| **Career Extension** | +15 matches to one player or coach | 300 |
+| **Stadium Evolution** | Stadium +1 level (§4.5) | 300 → 6000 by level |
+| **Poach** | Try to sign a named player from another club. Success depends on the player's rarity (below). Success: the card joins your squad (you release someone if full). Failure: the Poach card is lost. | 600 |
+
+**Poach success chance, by the target's rarity:**
+
+| Common | Uncommon | Rare | Epic | Legend |
+|---|---|---|---|---|
+| 85% | 65% | 40% | 18% | 6% |
+
+- You browse other clubs' squads to choose the target, so poaching is the way to go after one specific player.
+- Only one attempt per target player per off-season.
+- The low Legend chance keeps poaching from being a cheaper route to Legends than Elite packs.
+
+### 4.7 Season events (off-season, one season long)
 
 | Event | Effect | Price |
 |---|---|---|
@@ -238,12 +266,11 @@ Clubs start with levels that match their size: L3 clubs around 1/0/1, L2 around 
 | Indomitable Spirit | When losing after 70': +15% all stats | 900 |
 | Marketing Tour | Merch income ×1.5 this season | 700 |
 | Scouting Network | Better pack odds this season | 1000 |
-| Fountain of Youth | +40 matches to one player or coach | 600 |
 | Tactical Continuity | Cohesion can't drop below 60 this season | 700 |
 | Continental Nights | +10% stats in continental and Club World Cup matches | 900 |
 | Cup Run | +10% stats in cup matches, and cup prizes ×2 | 600 |
 
-The shop offers **3 random events** each offseason. You play **1** per season. Unused events stay in your inventory.
+The Transfer Market offers **3 random events** each off-season. You play **1** per season. Unused events stay in your inventory.
 
 ---
 
@@ -298,13 +325,15 @@ Rough check: a Level 3 club earns **about 1,800–2,500 coins per season** at th
 
 ### 6.2 Packs
 
-| Pack | Price | Cards | Guarantee | Odds (C / R / E / L) |
+| Pack | Price | Cards | Guarantee | Odds % (Common / Uncommon / Rare / Epic / Legend) |
 |---|---|---|---|---|
-| Bronze | 150 | 3 players | — | 80 / 18 / 2 / 0 |
-| Silver | 500 | 3 players | 1 Rare or better | 55 / 35 / 9 / 1 |
-| Gold | 1500 | 3 players | 1 Epic or better | 25 / 45 / 25 / 5 |
-| Elite | 4000 | 3 players | 1 Epic or better, 25% Legendary | 10 / 35 / 35 / 20 |
-| Coach | 600 | 2 coaches | 1 Rare or better | 40 / 40 / 17 / 3 |
+| Bronze | 150 | 3 players | — | 60 / 30 / 9 / 1 / 0 |
+| Silver | 500 | 3 players | 1 Rare or better | 30 / 40 / 24 / 5 / 1 |
+| Gold | 1500 | 3 players | 1 Epic or better | 10 / 30 / 40 / 17 / 3 |
+| Elite | 4000 | 3 players | 1 Epic or better, 25% Legend | 0 / 15 / 40 / 33 / 12 |
+| Coach | 600 | 2 coaches | 1 Rare or better | 30 / 35 / 25 / 8 / 2 |
+
+Odds are per card. The guarantee upgrades one card if none of the three meets it.
 
 **Free packs** as rewards:
 
@@ -355,9 +384,9 @@ At the new club you get its **club squad**: 10 cards from that club's real roste
 
 | New club level | Squad | Coach | Treasury |
 |---|---|---|---|
-| L3 | 7 Common, 1 Rare, 2 Academy | Common | 500 |
-| L2 | 5 Common, 4 Rare, 1 Epic | Rare | 1500 |
-| L1 | 4 Rare, 5 Epic, 1 Legendary | Epic | 4000 |
+| L3 | 5 Common, 2 Uncommon, 1 Rare, 2 Academy | Common | 500 |
+| L2 | 2 Common, 4 Uncommon, 3 Rare, 1 Epic | Uncommon | 1500 |
+| L1 | 2 Uncommon, 4 Rare, 3 Epic, 1 Legend | Rare | 4000 |
 
 Your 2 carried cards replace squad cards of your choice. Cards that move with you keep their matches left, stars and stats.
 
@@ -399,16 +428,17 @@ Your 2 carried cards replace squad cards of your choice. Cards that move with yo
 
 1. **Home:** next fixture, coins, board objective, quick "Play" button, latest news and achievements.
 2. **Squad:** pitch view with 7 starters, 3 bench, head coach and assistant. Drag to swap. Cohesion meter.
-3. **Inventory:** boosts, infrastructure, events and unopened packs, each with a "Use" button.
-4. **Shop:** packs, boosts, infrastructure, event offers. Pack opening with a rarity reveal and Keep/Discard.
-5. **Match:** pitch, commentary, decision drawer with subs, mentality and boosts. Penalty shootout view.
-6. **Competitions:** league table, fixtures, top scorers, cup bracket, continental groups and bracket, Club World Cup.
-7. **Career:** reputation, board objective, job offers, "take 2 cards" picker, GM history.
-8. **History:** club timeline, trophy cabinet, Hall of Fame, world records, past winners.
-9. **Club:** facility levels and income breakdown.
+3. **My cards:** players, coaches, inventory (boosts, off-season cards, unopened packs), card album with completion %, Hall of Fame.
+4. **Shop:** packs and boosts all season. Pack opening with a rarity reveal and Keep/Discard.
+5. **Transfer Market (off-season):** transfer cards, infrastructure, season events, and the Poach target browser.
+6. **Match:** pitch, commentary, decision drawer with subs, mentality and boosts. Penalty shootout view.
+7. **Competitions:** league table, fixtures, top scorers, cup bracket, continental groups and bracket, Club World Cup.
+8. **Career:** reputation, board objective, job offers, "take 2 cards" picker, GM history.
+9. **History:** club timeline, trophy cabinet, Hall of Fame, world records, past winners.
+10. **Club:** facility levels and income breakdown.
 
 **Visual direction**
-- Dark pitch-green UI with bright rarity frames: grey, blue, purple, gold.
+- Dark pitch-green UI with bright rarity frames: grey, teal, blue, purple, gold.
 - Big type and cards as the main element.
 - No real photos or crests. Players are stylised silhouettes in club colours, and crests are generated shapes with club colours and initials.
 
@@ -441,10 +471,10 @@ Your 2 carried cards replace squad cards of your choice. Cards that move with yo
 | # | Milestone | Done when |
 |---|---|---|
 | M1 | Core match + squad | You can play a 7v7 match with cards, subs, boosts, commentary and penalties |
-| M2 | One league season | 8-team league, fixtures, table, coins, Bronze/Silver packs, Keep/Discard |
-| M3 | Full world | 38 divisions, AI simulation, promotion/relegation, retirements |
+| M2 | Reward loop + one season | Shop, all packs, pack opening with Keep/Discard, duplicates, "My cards", album, an 8-team league season, and an off-season Transfer Market (Career Extension, Stadium Evolution, Poach) |
+| M3 | Full world | 38 divisions, card pool, AI simulation, promotion/relegation |
 | M4 | Competitions | Domestic cups, 3 continental tournaments with Europe qualifying, Club World Cup, full calendar |
-| M5 | All card families | Coach packs, infrastructure, events, cohesion, popularity/merch |
+| M5 | Remaining card families | Other infrastructure, season events, cohesion, popularity/merch |
 | M6 | GM career | Reputation, board objectives, offers, "take 2 cards", sacking |
 | M7 | History and stats | Full stat tracking, Hall of Fame, records |
 | M8 | Data and polish | Real data pass, visuals, animations, balance sweep |
@@ -459,6 +489,8 @@ Your 2 carried cards replace squad cards of your choice. Cards that move with yo
 4. **Division size:** 8 clubs, 14 league matches.
 5. **Starting career:** a rookie GM picks from 3 offers from L3 clubs. Sandbox mode is a later stretch goal.
 6. **Asia Other / APAC Other:** West and Central Asia / East Asia and Oceania.
+7. **Rarities:** Common, Uncommon, Rare, Epic, Legend.
+8. **Transfer Market:** off-season cards, not a weekly store. Poaching is easier the lower the target's rarity.
 
 ---
 
@@ -467,7 +499,7 @@ Your 2 carried cards replace squad cards of your choice. Cards that move with yo
 | Milestone | Status |
 |---|---|
 | M1 Core match + squad | **Done:** playable demo (see `README.md`), engine tests and balance script |
-| M2 One league season | Next |
+| M2 Reward loop + one season | Next |
 
 **Measured balance (M1, `npm run balance`):**
 - About 3.1–3.5 goals per match between equal teams.
