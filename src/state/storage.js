@@ -39,6 +39,7 @@ function summary(state) {
   return {
     gmName: state.gmName || 'GM',
     club: state.club.name,
+    clubId: state.club.id,
     short: state.club.short,
     colors: state.club.colors,
     division: state.club.division,
@@ -167,7 +168,7 @@ export function importSave(text) {
   }
 }
 
-export const DEFAULT_SETTINGS = { speed: 'normal', autoplay: false, reduceMotion: false, tips: true };
+export const DEFAULT_SETTINGS = { speed: 'normal', autoplay: false, reduceMotion: false, tips: true, realBadges: true };
 
 export function loadSettings() {
   return { ...DEFAULT_SETTINGS, ...(read(SETTINGS_KEY) || {}) };

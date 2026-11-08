@@ -64,7 +64,7 @@ function Managers({ state }) {
                 <tr key={`${g.clubId}-${g.name}`} className={g.isUser ? 'is-user' : ''}>
                   <td>{all.indexOf(g) + 1}</td>
                   <td className="table__club"><b>{g.name}</b></td>
-                  <td className="table__club"><ClubLink id={g.clubId} className="club-inline"><Crest colors={club.colors} short={club.short} size={16} /> <span>{club.short}</span></ClubLink></td>
+                  <td className="table__club"><ClubLink id={g.clubId} className="club-inline"><Crest colors={club.colors} short={club.short} size={16} id={g.clubId} /> <span>{club.short}</span></ClubLink></td>
                   <td><b>{g.rep}</b></td>
                   <td>{g.titles}</td>
                   <td>{(g.cups || 0) + (g.intl || 0)}</td>
@@ -102,7 +102,7 @@ function Clubs({ state }) {
           {power.map((c, i) => (
             <li key={c.id} className={c.id === state.club.id ? 'is-user' : ''}>
               <span className="scorer-list__pos">{i + 1}</span>
-              <Crest colors={c.colors} short={c.short} size={20} />
+              <Crest colors={c.colors} short={c.short} size={20} id={c.id} />
               <span className="scorer-list__name"><ClubLink id={c.id}>{c.name}</ClubLink><em> · <LeagueLink divId={c.divisionId}>{DIVISION_BY_ID[c.divisionId].name}</LeagueLink>{TOP_CLUBS.includes(c.id) ? ' · giant' : ''}</em></span>
               <b>{Math.round(c.strength)}</b>
             </li>

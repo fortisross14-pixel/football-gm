@@ -93,8 +93,8 @@ export default function PreMatch({ state, opponent, setup, loadout, setLoadout, 
 
 function TeamBlock({ team }) {
   return (
-    <div className="matchup__team" style={clubVars(team.colors)}>
-      <Crest colors={team.colors} short={team.short} size={46} />
+    <div className="matchup__team" style={clubVars(team)}>
+      <Crest colors={team.colors} short={team.short} size={46} id={team.id} />
       <ClubLink id={team.id}><b>{team.name}</b></ClubLink>
       <span>{team.ovr} OVR</span>
     </div>

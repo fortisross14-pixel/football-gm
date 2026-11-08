@@ -8,6 +8,7 @@ import { skillOf } from '../data/skills.js';
 import { POOL_BY_ID } from '../state/club.js';
 import { Crest } from './Art.jsx';
 import { Flag } from './Card.jsx';
+import { clubVars } from './clubTheme.js';
 import { LeagueLink, ClubLink } from './nav.jsx';
 import { rivalsOf, derbyName } from '../data/rivals.js';
 
@@ -52,12 +53,13 @@ export default function Team({ state, clubId, onBack, onCurse }) {
 
   return (
     <div className="screen team-page">
-      <div className="club-head">
-        <Crest colors={club.colors} short={club.short} size={56} />
+      <div className="club-head" style={clubVars(club)}>
+        <Crest colors={club.colors} short={club.short} size={56} id={clubId} />
         <div>
           <b>{club.name}</b>
           <span><LeagueLink divId={club.divisionId}>{div.name}</LeagueLink> · {div.country} · Level {div.level}</span>
         </div>
+        <i className="club-stripes" aria-hidden="true" />
         <button type="button" className="btn btn--small btn--ghost" onClick={onBack}>Back</button>
       </div>
 

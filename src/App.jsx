@@ -7,7 +7,8 @@ import {
   buyPack, buyBoostPack, openOwnedPack, keepPending, mergePending, discardPending, closeSeason, buyMarketCard,
   startNextSeason, useOffseasonCard, POOL_BY_ID, nextUserGame, acceptOffer, discardCommons, lookForOffers, toggleCurse,
 } from './state/club.js';
-import { Crest } from './ui/Art.jsx';
+import { Crest, BadgesContext } from './ui/Art.jsx';
+import { clubVars } from './ui/clubTheme.js';
 import Home from './ui/Home.jsx';
 import Squad from './ui/Squad.jsx';
 import PreMatch from './ui/PreMatch.jsx';
@@ -56,8 +57,10 @@ export default function App() {
     document.documentElement.classList.toggle('reduce-motion', !!settings.reduceMotion);
   }, [settings.reduceMotion]);
 
+  const badges = settings.realBadges !== false;
   if (view.name === 'menu') {
     return (
+      <BadgesContext.Provider value={badges}>
       <Menu
         settings={settings}
         setSettings={setSettings}
@@ -65,6 +68,7 @@ export default function App() {
         onNew={(n) => setView({ name: 'new', slot: n })}
         onImport={(n, st) => { saveSlot(n, st); setView({ name: 'game', slot: n, state: st }); }}
       />
+      </BadgesContext.Provider>
     );
   }
   if (view.name === 'new') {
@@ -79,7 +83,11 @@ export default function App() {
       />
     );
   }
-  return <Game key={view.slot} slot={view.slot} initial={view.state} settings={settings} setSettings={setSettings} onExit={() => setView({ name: 'menu' })} />;
+  return (
+    <BadgesContext.Provider value={badges}>
+      <Game key={view.slot} slot={view.slot} initial={view.state} settings={settings} setSettings={setSettings} onExit={() => setView({ name: 'menu' })} />
+    </BadgesContext.Provider>
+  );
 }
 
 function Game({ slot, initial, settings, setSettings, onExit }) {
@@ -154,14 +162,15 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
     <NavContext.Provider value={nav}>
     <div className={`app${isTab ? ' app--tabs' : ''} app--${screen}`}>
       {screen !== 'match' && (
-        <header className="topbar">
+        <header className="topbar" style={clubVars(state.club)}>
           <button type="button" className="topbar__crest" onClick={() => setScreen('club')} aria-label="Club details">
-            <Crest colors={state.club.colors} short={state.club.short} size={30} />
+            <Crest colors={state.club.colors} short={state.club.short} size={30} id={state.club.id} />
           </button>
           <div className="topbar__club">
             <b>{state.club.name}</b>
             <span><LeagueLink divId={state.club.divisionId}>{state.club.division}</LeagueLink></span>
           </div>
+          <i className="club-stripes" aria-hidden="true" />
           <div className="topbar__coins" aria-label="Coins"><span key={state.coins} className="coin-bump">◎ {state.coins.toLocaleString()}</span></div>
           <button type="button" className="icon-btn topbar__menu" onClick={() => setMenuOpen(true)} aria-label="Menu">☰</button>
         </header>

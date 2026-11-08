@@ -41,7 +41,7 @@ function ClubName({ state, id, short }) {
   if (!c) return <span>—</span>;
   return (
     <ClubLink id={id} className="club-inline">
-      <Crest colors={c.colors} short={c.short} size={16} /> <span>{short ? c.short : c.name}</span>
+      <Crest colors={c.colors} short={c.short} size={16} id={id} /> <span>{short ? c.short : c.name}</span>
     </ClubLink>
   );
 }
