@@ -79,7 +79,9 @@ export function drawStartingSquads(world, pools, poolById, userIds, seed) {
     const div = DIVISION_BY_ID[club.divisionId];
     const [lo, hi] = startingDraw(club.id, div);
     const n = rng.int(lo, hi);
-    const pool = (pools[club.id] || []).filter((id) => poolById[id] && !taken.has(id));
+    // Smaller leagues start with lesser legends: level 3 up to Rare, level 2 up to Epic.
+    const maxTier = div.level === 3 ? 2 : div.level === 2 ? 3 : 4;
+    const pool = (pools[club.id] || []).filter((id) => poolById[id] && !taken.has(id) && tierOf(poolById[id]) <= maxTier);
     const shuffled = [...pool].sort(() => rng.next() - 0.5);
     club.keyPlayers = shuffled.slice(0, n);
     for (const id of club.keyPlayers) {

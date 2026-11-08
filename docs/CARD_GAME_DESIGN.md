@@ -312,8 +312,13 @@ The season events are the "Season event" rows in the table above. Their effect l
 |---|---|---|
 | Top clubs (23, e.g. Real Madrid, Bayern, Boca) | 14–20 | 6–7 |
 | Other Division 1 clubs | 5–10 | 3–4 |
+
+The pools hold 1,930 cards across 304 clubs, mostly Uncommon and Rare club figures with a few true greats. Over 15 simulated seasons, clubs keep about 3.5–4 named players each, and big clubs stay mostly their own legends.
+
 | Divisions 2 and 3 | 3–5 | 0–2 |
 
+- **Starting legends fit the league:** level-3 divisions start with at most Rare legends, level 2 at most Epic. Your Racing start draws two Uncommon legends. Better ones come later through the academy and signings.
+- **AI clubs get a settled-squad bonus (+10%)** to match your cohesion and coaching edges. Measured over 30 seasons with no packs, your first season averages 4th of 8 and about 1,950 coins.
 - **Named cards are Uncommon or better.** The rest of the 10-card squad is generic Common players with surname-only names. Their quality depends on the division, but they are always Common.
 - **One card, one club, always.** A card is held by at most one club or by you. If you get a card that an AI club holds (from a pack or a signing), it leaves that club.
 

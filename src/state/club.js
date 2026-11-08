@@ -41,9 +41,10 @@ const uid = (state) => {
 function startingSquad(clubId, divisionId, formation, seed) {
   const rng = makeRng(seed);
   const level = DIVISION_BY_ID[divisionId].level;
-  // Two legends drawn at random from the club's history pool.
+  // Two legends drawn at random from the club's history pool: Uncommon ones (Rare if needed).
   const pool = (CLUB_POOLS[clubId] || []).filter((id) => POOL_BY_ID[id]);
-  const named = [...pool].sort(() => rng.next() - 0.5).slice(0, 2).map((id) => structuredClone(POOL_BY_ID[id]));
+  const byRarity = (r) => pool.filter((id) => POOL_BY_ID[id].rarity === r).sort(() => rng.next() - 0.5);
+  const named = [...byRarity('uncommon'), ...byRarity('rare')].slice(0, 2).map((id) => structuredClone(POOL_BY_ID[id]));
   const used = new Set(named.map((c) => c.name.split(' ').slice(-1)[0]));
   const want = ['GK', 'GK', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'FWD', 'FWD'];
   for (const c of named) {

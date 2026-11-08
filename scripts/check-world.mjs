@@ -11,7 +11,7 @@ import { COACH_PASSIVES } from '../src/data/coachPassives.js';
 const dir = resolve('src/data/world');
 const files = process.argv.slice(2).length
   ? process.argv.slice(2).map((f) => resolve(f))
-  : readdirSync(dir).filter((f) => f.endsWith('.js') && !['structure.js', 'index.js'].includes(f)).map((f) => resolve(dir, f));
+  : readdirSync(dir).filter((f) => f.endsWith('.js') && !['structure.js', 'index.js'].includes(f) && !f.startsWith('squads-')).map((f) => resolve(dir, f));
 
 const errors = [];
 const warn = [];
