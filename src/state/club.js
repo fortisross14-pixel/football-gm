@@ -127,7 +127,8 @@ export function newClubState(seed = 12345, { clubId = USER_CLUB.id, gmName = 'Yo
     cohesion: 50,
     lastLineup: [...lineup],
     activeEvent: null,
-    perks: { shirtSponsor: 0 },
+    perks: { shirtSponsor: 0, shape: 0 },
+    loads: {}, // time on the field per player (see teamShape)
     record: { w: 0, d: 0, l: 0, gf: 0, ga: 0 },
     history: [],
     playerStats: {},
@@ -237,12 +238,31 @@ function cohesionFloor(state) {
   return state.activeEvent?.type === 'tacticalContinuity' ? cardValue('tacticalContinuity', state.activeEvent.rarity) : 0;
 }
 
+// Team shape from time on the field. Each player's load is his share of the available
+// minutes over roughly the last 8 matches (moving average). Leaning on the same players
+// (loads near 100%) lowers shape; spreading minutes keeps it high. No injuries, no
+// per-player tiredness: one team number. Sports Science adds to it for a season.
+const LOAD_KEEP = 0.75; // each match keeps 75% of the old load: ≈ 8-match memory
+const LOAD_FREE = 0.65; // up to 65% of the minutes costs nothing
+const LOAD_COST = 20; // shape lost per 100% of overload
+export const SHAPE_LABELS = [[85, 'Fresh'], [65, 'OK'], [45, 'Tired'], [0, 'Exhausted']];
+export const loadOf = (state, id) => state.loads?.[id] ?? 0.5;
+export function teamShape(state) {
+  let over = 0;
+  for (const c of state.squad) over += Math.max(0, loadOf(state, c.id) - LOAD_FREE) * (c.pos === 'GK' ? 0.3 : 1);
+  return Math.round(clamp(100 - over * LOAD_COST + (state.perks?.shape || 0), 30, 100));
+}
+export const shapeLabel = (v) => SHAPE_LABELS.find(([min]) => v >= min)[1];
+// Shape in the match: starting stamina, and a small penalty when Tired or Exhausted.
+export const shapeStamina = (v) => Math.round(75 + 0.25 * v);
+export const shapePenalty = (v) => (v < 65 ? -(65 - v) * 0.002 : 0);
+
 export function cohesionBonus(state) {
   return (effectiveCohesion(state) / 100) * COHESION_MAX_BONUS[state.facilities.training];
 }
 
 export function seasonMods(state) {
-  const mods = { all: cohesionBonus(state), home: 0, comeback: 0, drain: 0, finishing: 0, underdog: 0, cup: 0, continental: 0 };
+  const mods = { all: cohesionBonus(state) + shapePenalty(teamShape(state)), home: 0, comeback: 0, drain: 0, finishing: 0, underdog: 0, cup: 0, continental: 0 };
   const ev = state.activeEvent;
   if (!ev) return mods;
   const v = cardValue(ev.type, ev.rarity);
@@ -280,6 +300,7 @@ export function buildUserTeam(state, loadout, isHome) {
     isHome,
     mods: seasonMods(state),
     tactics: state.tactics,
+    startStamina: shapeStamina(teamShape(state)),
     eventName: state.activeEvent ? OFFSEASON_CARDS[state.activeEvent.type].name : null,
   };
 }
@@ -381,6 +402,13 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
   const gain = COHESION_GAIN[next.facilities.training];
   next.cohesion = clamp(effectiveCohesion(state) + gain, cohesionFloor(state), 100);
   next.lastLineup = [...state.lineup];
+  // Time on the field: share of this match's minutes for every squad player.
+  next.loads = { ...(next.loads || {}) };
+  for (const c of next.squad) {
+    const p = team.players[c.id];
+    const share = p && p.enteredAt !== null ? Math.min(1, ((p.leftAt ?? 90) - p.enteredAt) / 90) : 0;
+    next.loads[c.id] = Math.round((loadOf(next, c.id) * LOAD_KEEP + share * (1 - LOAD_KEEP)) * 1000) / 1000;
+  }
 
   const appeared = match.result.appeared[userSide];
   const motmId = match.result.motm?.side === userSide ? match.result.motm.playerId : null;
@@ -809,7 +837,7 @@ export function closeSeason(state, seed) {
   const rng = makeRng(seed);
   next.inventory.offseason.push(randomOffseasonCard(next, rng));
   next.activeEvent = null;
-  next.perks = { shirtSponsor: 0 };
+  next.perks = { shirtSponsor: 0, shape: 0 };
   next.phase = 'offseason';
   next.market = { offers: makeMarketOffers(next, rng) };
   return next;
@@ -952,7 +980,7 @@ export function acceptOffer(state, clubId, carryKeys = [], seed = 1) {
   next.coins = start.coins;
   next.facilities = { ...start.facilities };
   next.activeEvent = null;
-  next.perks = { shirtSponsor: 0 };
+  next.perks = { shirtSponsor: 0, shape: 0 };
   next.record = { w: 0, d: 0, l: 0, gf: 0, ga: 0 };
   next.seasonStats = {};
   for (const c of squad) if (POOL_BY_ID[c.id] && !next.album.includes(c.id)) next.album.push(c.id);
@@ -1105,6 +1133,10 @@ export function useOffseasonCard(state, itemUid, target = {}, seed = 1) {
       const key = def.facility;
       next.facilities[key] = Math.min(5, next.facilities[key] + (t === 4 ? 2 : 1));
       return { state: next, message: `${FACILITY_LABEL[key]} is now level ${next.facilities[key]}.`, success: true };
+    }
+    case 'sportsScience': {
+      next.perks.shape = (next.perks.shape || 0) + v;
+      return { state: next, message: `Sports Science: +${next.perks.shape} team shape all next season.`, success: true };
     }
     case 'shirtSponsor': {
       next.perks.shirtSponsor += v;

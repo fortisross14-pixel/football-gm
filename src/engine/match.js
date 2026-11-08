@@ -89,7 +89,7 @@ function buildTeam(input, isHome, context) {
   for (const card of input.players) {
     players[card.id] = {
       card,
-      stamina: 100,
+      stamina: input.startStamina ?? 100,
       onPitch: false,
       enteredAt: null,
       leftAt: null,

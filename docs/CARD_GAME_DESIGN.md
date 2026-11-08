@@ -695,3 +695,13 @@ Tuned with `npm run career-sim`, a bot that plays whole careers the way a sensib
 | Bad (random style, never improves the squad) | 7.1 | never | never | 40% |
 
 Tactics grade (`node scripts/grade-check.mjs`, user-like squad vs equal AI, rival rating gap −4 / 0 / +4 / +8): green wins 80 / 72 / 57 / 45%; grey 64 / 52 / 40 / 32%; red 37 / 27 / 18 / 13% (losing 52% against equals). Team-wide bonus: green +15% (×coach quality), grey +7%, red −8%; AI settled edge 8 / 6 / 4% by level.
+
+
+### Cohesion and shape (v1.8)
+
+Two team meters, shown on Home and Squad → Starting 7.
+
+- **Cohesion** (0–100): +4 to +14 per match (training ground), −10 for each starter changed from the last match. Worth up to +4% to +10% to all stats (training ground). Tactical Continuity sets a floor.
+- **Shape** (0–100, Fresh ≥ 85 · OK ≥ 65 · Tired ≥ 45 · Exhausted): from **time on the field**. Each player's load is his share of the minutes over about the last 8 matches (moving average; subs count for their minutes). Loads above 65% wear the team down (goalkeepers at 30%). Shape sets kick-off stamina (75% + a quarter of shape) and, under 65, costs up to −7% stats. No injuries, no per-player tiredness. AI clubs don't track it.
+- Measured: the same 7 every match settles at about 58 (Tired, −1.4%); rotating one player a match stays about 71 (OK).
+- **Sports Science** (club card, off-season): +8 / 12 / 16 / 22 / 30 shape for the whole next season by rarity, even without rotating.

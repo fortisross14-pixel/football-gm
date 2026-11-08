@@ -1677,3 +1677,30 @@ html.reduce-motion .sealed, html.reduce-motion .flip, html.reduce-motion .pack__
 }
 .comp-stats { display: grid; gap: 14px; margin-top: 14px; }
 @media (min-width: 720px) { .comp-stats { grid-template-columns: 1fr 1fr; } .comp-stats > .hint { grid-column: 1 / -1; } }
+
+/* ---- Cohesion and shape ---- */
+.status-row { grid-template-columns: repeat(2, 1fr); }
+@media (min-width: 420px) { .status-row { grid-template-columns: repeat(4, 1fr); } }
+.status--shape.is-fresh .bar i { background: var(--good); }
+.status--shape.is-ok .bar i { background: var(--blue); }
+.status--shape.is-tired .bar i { background: var(--warn); }
+.status--shape.is-exhausted .bar i { background: var(--red); }
+.condition { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.condition__meters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.condition__meter { display: flex; flex-direction: column; gap: 2px; padding: 10px; background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--line); border-top: 4px solid var(--blue); }
+.condition__meter.is-fresh { border-top-color: var(--good); }
+.condition__meter.is-tired { border-top-color: var(--warn); }
+.condition__meter.is-exhausted { border-top-color: var(--red); }
+.condition__meter span { font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.condition__meter b { font-family: var(--font-display); font-weight: 400; font-size: 20px; text-transform: uppercase; }
+.condition__meter small { font-size: 11px; color: var(--muted); }
+.load-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.load-list li { display: grid; grid-template-columns: 34px minmax(0, 1fr) 1.2fr 40px; align-items: center; gap: 8px; font-size: 13px; padding: 4px 8px; background: var(--surface); }
+.load-list__pos { font-size: 10px; font-weight: 800; color: var(--muted); }
+.load-list__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.load-list__bar { position: relative; height: 8px; background: var(--grey-2); }
+.load-list__bar i { display: block; height: 100%; background: var(--blue); }
+.load-list__bar em { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); opacity: .5; }
+.load-list li.is-high .load-list__bar i { background: var(--warn); }
+.load-list li.is-low { color: var(--muted); }
+.load-list b { text-align: right; font-variant-numeric: tabular-nums; }

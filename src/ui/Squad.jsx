@@ -3,6 +3,7 @@ import { FORMATIONS, slotFit, teamOverall, autoArrange } from '../engine/cards.j
 import { MiniCard, PlayerCard, CoachCard } from './Card.jsx';
 import Sheet from './Sheet.jsx';
 import Tactics from './Tactics.jsx';
+import { effectiveCohesion, cohesionBonus, teamShape, shapeLabel, shapeStamina, shapePenalty, loadOf } from '../state/club.js';
 import { Segmented } from './Home.jsx';
 
 export default function Squad({ state, setState }) {
@@ -84,6 +85,8 @@ function Lineup({ state, setState }) {
         })}
       </div>
 
+      <Condition state={state} />
+
       <h3 className="sub-title">Bench</h3>
       <div className="bench">
         {state.bench.map((id, i) => (
@@ -121,6 +124,45 @@ function Lineup({ state, setState }) {
         </Sheet>
       )}
     </div>
+  );
+}
+
+// Cohesion and shape: the two team meters, with what moves them.
+function Condition({ state }) {
+  const shape = teamShape(state);
+  const coh = effectiveCohesion(state);
+  const changed = state.lineup.filter((id) => !state.lastLineup.includes(id)).length;
+  const rows = [...state.squad].sort((a, b) => loadOf(state, b.id) - loadOf(state, a.id));
+  return (
+    <section className="condition">
+      <div className="condition__meters">
+        <div className="condition__meter">
+          <span>Cohesion</span>
+          <b>{coh}%</b>
+          <small>+{(cohesionBonus(state) * 100).toFixed(1)}% to all stats{changed ? ` · ${changed} change${changed > 1 ? 's' : ''} from last match (−${changed * 10})` : ' · same 7 as last match'}</small>
+        </div>
+        <div className={`condition__meter is-${shapeLabel(shape).toLowerCase()}`}>
+          <span>Shape</span>
+          <b>{shape}% · {shapeLabel(shape)}</b>
+          <small>Kick-off stamina {shapeStamina(shape)}%{shapePenalty(shape) ? ` · ${(shapePenalty(shape) * 100).toFixed(1)}% stats` : ''}{state.perks?.shape ? ` · Sports Science +${state.perks.shape}` : ''}</small>
+        </div>
+      </div>
+      <p className="hint">Keeping the same 7 builds cohesion. Spreading minutes keeps the team in shape: anyone over 65% of the minutes lately wears the team down. Subs count too.</p>
+      <h3 className="sub-title">Time on the field · last ~8 matches</h3>
+      <ul className="load-list">
+        {rows.map((c) => {
+          const v = Math.round(loadOf(state, c.id) * 100);
+          return (
+            <li key={c.id} className={v > 65 ? 'is-high' : v < 20 ? 'is-low' : ''}>
+              <span className="load-list__pos">{c.pos}</span>
+              <span className="load-list__name">{c.name}</span>
+              <span className="load-list__bar"><i style={{ width: `${v}%` }} /><em style={{ left: '65%' }} /></span>
+              <b>{v}%</b>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

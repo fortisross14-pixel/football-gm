@@ -99,6 +99,11 @@ export const OFFSEASON_CARDS = {
     values: [10, 18, 30, 50, 90],
     text: (v) => `+${v} coins for every match next season.`,
   },
+  sportsScience: {
+    name: 'Sports Science', group: 'club', icon: '🧪', base: 180, target: null,
+    values: [8, 12, 16, 22, 30],
+    text: (v) => `+${v} team shape all next season, even without rotating.`,
+  },
   boostCrate: {
     name: 'Boost Crate', group: 'club', icon: '📦', base: 150, target: null,
     values: [3, 4, 5, 6, 8],
