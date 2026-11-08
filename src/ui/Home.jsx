@@ -141,6 +141,15 @@ function Offseason({ state, goTo, onStart }) {
         </button>
       )}
       {move && <p className={`promo ${move.type === 'promoted' ? 'is-up' : 'is-down'}`}>{move.type === 'promoted' ? '▲ Promoted' : '▼ Relegated'} to {state.club.division}</p>}
+      {state.awards?.length > 0 && (() => {
+        const y = state.awards[state.awards.length - 1];
+        return (
+          <button type="button" className="career-link" onClick={() => goTo('world')}>
+            <span>🏅 Season {y.year} awards · Best Player {y.best?.name || '—'} · Top Scorer {y.scorer?.name || '—'} ({y.scorer?.goals || 0}) · Best GK {y.gk?.name || '—'} · Young {y.young?.name || '—'}</span>
+            <b>Awards ›</b>
+          </button>
+        );
+      })()}
       <b className="offseason__title">Transfer Market is open</b>
       <p className="hint">Buy off-season cards, then play them from Cards → Items: sign players, extend careers, upgrade the club and pick a season event.</p>
       <div className="offseason__facilities">

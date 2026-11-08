@@ -8,26 +8,30 @@ import { Crest } from './Art.jsx';
 import { ClubLink, LeagueLink } from './nav.jsx';
 import { Records } from './History.jsx';
 import { HallOfFame } from './Collection.jsx';
+import Stats from './Stats.jsx';
+import Awards from './Awards.jsx';
 
 const nameOf = (id) => POOL_BY_ID[id]?.name;
 
 // The wider world: managers' rankings, the strongest clubs, all-time records and legends.
 export default function World({ state }) {
-  const [view, setView] = useState('gms');
+  const [view, setView] = useState('stats');
   return (
     <div className="screen">
       <Segmented
         small
         label="World"
         value={view}
-        options={[{ id: 'gms', label: 'Managers' }, { id: 'clubs', label: 'Clubs' }, { id: 'records', label: 'Records' }, { id: 'hof', label: 'Hall of Fame' }]}
+        options={[{ id: 'stats', label: 'Stats' }, { id: 'awards', label: 'Awards' }, { id: 'gms', label: 'Managers' }, { id: 'clubs', label: 'Clubs' }, { id: 'records', label: 'Records' }, { id: 'hof', label: 'Hall of Fame' }]}
         onChange={setView}
       />
       {view === 'gms' && <Managers state={state} />}
       {view === 'clubs' && <Clubs state={state} />}
+      {view === 'stats' && <Stats state={state} />}
+      {view === 'awards' && <Awards state={state} />}
       {view === 'records' && (state.archive?.length
         ? <Records state={state} archive={state.archive} divId={state.club.divisionId} initialScope="world" />
-        : <p className="hint">World records start after your first season.</p>)}
+        : <p className="hint">Season-by-season records (titles, best seasons) start after your first season. For live numbers, open Stats.</p>)}
       {view === 'hof' && <Legends state={state} />}
     </div>
   );

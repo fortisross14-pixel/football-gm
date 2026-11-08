@@ -1655,3 +1655,23 @@ html.reduce-motion .sealed, html.reduce-motion .flip, html.reduce-motion .pack__
 .reduce-motion .derby-alert, .reduce-motion .derby-alert::after, .reduce-motion .derby-alert__flash { animation: none; }
 .feed__item--derby { background: var(--red); color: #fff; font-weight: 700; }
 .rival-chip { text-decoration: none; }
+
+/* ---- Stats window and awards ---- */
+.stats { display: flex; flex-direction: column; gap: 12px; }
+.stats__filters { display: flex; flex-direction: column; gap: 8px; }
+.select { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.select select { font: inherit; font-size: 15px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--text); background: var(--surface); border: 1.5px solid var(--line-2); padding: 9px 10px; border-radius: 0; }
+.table--history td.is-key { font-weight: 800; background: color-mix(in srgb, var(--yellow) 30%, transparent); }
+.awards { display: flex; flex-direction: column; gap: 14px; }
+.awards__year header { background: var(--ink); color: #fff; padding: 6px 12px; font-family: var(--font-display); font-size: 18px; text-transform: uppercase; }
+.awards__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+.award { background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--line); padding: 10px; display: flex; flex-direction: column; gap: 3px; min-width: 0; border-top: 4px solid var(--yellow); }
+.award.is-user { border-top-color: var(--blue); background: var(--blue-soft); }
+.award__label { font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.award__name { font-family: var(--font-display); font-weight: 400; font-size: 20px; text-transform: uppercase; line-height: 1.05; }
+.award__club { font-size: 12px; }
+.award small { font-size: 11px; color: var(--muted); }
+@media (min-width: 720px) {
+  .stats__filters { flex-direction: row; align-items: flex-end; flex-wrap: wrap; }
+  .awards__grid { grid-template-columns: repeat(4, 1fr); }
+}

@@ -6,6 +6,7 @@ import { DIVISIONS, DIVISION_BY_ID } from '../data/world/structure.js';
 import { CUP_NAME_FOR, CONTINENTAL_NAME } from './names.js';
 import { POOL_BY_ID, seasonLeaders } from '../state/club.js';
 import { Segmented } from './Home.jsx';
+import Stats from './Stats.jsx';
 import { Crest } from './Art.jsx';
 import { ClubLink, LeagueLink } from './nav.jsx';
 
@@ -21,10 +22,11 @@ export default function History({ state, divId }) {
         small
         label="History"
         value={view}
-        options={[{ id: 'seasons', label: 'By season' }, { id: 'records', label: 'Records' }, { id: 'career', label: 'My career' }, { id: 'summer', label: 'Last summer' }]}
+        options={[{ id: 'seasons', label: 'By season' }, { id: 'stats', label: 'Stats' }, { id: 'records', label: 'Records' }, { id: 'career', label: 'My career' }, { id: 'summer', label: 'Last summer' }]}
         onChange={setView}
       />
       {view === 'seasons' && <Seasons state={state} archive={archive} divId={divId} />}
+      {view === 'stats' && <Stats state={state} initialScope={`L:${divId}`} key={divId} />}
       {view === 'records' && <Records state={state} archive={archive} divId={divId} />}
       {view === 'career' && <MyCareer state={state} />}
       {view === 'summer' && <LastSummer state={state} />}

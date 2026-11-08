@@ -12,6 +12,7 @@ import { makeGenericCard, FILLER_RATING, squadStrength } from '../engine/aiTeam.
 import { makeRng } from '../engine/rng.js';
 import { archiveSeason, foldRecords, compactEntry } from '../engine/history.js';
 import { ensureGms, updateGms } from '../engine/gms.js';
+import { decideAwards } from '../engine/awards.js';
 import { newStats, emptyBook, recordGame as recordStats, recordTitle, coachKey } from '../engine/statsbook.js';
 import { styleDistance, clubIdentity } from '../data/philosophies.js';
 import { isDerby, derbyName } from '../data/rivals.js';
@@ -731,6 +732,18 @@ export function closeSeason(state, seed) {
   const titleTo = (clubId) => clubId && recordTitle(next.stats, coachKey(next.world, clubId, state.club.id), clubId === state.club.id ? (state.gmName || 'You') : (next.world.gms?.[clubId]?.name || 'Manager'), clubId);
   for (const lg of Object.values(entry.leagues)) titleTo(lg.table[0][0]);
   for (const c of [...Object.values(entry.cups), ...Object.values(entry.continental), entry.cwc]) titleTo(c?.winner);
+  // The four yearly awards, from this season's stats and trophies.
+  const leftOf = (id) => {
+    const own = state.squad.find((c) => c.id === id);
+    if (own) return own.matchesLeft ?? null;
+    return next.world.cardLeft?.[id] ?? POOL_BY_ID[id]?.matchesLeft ?? 0;
+  };
+  const awards = decideAwards(next.stats.season, entry, { year: state.season.year, matchesLeftOf: leftOf });
+  next.awards = [...(next.awards || []), awards];
+  for (const a of [awards.best, awards.gk, awards.young, awards.scorer]) {
+    const card = a && next.squad.find((c) => c.id === a.id);
+    if (card) addFame(card, 2);
+  }
   next.stats.lastSeason = next.stats.season;
   next.stats.season = emptyBook();
   next.stats.year = state.season.year + 1;
