@@ -128,18 +128,19 @@ export function CoachCard({ coach, role, onClick, selected }) {
   );
 }
 
-export function BoostCard({ id, count, onClick, active, disabled, compact, reason }) {
+export function BoostCard({ id, count, onClick, active, disabled, compact, reason, rarity }) {
   const boost = BOOSTS[id];
   return (
     <button
       type="button"
-      className={`bcard${active ? ' is-active' : ''}${compact ? ' bcard--compact' : ''}`}
+      className={`bcard r-${boost.rarity}${active ? ' is-active' : ''}${compact ? ' bcard--compact' : ''}`}
       onClick={onClick}
       disabled={disabled}
       title={reason || boost.text}
     >
       <span className="bcard__icon" aria-hidden="true">{boost.icon}</span>
       <span className="bcard__name">{boost.name}</span>
+      {rarity && !compact && <span className="bcard__rarity">{RARITIES[boost.rarity].label}</span>}
       {!compact && <span className="bcard__text">{boost.text}</span>}
       {count !== undefined && <span className="bcard__count">×{count}</span>}
     </button>

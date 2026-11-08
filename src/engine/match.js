@@ -209,6 +209,7 @@ export function playBoost(state, side, boostId, targetId = null) {
     case 'setPiece': add({ type: 'setPiece' }); break;
     case 'superSub': team.superSubPending = true; break;
     case 'gameManagement': add({ type: 'gameManagement' }); break;
+    case 'twelfthMan': add({ type: 'all', value: 0.15, to: seg + 1 }); break;
     default: break;
   }
   const target = targetId ? ` (${team.players[targetId].card.name})` : '';

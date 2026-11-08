@@ -4,7 +4,7 @@ import { randomSeed } from './engine/rng.js';
 import { clubById, aiTeamFor } from './engine/season.js';
 import {
   newClubState, buildUserTeam, matchRewards, applyMatch,
-  buyPack, buyBoost, openOwnedPack, keepPending, mergePending, discardPending, closeSeason, buyMarketCard,
+  buyPack, buyBoostPack, openOwnedPack, keepPending, mergePending, discardPending, closeSeason, buyMarketCard,
   startNextSeason, useOffseasonCard, POOL_BY_ID, nextUserGame, acceptOffer, discardCommons,
 } from './state/club.js';
 import { Crest } from './ui/Art.jsx';
@@ -127,7 +127,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
     const rewards = matchRewards(state, match, userSide, game);
     const applied = applyMatch(state, match, userSide, opponent, rewards, randomSeed(), game);
     setState(applied.state);
-    setOutcome({ match, userSide, rewards, retired: applied.retired, coinsAfter: applied.state.coins });
+    setOutcome({ match, userSide, rewards, retired: applied.retired, boostReward: applied.boostReward, coinsAfter: applied.state.coins });
     setLoadout([]);
     setScreen('result');
   };
@@ -174,7 +174,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
           <Shop
             state={state}
             onBuyPack={(id) => setState((s) => buyPack(s, id, randomSeed()))}
-            onBuyBoost={(id) => setState((s) => buyBoost(s, id))}
+            onBuyBoostPack={(id) => { const r = buyBoostPack(state, id, randomSeed()); setState(r.state); return r.got; }}
             onBuyOffer={(uid) => setState((s) => buyMarketCard(s, uid))}
           />
         )}

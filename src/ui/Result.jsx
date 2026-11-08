@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { PlayerCard } from './Card.jsx';
+import { PlayerCard, BoostCard } from './Card.jsx';
+import { BOOSTS } from '../data/boosts.js';
+import { RARITIES } from '../engine/cards.js';
 import { Crest, kitColors } from './Art.jsx';
 
-export default function Result({ match, userSide, rewards, retired, coinsAfter, onDone }) {
+export default function Result({ match, userSide, rewards, retired, boostReward, coinsAfter, onDone }) {
   const { result } = match;
   const won = result.winner === userSide;
   const drew = result.winner === null;
@@ -49,6 +51,12 @@ export default function Result({ match, userSide, rewards, retired, coinsAfter, 
           <b className="coins">◎ {coins}</b>
         </div>
         <p className="hint">Balance: ◎ {coinsAfter}. Spend it on packs and boosts in the shop.</p>
+        {boostReward && (
+          <div className="boost-reward">
+            <span>New boost card · {RARITIES[BOOSTS[boostReward].rarity].label}</span>
+            <BoostCard id={boostReward} />
+          </div>
+        )}
       </section>
 
       <section>
@@ -78,7 +86,7 @@ export default function Result({ match, userSide, rewards, retired, coinsAfter, 
             </li>
           ))}
         </ul>
-        {user.boostsUsed.length > 0 && <p className="hint">Boosts used: {user.boostsUsed.length}. They're gone from your inventory.</p>}
+        {user.boostsUsed.length > 0 && <p className="hint">Boosts used: {user.boostsUsed.length}. You got one new boost card back.</p>}
       </section>
 
       {retired.length > 0 && (

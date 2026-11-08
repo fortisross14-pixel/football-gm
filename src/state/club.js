@@ -6,7 +6,7 @@ import { PLAYER_CARDS, COACH_CARDS, CARD_BY_ID, CLUBS_BY_DIVISION, CLUB_POOLS } 
 import { aiOffseason, userAcademyIntake, ACADEMY_COUNT, ACADEMY_MAX_TIER, namedCap } from '../engine/transfers.js';
 import { START_REPUTATION, boardObjective, judgeObjective, reputationChanges, weighReputation, applyReputation, jobOffers, CLUB_START, requiredReputation } from '../engine/career.js';
 import { DIVISIONS, DIVISION_BY_ID } from '../data/world/structure.js';
-import { BOOST_IDS, BOOSTS } from '../data/boosts.js';
+import { BOOST_IDS, BOOSTS, BOOST_PACKS, openBoostPack, drawBoost } from '../data/boosts.js';
 import { OFFSEASON_CARDS, OFFSEASON_IDS, MARKET_WEIGHTS, TIERS, tierIndex, cardValue, cardPrice, SIGNING_TIERS } from '../data/offseason.js';
 import { makeGenericCard, FILLER_RATING, squadStrength } from '../engine/aiTeam.js';
 import { makeRng } from '../engine/rng.js';
@@ -341,6 +341,11 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
   next.record.gf += own;
   next.record.ga += conceded;
 
+  // Played at least one boost? One free random boost card replaces it (only one, however many you played).
+  let boostReward = null;
+  if (team.boostsUsed.length > 0) {
+    boostReward = drawBoost(makeRng(seed + 101));
+  }
   for (const boostId of team.boostsUsed) {
     next.inventory.boosts[boostId] = Math.max(0, (next.inventory.boosts[boostId] || 0) - 1);
   }
@@ -431,7 +436,8 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
     next.season = advanced.season;
     if (next.season.slot >= CALENDAR.length) next.phase = 'seasonEnd';
   }
-  return { state: next, retired: [...retired, ...retiredCoaches] };
+  if (boostReward) next.inventory.boosts[boostReward] = (next.inventory.boosts[boostReward] || 0) + 1;
+  return { state: next, retired: [...retired, ...retiredCoaches], boostReward };
 }
 
 // Silverware: cup, continental and Club World Cup wins go in the cabinet with a reward pack.
@@ -491,14 +497,16 @@ function startOpening(next, packId, seed) {
   return next;
 }
 
-export function buyBoost(state, boostId) {
-  const price = BOOSTS[boostId].price;
-  if (state.coins < price) return state;
+// Boosts come in sealed packs: you don't choose which ones.
+export function buyBoostPack(state, packId, seed) {
+  const pack = BOOST_PACKS[packId];
+  if (!pack || state.coins < pack.price) return { state, got: [] };
   const next = structuredClone(state);
-  next.coins -= price;
-  track(next, 'spent', 'Boosts', price);
-  next.inventory.boosts[boostId] = (next.inventory.boosts[boostId] || 0) + 1;
-  return next;
+  next.coins -= pack.price;
+  track(next, 'spent', 'Boosts', pack.price);
+  const got = openBoostPack(makeRng(seed), packId);
+  for (const id of got) next.inventory.boosts[id] = (next.inventory.boosts[id] || 0) + 1;
+  return { state: next, got };
 }
 
 // ---------------------------------------------------------------------------

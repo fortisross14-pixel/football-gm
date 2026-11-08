@@ -998,3 +998,13 @@ html.reduce-motion .sealed, html.reduce-motion .flip, html.reduce-motion .btn--p
 .pcard__skill, .ccard__skill { display: flex; gap: 6px; align-items: baseline; font-size: 11px; padding: 4px 8px; border-radius: 8px; background: rgba(0,0,0,.35); border: 1px solid color-mix(in srgb, var(--gold) 50%, transparent); }
 .pcard__skill b, .ccard__skill b { color: var(--gold); text-transform: uppercase; letter-spacing: .06em; font-size: 11px; white-space: nowrap; }
 .mini__skill { position: absolute; top: 2px; right: 3px; font-size: 10px; }
+
+/* ---- Boost rarities and packs ---- */
+.bcard { border-color: color-mix(in srgb, var(--rc, var(--line-2)) 70%, transparent); }
+.bcard__rarity { font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--rc); }
+.bcard__icon { color: var(--rc); }
+.pack--boostBasic { --p1: #ff9f5a; --p2: #7a2f08; }
+.pack--boostPremium { --p1: #ff6fae; --p2: #5a0c3a; }
+.boost-got { animation: slide var(--t-reveal) var(--ease-back); display: flex; flex-direction: column; gap: 8px; }
+.boost-reward { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12px; font-weight: 700; color: var(--gold); text-transform: uppercase; letter-spacing: .08em; animation: slide var(--t-reveal) var(--ease-back); }
+.odds-note summary { cursor: pointer; color: var(--muted); font-size: 13px; padding: 8px 0; }

@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { PACKS, PACK_IDS, packOdds } from '../engine/packs.js';
-import { BOOSTS, BOOST_IDS } from '../data/boosts.js';
+import { BOOSTS, BOOST_IDS, BOOST_PACKS } from '../data/boosts.js';
 import { TIERS, cardValue } from '../data/offseason.js';
 import { RARITIES } from '../engine/cards.js';
 import { PackArt, BoostCard, OffseasonCard } from './Card.jsx';
 import { Segmented } from './Home.jsx';
 
-export default function Shop({ state, onBuyPack, onBuyBoost, onBuyOffer }) {
+export default function Shop({ state, onBuyPack, onBuyBoostPack, onBuyOffer }) {
+  const [got, setGot] = useState(null);
   const off = state.phase === 'offseason';
   const [tab, setTab] = useState(off ? 'market' : 'packs');
   const shift = state.activeEvent?.type === 'scoutingNetwork' ? cardValue('scoutingNetwork', state.activeEvent.rarity) : 0;
@@ -57,16 +58,37 @@ export default function Shop({ state, onBuyPack, onBuyBoost, onBuyOffer }) {
       )}
 
       {tab === 'boosts' && (
-        <div className="boost-grid">
-          {BOOST_IDS.map((id) => (
-            <div key={id} className="buy-tile">
-              <BoostCard id={id} count={state.inventory.boosts[id] || 0} />
-              <button type="button" className="btn btn--small btn--block" disabled={state.coins < BOOSTS[id].price} onClick={() => onBuyBoost(id)}>
-                Buy · ◎ {BOOSTS[id].price}
-              </button>
+        <>
+          <p className="hint">Boosts come in sealed packs. You also get one free random boost after every match where you play at least one.</p>
+          <div className="pack-list">
+            {Object.entries(BOOST_PACKS).map(([id, pack]) => (
+              <div key={id} className="pack-row">
+                <div className={`pack pack--boost pack--${id}`}><span className="pack__shine" /><span className="pack__name">{pack.name}</span><span className="pack__count">{pack.count} boosts</span></div>
+                <div className="pack-row__body">
+                  <b>{pack.name}</b>
+                  <span className="hint">{pack.text}</span>
+                  <button type="button" className="btn btn--primary btn--small" disabled={state.coins < pack.price} onClick={() => setGot(onBuyBoostPack(id))}>◎ {pack.price}</button>
+                </div>
+              </div>
+            ))}
+          </div>
+          {got?.length > 0 && (
+            <div className="panel boost-got" key={got.join()}>
+              <b>You got</b>
+              <div className="boost-grid">{got.map((id, i) => <BoostCard key={i} id={id} compact rarity />)}</div>
             </div>
-          ))}
-        </div>
+          )}
+          <h2 className="section-title">Your boosts</h2>
+          <div className="boost-grid">
+            {BOOST_IDS.filter((id) => state.inventory.boosts[id] > 0).map((id) => (
+              <BoostCard key={id} id={id} count={state.inventory.boosts[id]} rarity />
+            ))}
+          </div>
+          <details className="odds-note">
+            <summary>All boosts and rarities</summary>
+            <div className="boost-grid">{BOOST_IDS.map((id) => <BoostCard key={id} id={id} rarity />)}</div>
+          </details>
+        </>
       )}
 
       {tab === 'market' && (
