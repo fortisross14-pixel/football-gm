@@ -17,7 +17,8 @@ npm run build      # static build in dist/
 
 ## What's playable
 
-- **Season:** an 8-club league (14 matchdays) with a table, fixtures and a top-scorer list. You play your own matches, and the other games are simulated.
+- **World:** 38 divisions and 304 real clubs across Europe, the Americas, Asia and Africa. Every division plays each matchday, and clubs go up and down between tiers at season end. Browse any league's table, fixtures and scorers.
+- **Season:** you start in Spain · Division 3 with Racing Santander. Win the league to go up (and earn bigger rewards), finish last to go down.
 - **Matches:** 6 blocks of 15 minutes with live commentary, subs, mentality and boosts (up to 3 per match). Penalties in knockout games.
 - **Shop:** Bronze, Silver, Gold, Elite and Coach packs (odds shown), plus boosts.
 - **Pack opening:**
@@ -39,7 +40,9 @@ Progress is saved in the browser.
 | `src/state/club.js` | Your club: rewards, packs, keep/merge/discard, season end, Transfer Market, saving |
 | `src/engine/season.js` | Fixtures, table, scorers, simulating other games |
 | `src/engine/packs.js` | Pack odds, guarantees, duplicates |
-| `src/data/pool.js` | Card pool: 112 players, 16 coaches |
+| `src/data/pool.js` | Original card pool (112 players, 16 coaches) |
+| `src/data/world/` | World structure and the 4 region files (clubs + their named players) |
+| `scripts/check-world.mjs` | Validates the world data |
 | `src/data/offseason.js` | The 25 off-season card types |
 | `src/data/` | Demo club, league clubs, boosts, coach passives |
 | `src/ui/` | React screens and card components |

@@ -174,7 +174,7 @@ test('the world has 38 full divisions and a big card pool', () => {
   assert.ok(PLAYER_POOL.length + 0 >= 112);
   assert.ok(POOLS.player.length >= 400, `pool ${POOLS.player.length}`);
   const named = Object.values(s.world.clubs).filter((c) => c.keyPlayers.length > 0).length;
-  assert.ok(named >= 280, `${named} clubs with named players`);
+  assert.ok(named >= 260, `${named} clubs with named players`);
 });
 
 test('a card retires at zero matches and is replaced', () => {

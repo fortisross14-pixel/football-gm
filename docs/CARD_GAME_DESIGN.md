@@ -523,7 +523,8 @@ Your 2 carried cards replace squad cards of your choice. Cards that move with yo
 |---|---|
 | M1 Core match + squad | **Done:** playable demo (see `README.md`), engine tests and balance script |
 | M2 Reward loop + one season | **Done:** shop, 5 pack types, pack opening with Keep/Merge/Discard, "My cards" (squad, items, album, Hall of Fame), 8-club league season with table/fixtures/scorers, season prizes, off-season Transfer Market with 25 card types, cohesion, facilities, card pool of 112 players + 16 coaches |
-| M3 Full world | Next |
+| M3 Full world | **Done:** 38 divisions and 304 real clubs, 475 player cards (most tagged to their real club), the whole world plays every matchday (fast sim calibrated against the full engine), promotion/relegation with rating drift, world browser in the League tab |
+| M4 Competitions | Next |
 
 **Measured economy (M2, 60 simulated seasons with the demo squad):** average finish 3.6th of 8, about 2,200 coins per season (around 4 Silver packs).
 

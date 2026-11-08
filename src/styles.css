@@ -681,3 +681,13 @@ main { padding: 0 16px; }
 .moves li { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; background: var(--surface); border-radius: 8px; padding: 7px 10px; font-size: 13px; }
 .moves li small { grid-column: 1 / -1; color: var(--muted); font-size: 11px; }
 .last-season { display: flex; flex-direction: column; gap: 8px; }
+.table { table-layout: fixed; }
+.table th:first-child { width: 26px; }
+.table th.table__club { width: auto; }
+.table th:not(.table__club):not(:first-child) { width: 30px; }
+.table th.table__form { width: 58px; }
+.table td.table__form { padding-right: 8px; }
+.table td.table__club { display: table-cell; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.table td.table__club svg { vertical-align: middle; margin-right: 6px; }
+.res-dot { width: 5px; height: 5px; margin: 0 1px; }
+@media (max-width: 380px) { .table__form { display: none; } }
