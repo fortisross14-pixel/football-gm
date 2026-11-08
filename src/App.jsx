@@ -112,7 +112,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
   // Save shortly after every change (and right away when leaving).
   useEffect(() => {
     clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => saveSlot(slot, state), 300);
+    saveTimer.current = setTimeout(() => saveSlot(slot, state), 1200);
     return () => clearTimeout(saveTimer.current);
   }, [state, slot]);
   const exit = () => { clearTimeout(saveTimer.current); saveSlot(slot, state); onExit(); };

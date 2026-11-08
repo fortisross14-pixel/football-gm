@@ -43,6 +43,8 @@ const fs = require('fs');
   await step('league-career', () => page.click('text=My career'));
   await step('team', () => page.click('.tabbar button:nth-child(4)').then(() => page.click('.table .xlink >> nth=0')));
   await step('world', () => page.click('.tabbar button:nth-child(5)'));
+  await step('world-stats-coaches', () => page.click('.stats .segmented__opts >> text=Coaches'));
+  await step('world-awards', () => page.click('.screen > .segmented .segmented__opts button:nth-child(2), .screen .segmented__opts button:nth-child(2) >> nth=0'));
   await step('world-clubs', () => page.click('.screen .segmented__opts button:nth-child(2)'));
   await step('world-records', () => page.click('.screen .segmented__opts button:nth-child(3)'));
   await step('world-hof', () => page.click('.screen .segmented__opts button:nth-child(4)'));

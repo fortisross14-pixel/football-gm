@@ -19,12 +19,13 @@ function compFilter(scope) {
 }
 
 const PLAYER_KEYS = [
-  { id: 'goals', label: 'Top scorers', col: 'Goals' },
-  { id: 'rating', label: 'Best rated', col: 'Avg' },
-  { id: 'motm', label: 'Most MVPs', col: 'MOTM' },
-  { id: 'cs', label: 'Clean sheets', col: 'CS' },
-  { id: 'apps', label: 'Most games', col: 'Apps' },
+  { id: 'goals', label: 'Top scorers', col: 'Goals', fmt: (p) => p.goals },
+  { id: 'rating', label: 'Best rated', col: 'Avg', fmt: (p) => p.rating.toFixed(2) },
+  { id: 'motm', label: 'Most MVPs', col: 'MOTM', fmt: (p) => p.motm },
+  { id: 'cs', label: 'Clean sheets', col: 'CS', fmt: (p) => p.cs },
+  { id: 'apps', label: 'Most games', col: 'Apps', fmt: (p) => p.apps },
 ];
+const COLS = PLAYER_KEYS;
 const COACH_KEYS = [
   { id: 'wins', label: 'Most wins', col: 'W' },
   { id: 'pct', label: 'Best win %', col: 'Win %' },
@@ -33,7 +34,8 @@ const COACH_KEYS = [
 
 export default function Stats({ state, initialScope = 'all' }) {
   const stats = state.stats || { season: emptyBook(), all: emptyBook() };
-  const [period, setPeriod] = useState('season');
+  // Fresh season with no games yet: open on last season instead of an empty board.
+  const [period, setPeriod] = useState(Object.keys(stats.season.players).length ? 'season' : stats.lastSeason ? 'last' : 'all');
   const [scope, setScope] = useState(initialScope);
   const [who, setWho] = useState('players');
   const [key, setKey] = useState('goals');
@@ -80,19 +82,16 @@ export default function Stats({ state, initialScope = 'all' }) {
           {rows.length ? (
             <div className="scroll-x">
               <table className="table table--history">
-                <thead><tr><th>#</th><th className="table__club">Player</th><th className="table__club">Club</th><th>Pos</th><th>Apps</th><th>Goals</th><th>MOTM</th><th>CS</th><th>Avg</th></tr></thead>
+                <thead><tr><th>#</th><th className="table__club">Player</th><th className="is-key">{k.col}</th><th className="table__club">Club</th><th>Pos</th>{COLS.filter((c) => c.id !== key).map((c) => <th key={c.id}>{c.col}</th>)}</tr></thead>
                 <tbody>
                   {rows.map((p, i) => (
                     <tr key={p.id} className={p.clubId === state.club.id ? 'is-user' : ''}>
                       <td>{i + 1}</td>
                       <td className="table__club"><b>{p.name}</b></td>
+                      <td className="is-key">{k.fmt(p)}</td>
                       <td className="table__club">{club(p.clubId) ? <ClubLink id={p.clubId} className="club-inline"><Crest colors={club(p.clubId).colors} short={club(p.clubId).short} id={p.clubId} size={16} /> <span>{club(p.clubId).short}</span></ClubLink> : '—'}</td>
                       <td>{p.pos}</td>
-                      <td className={key === 'apps' ? 'is-key' : ''}>{p.apps}</td>
-                      <td className={key === 'goals' ? 'is-key' : ''}>{p.goals}</td>
-                      <td className={key === 'motm' ? 'is-key' : ''}>{p.motm}</td>
-                      <td className={key === 'cs' ? 'is-key' : ''}>{p.cs}</td>
-                      <td className={key === 'rating' ? 'is-key' : ''}>{p.rating.toFixed(2)}</td>
+                      {COLS.filter((c) => c.id !== key).map((c) => <td key={c.id}>{c.fmt(p)}</td>)}
                     </tr>
                   ))}
                 </tbody>
