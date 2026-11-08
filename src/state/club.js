@@ -73,12 +73,37 @@ function bestSeven(squad, formation) {
   return picked;
 }
 
-export function newClubState(seed = 12345) {
+// The three small clubs (level 3, different countries) that offer a rookie GM a first job.
+export function starterOffers(seed) {
+  const rng = makeRng(seed);
+  const divs = DIVISIONS.filter((d) => d.level === 3).sort(() => rng.next() - 0.5);
+  const offers = [];
+  for (const div of divs) {
+    if (offers.length >= 3) break;
+    if (offers.some((o) => DIVISION_BY_ID[o.divisionId].code === div.code)) continue;
+    const club = rng.pick(CLUBS_BY_DIVISION[div.id] || []);
+    if (club) offers.push({ clubId: club.id, divisionId: div.id, name: club.name, short: club.short, colors: club.colors, division: div.name, legends: (CLUB_POOLS[club.id] || []).length });
+  }
+  return offers;
+}
+
+const findClub = (clubId) => {
+  for (const [divId, clubs] of Object.entries(CLUBS_BY_DIVISION)) {
+    const c = clubs.find((x) => x.id === clubId);
+    if (c) return { club: c, divisionId: divId };
+  }
+  return null;
+};
+
+export function newClubState(seed = 12345, { clubId = USER_CLUB.id, gmName = 'You' } = {}) {
+  const found = findClub(clubId) || findClub(USER_CLUB.id);
+  const base = { id: found.club.id, name: found.club.name, short: found.club.short, colors: found.club.colors };
   const coaches = structuredClone(USER_COACHES);
-  const { squad, lineup, bench } = startingSquad(USER_CLUB.id, START_DIVISION, coaches.coach.formation, seed);
+  const { squad, lineup, bench } = startingSquad(base.id, found.divisionId, coaches.coach.formation, seed);
   const state = {
     version: SAVE_VERSION,
-    club: clubInfo(USER_CLUB, START_DIVISION),
+    gmName,
+    club: clubInfo(base, found.divisionId),
     coins: 300,
     squad,
     lineup,
@@ -554,6 +579,17 @@ export function discardPending(state) {
 
 function removeFromRivals(next, cardId) {
   if (next.world) next.world = removeKeyPlayer(next.world, cardId, POOL_BY_ID);
+}
+
+// Quick-sells the Common cards waiting to be decided (packs show the best card last).
+export function discardCommons(state) {
+  let next = state;
+  for (let guard = 0; guard < 10; guard += 1) {
+    const card = pendingCard(next);
+    if (!card || !['common', 'academy'].includes(card.rarity) || canMerge(next, card)) break;
+    next = discardPending(next);
+  }
+  return next;
 }
 
 export const canMerge = (state, card) => {

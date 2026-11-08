@@ -5,6 +5,14 @@ A 7v7 football card game. You are the club's GM: collect player and coach cards,
 - **Design:** [`docs/CARD_GAME_DESIGN.md`](docs/CARD_GAME_DESIGN.md)
 - **Old management-sim docs:** `docs/legacy/` (the old code lives in git history on `main`)
 
+## Play it on your phone
+
+1. In the GitHub repository: **Settings → Pages → Source: GitHub Actions** (one-time).
+2. Merge to `main`: the `Deploy to GitHub Pages` workflow builds, tests and publishes the game.
+3. Open the Pages link on your phone, then **Add to Home Screen** (Safari share menu, or Chrome's ⋮ menu → Install app). It runs full-screen and works offline.
+
+Careers are saved on the device. Use **Back up** in the main menu to move a career between devices (download the file or copy the text, then **Restore** on the other device).
+
 ## Run it
 
 ```bash
@@ -29,7 +37,11 @@ npm run build      # static build in dist/
 - **Season end:** prize money, reward packs and a free off-season card. Then the **Transfer Market** opens with 25 off-season card types (poach rivals' players, free agents, youth, stadium upgrades, season events…), each with a rarity that sets its strength.
 - **Card wear:** players and coaches lose a match each time they play and retire at 0.
 
-Progress is saved in the browser.
+- **Main menu:** 3 save slots, new career (pick your name and one of three small-club job offers), back up / restore, settings (match speed, auto-play, reduced motion, tips).
+- **GM career:** reputation, board objectives, job offers, moving clubs with 2 cards, getting sacked.
+- **Club screen:** facilities, finances, popularity, trophy cabinet.
+
+Progress is saved in the browser, automatically.
 
 ## Code map
 

@@ -7,7 +7,7 @@ import { OFFSEASON_CARDS, cardText } from '../data/offseason.js';
 import { effectiveCohesion, seasonSummary, FACILITY_LABEL, academyInfo, nextUserGame } from '../state/club.js';
 import { PACKS } from '../engine/packs.js';
 
-export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo, onReset }) {
+export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo }) {
   const { season, phase } = state;
   return (
     <div className="screen">
@@ -45,9 +45,6 @@ export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo
         </section>
       )}
 
-      {season.year > 1 || season.matchday > 0 ? (
-        <button type="button" className="link-btn" onClick={onReset}>Start a new game</button>
-      ) : null}
     </div>
   );
 }

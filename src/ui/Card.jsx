@@ -34,7 +34,7 @@ export function PlayerCard({ card, colors, stats, size = 'full', onClick, select
           </div>
         </div>
         <div className="pcard__art">
-          <Silhouette colors={colors} pos={card.pos} />
+          <Silhouette colors={colors} pos={card.pos} seed={card.id} />
         </div>
         <div className="pcard__name">{card.name}</div>
         <div className="pcard__stats">

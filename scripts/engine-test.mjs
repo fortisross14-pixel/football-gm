@@ -15,7 +15,7 @@ import { startingDraw, aiOffseason } from '../src/engine/transfers.js';
 import { CLUB_POOLS, PLAYER_CARDS } from '../src/data/world/index.js';
 import {
   newClubState, buildUserTeam, matchRewards, applyMatch, buyPack, keepPending, mergePending, discardPending,
-  pendingCard, duplicateOf, nextUserGame, newSeason, closeSeason, acceptOffer, carryOptions, buyMarketCard, useOffseasonCard, startNextSeason, POOLS, POOL_BY_ID,
+  pendingCard, duplicateOf, nextUserGame, newSeason, closeSeason, acceptOffer, carryOptions, starterOffers, discardCommons, buyMarketCard, useOffseasonCard, startNextSeason, POOLS, POOL_BY_ID,
 } from '../src/state/club.js';
 
 let passed = 0;
@@ -357,6 +357,30 @@ test('two missed objectives in a row get you sacked', () => {
   assert.equal(s.gm.sacked, true);
   assert.ok(s.gm.offers.length >= 1);
   assert.equal(startNextSeason(s, 1).phase, 'offseason', 'must take a job first');
+});
+
+test('a new career starts at any of three small clubs', () => {
+  const offers = starterOffers(123);
+  assert.equal(offers.length, 3);
+  assert.equal(new Set(offers.map((o) => DIVISION_BY_ID[o.divisionId].code)).size, 3, 'different countries');
+  for (const o of offers) assert.equal(DIVISION_BY_ID[o.divisionId].level, 3);
+  const s = newClubState(5, { clubId: offers[0].clubId, gmName: 'Test GM' });
+  assert.equal(s.club.id, offers[0].clubId);
+  assert.equal(s.gmName, 'Test GM');
+  assert.equal(s.squad.length, 10);
+  assert.ok(nextUserGame(s), 'has a first fixture');
+  assert.equal(s.world.clubs[s.club.id].keyPlayers.length, 0);
+});
+
+test('quick-sell discards the run of Commons and stops at a better card', () => {
+  let s = fresh();
+  const common = PLAYER_POOL.find((c) => c.rarity === 'common');
+  const rare = PLAYER_POOL.find((c) => c.rarity === 'rare' && !s.squad.some((x) => x.id === c.id));
+  s.pendingOpen = { source: 'test', cards: [structuredClone(common), structuredClone(common), structuredClone(rare)], index: 0 };
+  const coins = s.coins;
+  s = discardCommons(s);
+  assert.equal(s.pendingOpen.index, 2);
+  assert.equal(s.coins, coins + 20);
 });
 
 test('a card retires at zero matches and is replaced', () => {

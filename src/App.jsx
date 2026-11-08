@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createMatch } from './engine/match.js';
 import { randomSeed } from './engine/rng.js';
 import { clubById, aiTeamFor } from './engine/season.js';
 import {
-  newClubState, loadClubState, saveClubState, clearClubState, buildUserTeam, matchRewards, applyMatch,
+  newClubState, buildUserTeam, matchRewards, applyMatch,
   buyPack, buyBoost, openOwnedPack, keepPending, mergePending, discardPending, closeSeason, buyMarketCard,
-  startNextSeason, useOffseasonCard, POOL_BY_ID, nextUserGame, acceptOffer,
+  startNextSeason, useOffseasonCard, POOL_BY_ID, nextUserGame, acceptOffer, discardCommons,
 } from './state/club.js';
 import { Crest } from './ui/Art.jsx';
 import Home from './ui/Home.jsx';
@@ -19,6 +19,23 @@ import League from './ui/League.jsx';
 import PackOpening from './ui/PackOpening.jsx';
 import ClubInfo from './ui/ClubInfo.jsx';
 import Career from './ui/Career.jsx';
+import Menu, { SettingsSheet } from './ui/Menu.jsx';
+import NewCareer from './ui/NewCareer.jsx';
+import Tip from './ui/Tip.jsx';
+import Sheet from './ui/Sheet.jsx';
+import { loadSlot, saveSlot, loadSettings, saveSettings } from './state/storage.js';
+
+// One-time hints, shown the first time each screen opens.
+const TIPS = {
+  home: 'This is your club. Play your next match from here. Your board objective sits under the fixture, so keep an eye on it.',
+  squad: 'Tap a card, then another, to swap them. The head coach sets the formation. Cohesion grows when you keep the same starting 7.',
+  cards: 'Your players, items (packs, off-season cards, boosts), the album of every card in the game, and retired legends.',
+  shop: 'Packs give random players: keep or discard each one. Boosts help during a match. The Transfer Market opens after the season.',
+  league: 'Every league in the world plays each matchday. Browse any country, the cups, and last season\'s champions.',
+  club: 'Facilities, money in and out, and your trophy cabinet. Facilities are upgraded with off-season Club cards.',
+  career: 'Your reputation decides which clubs will hire you. Meet the board objective; miss it twice in a row and you\'re out.',
+  opening: 'New card! Keep it (pick who it replaces), merge a duplicate for +1★, or discard it for coins.',
+};
 
 const TABS = [
   { id: 'home', label: 'Club', icon: '⌂' },
@@ -28,15 +45,61 @@ const TABS = [
   { id: 'league', label: 'League', icon: '≡' },
 ];
 
+// Root: main menu, new career, or a game in a save slot.
 export default function App() {
-  const [state, setState] = useState(() => loadClubState() || newClubState(randomSeed()));
+  const [view, setView] = useState({ name: 'menu' });
+  const [settings, setSettingsState] = useState(loadSettings);
+  const setSettings = (s) => { setSettingsState(s); saveSettings(s); };
+  useEffect(() => {
+    document.documentElement.classList.toggle('reduce-motion', !!settings.reduceMotion);
+  }, [settings.reduceMotion]);
+
+  if (view.name === 'menu') {
+    return (
+      <Menu
+        settings={settings}
+        setSettings={setSettings}
+        onContinue={(n) => { const st = loadSlot(n); if (st) setView({ name: 'game', slot: n, state: st }); }}
+        onNew={(n) => setView({ name: 'new', slot: n })}
+        onImport={(n, st) => { saveSlot(n, st); setView({ name: 'game', slot: n, state: st }); }}
+      />
+    );
+  }
+  if (view.name === 'new') {
+    return (
+      <NewCareer
+        onCancel={() => setView({ name: 'menu' })}
+        onStart={(opts) => {
+          const st = newClubState(randomSeed(), opts);
+          saveSlot(view.slot, st);
+          setView({ name: 'game', slot: view.slot, state: st });
+        }}
+      />
+    );
+  }
+  return <Game key={view.slot} slot={view.slot} initial={view.state} settings={settings} setSettings={setSettings} onExit={() => setView({ name: 'menu' })} />;
+}
+
+function Game({ slot, initial, settings, setSettings, onExit }) {
+  const [state, setState] = useState(initial);
   const [screen, setScreen] = useState('home');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const saveTimer = useRef(null);
   const [loadout, setLoadout] = useState([]);
   const [live, setLive] = useState(null);
   const [outcome, setOutcome] = useState(null);
   const [toast, setToast] = useState(null);
 
-  useEffect(() => { saveClubState(state); }, [state]);
+  // Save shortly after every change (and right away when leaving).
+  useEffect(() => {
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => saveSlot(slot, state), 300);
+    return () => clearTimeout(saveTimer.current);
+  }, [state, slot]);
+  const exit = () => { clearTimeout(saveTimer.current); saveSlot(slot, state); onExit(); };
+  const seeTip = (id) => setState((s) => ({ ...s, seenTips: [...(s.seenTips || []), id] }));
+  const tip = (id) => settings.tips && !(state.seenTips || []).includes(id) ? id : null;
   useEffect(() => { window.scrollTo(0, 0); }, [screen]);
   useEffect(() => {
     if (!toast) return undefined;
@@ -75,13 +138,6 @@ export default function App() {
     setToast({ text: r.message, tone: r.success === false ? 'bad' : 'good' });
   };
 
-  const reset = () => {
-    if (!window.confirm('Start a new game? Your club, cards and coins will be lost.')) return;
-    clearClubState();
-    setState(newClubState(randomSeed()));
-    setScreen('home');
-  };
-
   const isTab = TABS.some((t) => t.id === screen) || screen === 'club' || screen === 'career';
 
   return (
@@ -95,7 +151,8 @@ export default function App() {
             <b>{state.club.name}</b>
             <span>{state.club.division}</span>
           </div>
-          <div className="topbar__coins" aria-label="Coins">◎ {state.coins}</div>
+          <div className="topbar__coins" aria-label="Coins">◎ {state.coins.toLocaleString()}</div>
+          <button type="button" className="icon-btn topbar__menu" onClick={() => setMenuOpen(true)} aria-label="Menu">☰</button>
         </header>
       )}
 
@@ -107,7 +164,6 @@ export default function App() {
             onCloseSeason={() => setState((s) => closeSeason(s, randomSeed()))}
             onStartSeason={() => setState((s) => startNextSeason(s, randomSeed()))}
             goTo={setScreen}
-            onReset={reset}
           />
         )}
         {screen === 'squad' && <Squad state={state} setState={setState} />}
@@ -146,7 +202,7 @@ export default function App() {
             onBack={() => setScreen('home')}
           />
         )}
-        {screen === 'match' && live && <Match initial={live.match} userSide={live.userSide} onFinish={finish} />}
+        {screen === 'match' && live && <Match initial={live.match} userSide={live.userSide} onFinish={finish} settings={settings} showTip={tip('match')} onTipSeen={() => seeTip('match')} />}
         {screen === 'result' && outcome && <Result {...outcome} onDone={() => setScreen('home')} />}
       </main>
 
@@ -169,10 +225,29 @@ export default function App() {
           onKeep={(opts) => setState((s) => keepPending(s, opts))}
           onMerge={() => setState((s) => mergePending(s))}
           onDiscard={() => setState((s) => discardPending(s))}
+          onDiscardCommons={() => setState((s) => discardCommons(s))}
+          reduceMotion={settings.reduceMotion}
         />
       )}
 
       {toast && <div className={`toast toast--${toast.tone}`} role="status">{toast.text}</div>}
+
+      {isTab && tip(screen) && TIPS[screen] && <Tip text={TIPS[screen]} onClose={() => seeTip(screen)} />}
+      {state.pendingOpen && screen !== 'match' && tip('opening') && <Tip text={TIPS.opening} onClose={() => seeTip('opening')} top />}
+
+      {menuOpen && (
+        <Sheet title="Menu" onClose={() => setMenuOpen(false)}>
+          <div className="menu-sheet">
+            <p className="hint">{state.gmName} · {state.club.name} · saved automatically in slot {slot}.</p>
+            <button type="button" className="btn btn--ghost btn--block" onClick={() => { setMenuOpen(false); setScreen('career'); }}>Career</button>
+            <button type="button" className="btn btn--ghost btn--block" onClick={() => { setMenuOpen(false); setScreen('club'); }}>Club, finances & trophies</button>
+            <button type="button" className="btn btn--ghost btn--block" onClick={() => { setMenuOpen(false); setSettingsOpen(true); }}>Settings</button>
+            <button type="button" className="btn btn--ghost btn--block" onClick={() => setState((s) => ({ ...s, seenTips: [] }))}>Show tips again</button>
+            <button type="button" className="btn btn--primary btn--block" onClick={exit}>Save & exit to main menu</button>
+          </div>
+        </Sheet>
+      )}
+      {settingsOpen && <SettingsSheet settings={settings} setSettings={setSettings} onClose={() => setSettingsOpen(false)} />}
     </div>
   );
 }

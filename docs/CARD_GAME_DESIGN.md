@@ -575,7 +575,9 @@ Your 2 carried cards replace squad cards of your choice. Cards that move with yo
 | M4 Competitions | **Done:** domestic cups (16 or 8 clubs, lower division at home, penalties), European Cup with qualifying round, Americas and Africa–APAC Cups (2 groups of 4 → semis → neutral final), Club World Cup (3-team mini-league + final), all on one season calendar; qualification from last season's tables (season 1: by club strength); trophies with prize money and reward packs; Cups view in the League tab |
 | M5 Club systems | **Done:** Club screen (facilities with current and next-level effects, season finances, popularity, cohesion, season event, trophy cabinet), popularity that grows with goals, man-of-the-match awards and trophies, season events called out in match commentary, active bonuses shown before kick-off, Cup Run and Continental Nights events |
 | M6 GM career | **Done:** reputation 0–100, board objective each season (from your squad's strength vs the division), season review with reputation changes, job offers by required reputation, take-2-cards move (old club keeps your legends), sacking after 2 missed objectives, Career screen |
-| M7 History and stats | Next |
+| Polish (GUI/UX) | **Done:** main menu with 3 save slots, new-career flow (name + 3 small-club offers), back up / restore saves (file or text), settings (match speed normal/fast/instant, auto-play, reduced motion, tips), one-time tips per screen, skip-to-full-time, quick-sell Commons and tap-to-reveal in pack opening, varied player portraits, installable app (manifest, offline cache, icons) and a GitHub Pages deploy workflow |
+| Balance | Next |
+| History and stats | Later |
 
 **Measured economy (M2, 60 simulated seasons with the demo squad):** average finish 3.6th of 8, about 2,200 coins per season (around 4 Silver packs).
 

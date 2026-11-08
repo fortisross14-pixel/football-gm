@@ -14,7 +14,8 @@ export function boardObjective(world, divisionId, userClubId, userStrength) {
   const div = DIVISION_BY_ID[divisionId];
   const ids = world.divisions[divisionId].filter((id) => id !== userClubId);
   const stronger = ids.filter((id) => world.clubs[id].strength > userStrength + 0.5).length;
-  const rank = stronger + 1; // where the squad "should" finish
+  const level = ids.filter((id) => Math.abs(world.clubs[id].strength - userStrength) <= 0.5).length;
+  const rank = 1 + stronger + Math.ceil(level / 2); // where the squad "should" finish
   const hasLower = DIVISIONS.some((d) => d.code === div.code && d.tier === div.tier + 1);
   if (rank <= 2) return { target: 1, text: 'Win the league' };
   if (rank <= 4) return { target: 3, text: 'Finish in the top 3' };

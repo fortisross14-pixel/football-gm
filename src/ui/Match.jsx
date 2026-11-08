@@ -10,14 +10,15 @@ import { Segmented } from './Home.jsx';
 import { PitchLines } from './Squad.jsx';
 import Sheet from './Sheet.jsx';
 
-const REVEAL_MS = 2600;
+const REVEAL_MS = { normal: 2600, fast: 1100, instant: 0 };
 
-export default function Match({ initial, userSide, onFinish }) {
+export default function Match({ initial, userSide, onFinish, settings = {}, showTip = null, onTipSeen }) {
+  const revealMs = REVEAL_MS[settings.speed] ?? REVEAL_MS.normal;
   const [match, setMatch] = useState(initial);
   const [shownEvents, setShownEvents] = useState(initial.events.length);
   const [clock, setClock] = useState(0);
   const [revealing, setRevealing] = useState(false);
-  const [auto, setAuto] = useState(false);
+  const [auto, setAuto] = useState(!!settings.autoplay);
   const [subsOpen, setSubsOpen] = useState(false);
   const [targeting, setTargeting] = useState(null); // boost id waiting for a player pick
   const [flash, setFlash] = useState(null);
@@ -59,19 +60,22 @@ export default function Match({ initial, userSide, onFinish }) {
     setShownEvents(decided);
     setRevealing(true);
     const fresh = next.events.slice(decided);
-    const step = REVEAL_MS / 15;
+    const step = revealMs / 15;
     for (let m = 1; m <= 15; m += 1) after(step * m, () => setClock(startMinute + m));
     fresh.forEach((ev, i) => {
       const at = Math.max(0, (ev.minute - startMinute) * step);
       after(at, () => {
         setShownEvents(decided + i + 1);
         if (ev.type === 'goal') {
-          setFlash({ side: ev.side, playerId: ev.playerId, key: `${ev.minute}-${i}` });
-          after(1400, () => setFlash(null));
+          if (!settings.reduceMotion) {
+            setFlash({ side: ev.side, playerId: ev.playerId, key: `${ev.minute}-${i}` });
+            after(revealMs ? 1400 : 600, () => setFlash(null));
+          }
+          if (ev.side === userSide) navigator.vibrate?.(60);
         }
       });
     });
-    after(REVEAL_MS + 150, () => {
+    after(revealMs + 150, () => {
       setShownEvents(next.events.length);
       setRevealing(false);
     });
@@ -88,7 +92,28 @@ export default function Match({ initial, userSide, onFinish }) {
     const next = runShootout(match);
     setMatch(next);
     setShownEvents(next.events.length);
-    next.shootout.kicks.forEach((_, i) => after(900 * (i + 1), () => setKicksShown(i + 1)));
+    const gap = revealMs ? 900 : 120;
+    next.shootout.kicks.forEach((_, i) => after(gap * (i + 1), () => setKicksShown(i + 1)));
+  };
+
+  // Plays the rest of the match at once (your side keeps its current mentality, no more changes).
+  const skipToEnd = () => {
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
+    let next = match;
+    while (next.phase === 'live') {
+      next = aiDecide(next, 1 - userSide);
+      next = playSegment(next);
+    }
+    if (next.phase === 'penalties') {
+      next = runShootout(next);
+      setKicksShown(next.shootout.kicks.length);
+    }
+    setMatch(next);
+    setShownEvents(next.events.length);
+    setRevealing(false);
+    setFlash(null);
+    setAuto(false);
   };
 
   const shootoutDone = match.shootout && kicksShown >= match.shootout.kicks.length;
@@ -216,6 +241,7 @@ export default function Match({ initial, userSide, onFinish }) {
               <button type="button" className="btn btn--primary btn--grow" disabled={!live} onClick={play}>
                 {revealing ? `${clock}'…` : nextLabel}
               </button>
+              <button type="button" className="btn btn--small btn--ghost" onClick={skipToEnd} title="Play the rest of the match at once">Skip ⏭</button>
             </div>
           </>
         )}
@@ -226,6 +252,14 @@ export default function Match({ initial, userSide, onFinish }) {
           <button type="button" className="btn btn--primary btn--block" onClick={() => onFinish(match)}>See result ›</button>
         )}
       </div>
+
+      {showTip && (
+        <div className="tip tip--top" role="note">
+          <span className="tip__icon" aria-hidden="true">💡</span>
+          <p>Each press plays 15 minutes. Between blocks you can change mentality, make subs or play a boost you brought. Skip plays to the end.</p>
+          <button type="button" className="tip__ok" onClick={onTipSeen}>Got it</button>
+        </div>
+      )}
 
       {subsOpen && (
         <SubsSheet
@@ -261,9 +295,9 @@ function MatchPitch({ match, userSide, kits, flash, targeting, onPick }) {
         const mine = side === userSide;
         return onPitch(team).map(({ slot, p }) => {
           // User attacks upward; the opponent is mirrored into the top half.
-          // Rows are spread over 60–95% of each half so tokens don't overlap.
+          // Rows are spread over 57–96% of each half so tokens don't overlap.
           const x = mine ? slot.x : 100 - slot.x;
-          const depth = 60 + ((slot.y - 22) / 68) * 34;
+          const depth = 57 + ((slot.y - 22) / 68) * 39;
           const y = mine ? depth : 100 - depth;
           const colors = kits[side];
           const isGk = slot.pos === 'GK';

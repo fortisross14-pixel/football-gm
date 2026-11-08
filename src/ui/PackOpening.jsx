@@ -4,7 +4,7 @@ import { overall, RARITIES } from '../engine/cards.js';
 import { pendingCard, duplicateOf, canMerge, isCoach } from '../state/club.js';
 
 // Full-screen flow for every new card: reveal, then Keep / Merge / Discard.
-export default function PackOpening({ state, onKeep, onMerge, onDiscard }) {
+export default function PackOpening({ state, onKeep, onMerge, onDiscard, onDiscardCommons, reduceMotion }) {
   const p = state.pendingOpen;
   const card = pendingCard(state);
   const [revealed, setRevealed] = useState(false);
@@ -13,7 +13,7 @@ export default function PackOpening({ state, onKeep, onMerge, onDiscard }) {
   useEffect(() => {
     setRevealed(false);
     setChoosing(false);
-    const t = setTimeout(() => setRevealed(true), 650);
+    const t = setTimeout(() => setRevealed(true), reduceMotion ? 0 : 650);
     return () => clearTimeout(t);
   }, [p?.index, p?.source]);
 
@@ -23,6 +23,8 @@ export default function PackOpening({ state, onKeep, onMerge, onDiscard }) {
   const big = ['epic', 'legend'].includes(card.rarity);
   const sell = RARITIES[card.rarity]?.quickSell || 0;
   const colors = state.club.colors;
+  let commonsLeft = 0;
+  for (let i = p.index; i < p.cards.length && ['common', 'academy'].includes(p.cards[i].rarity); i += 1) commonsLeft += 1;
 
   return (
     <div className="opening" role="dialog" aria-label="New card">
@@ -33,7 +35,7 @@ export default function PackOpening({ state, onKeep, onMerge, onDiscard }) {
 
       <div className={`opening__stage${revealed ? ' is-revealed' : ''}${big ? ` is-${card.rarity}` : ''}`}>
         {!revealed ? (
-          <div className={`card-back r-${card.rarity}`}><span>?</span></div>
+          <button type="button" className={`card-back r-${card.rarity}`} onClick={() => setRevealed(true)} aria-label="Reveal card"><span>?</span></button>
         ) : coach ? (
           <div className="reveal"><CoachCard coach={card} role="new" /></div>
         ) : (
@@ -58,6 +60,9 @@ export default function PackOpening({ state, onKeep, onMerge, onDiscard }) {
           <button type="button" className="btn btn--ghost btn--block" onClick={onDiscard}>
             Discard · +{sell} coins
           </button>
+          {commonsLeft > 1 && (
+            <button type="button" className="link-btn" onClick={onDiscardCommons}>Quick-sell all {commonsLeft} Commons in a row</button>
+          )}
         </div>
       )}
 

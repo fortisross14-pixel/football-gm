@@ -1,0 +1,16 @@
+{
+  "name": "Football Cards",
+  "short_name": "Football Cards",
+  "description": "A 7v7 football card game: build your club, win your league, become a legendary GM.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#07110d",
+  "theme_color": "#08130e",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
