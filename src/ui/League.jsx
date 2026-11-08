@@ -5,6 +5,7 @@ import { Crest } from './Art.jsx';
 import { Segmented } from './Home.jsx';
 import Cups from './Cups.jsx';
 import History from './History.jsx';
+import CompStats from './CompStats.jsx';
 import { ClubLink } from './nav.jsx';
 
 const COUNTRIES = [...new Map(DIVISIONS.map((d) => [d.code, d])).values()];
@@ -49,7 +50,7 @@ export default function League({ state, nav }) {
         small
         label="View"
         value={tab}
-        options={[{ id: 'table', label: 'Table' }, { id: 'fixtures', label: 'Fixtures' }, { id: 'scorers', label: 'Scorers' }, { id: 'cups', label: 'Cups' }, { id: 'history', label: 'History' }]}
+        options={[{ id: 'table', label: 'Table' }, { id: 'fixtures', label: 'Fixtures' }, { id: 'scorers', label: 'Stats' }, { id: 'cups', label: 'Cups' }, { id: 'history', label: 'History' }]}
         onChange={setTab}
       />
       </div>
@@ -57,7 +58,7 @@ export default function League({ state, nav }) {
       <div className="league__body">
       {tab === 'table' && <Table state={state} divId={divId} />}
       {tab === 'fixtures' && <Fixtures key={divId} state={state} divId={divId} />}
-      {tab === 'scorers' && <Scorers state={state} divId={divId} />}
+      {tab === 'scorers' && <CompStats state={state} comp={`L:${divId}`} />}
       {tab === 'cups' && <Cups state={state} countryCode={div.code} />}
       {tab === 'history' && <History state={state} divId={divId} />}
       </div>
