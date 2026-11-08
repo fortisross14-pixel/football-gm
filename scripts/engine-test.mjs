@@ -25,7 +25,7 @@ import { startingDraw, aiOffseason } from '../src/engine/transfers.js';
 import { CLUB_POOLS, PLAYER_CARDS } from '../src/data/world/index.js';
 import {
   newClubState, buildUserTeam, matchRewards, applyMatch, buyPack, keepPending, mergePending, discardPending,
-  pendingCard, duplicateOf, nextUserGame, newSeason, closeSeason, acceptOffer, carryOptions, starterOffers, discardCommons, buyMarketCard, useOffseasonCard, startNextSeason, POOLS, POOL_BY_ID,
+  pendingCard, duplicateOf, nextUserGame, newSeason, closeSeason, toggleCurse, acceptOffer, carryOptions, starterOffers, discardCommons, buyMarketCard, useOffseasonCard, startNextSeason, POOLS, POOL_BY_ID,
 } from '../src/state/club.js';
 
 let passed = 0;
@@ -521,6 +521,19 @@ test('history: a season is archived with champions, awards and cup finals; recor
   assert.ok(titleTable(played.archive).length >= 38);
   assert.ok(Object.keys(played.world.gms).length > 290);
   assert.ok(gmRanking(played.world).length > 290);
+});
+
+test('house rule: a cursed Barcelona loses its stars and at least half its games', () => {
+  let s = toggleCurse(fresh(), 'barcelona');
+  const barca = s.world.clubs.barcelona;
+  assert.ok(barca.cursed);
+  assert.ok(barca.keyPlayers.every((id) => ['common', 'uncommon'].includes(POOL_BY_ID[id].rarity)));
+  let losses = 0;
+  let games = 0;
+  for (let md = 0; md < 14; md += 1) s = playMatchday(s, 9100 + md);
+  for (const [, row] of Object.entries(s.season.divisions[barca.divisionId].table)) if (row === s.season.divisions[barca.divisionId].table.barcelona) { losses = row.l; games = row.p; }
+  assert.ok(games >= 14 && losses / games >= 0.5, `Barcelona lost ${losses}/${games}`);
+  assert.ok(!toggleCurse(s, 'barcelona').world.clubs.barcelona.cursed);
 });
 
 console.log(`\n${passed} tests passed`);

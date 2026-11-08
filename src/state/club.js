@@ -16,7 +16,7 @@ import { styleDistance, clubIdentity } from '../data/philosophies.js';
 import { normalizeTactics } from '../engine/tactics.js';
 import { RARITIES, TRAITS, POSITIONS, overall, rarityForOverall, autoArrange } from '../engine/cards.js';
 import { PACKS, openPack, mergeDuplicate, drawFromPool, MAX_STARS } from '../engine/packs.js';
-import { buildWorld, createSeason, playMatchday, goalsFromMatch, standings, removeKeyPlayer, endOfSeason, divisionName, refreshStrengths, userFixture, quickResult } from '../engine/season.js';
+import { applyCurses, buildWorld, createSeason, playMatchday, goalsFromMatch, standings, removeKeyPlayer, endOfSeason, divisionName, refreshStrengths, userFixture, quickResult } from '../engine/season.js';
 import {
   CALENDAR, createCompetitions, prepareSlot, recordGame, quickKnockout, involves, qualifiers, tablesByStrength, tablesFromSeason, CONTINENT_NAME, CONTINENTS,
 } from '../engine/competitions.js';
@@ -718,6 +718,7 @@ export function closeSeason(state, seed) {
   });
   next.world = off.world;
   refreshStrengths(next.world, POOL_BY_ID);
+  applyCurses(next.world, next.houseRules?.cursed || [], POOL_BY_ID);
   const userMove = end.moves.find((m) => m.clubId === next.club.id) || null;
   next.club = clubInfo(next.club, next.world.clubs[next.club.id].divisionId);
   next.lastSeason = {
@@ -926,6 +927,17 @@ export function acceptOffer(state, clubId, carryKeys = [], seed = 1) {
 }
 
 export const offerRequirement = (state, clubId) => requiredReputation(state.world, clubId);
+
+// House rules: curse (or lift the curse on) a club. Its stars leave and it loses at least half its games.
+export function toggleCurse(state, clubId) {
+  if (clubId === state.club.id) return state;
+  const next = structuredClone(state);
+  const list = new Set(next.houseRules?.cursed || []);
+  if (list.has(clubId)) list.delete(clubId); else list.add(clubId);
+  next.houseRules = { ...(next.houseRules || {}), cursed: [...list] };
+  applyCurses(next.world, next.houseRules.cursed, POOL_BY_ID);
+  return next;
+}
 
 // Off-season: actively look for a new job. Once per summer; the owners notice (−6 confidence).
 export const LOOK_COST = 6;
