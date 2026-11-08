@@ -2,6 +2,8 @@ import React from 'react';
 import { overall, RARITIES, TRAITS } from '../engine/cards.js';
 import { COACH_PASSIVES } from '../data/coachPassives.js';
 import { BOOSTS } from '../data/boosts.js';
+import { OFFSEASON_CARDS, GROUP_LABEL, cardText } from '../data/offseason.js';
+import { PACKS } from '../engine/packs.js';
 import { Silhouette } from './Art.jsx';
 
 const MAX_MATCHES = 200;
@@ -24,7 +26,11 @@ export function PlayerCard({ card, colors, stats, size = 'full', onClick, select
             <span className="num">{ovr}</span>
             <span className="pos">{card.pos}</span>
           </div>
-          <span className="pcard__rarity">{rarity.label}</span>
+          <div className="pcard__tags">
+            <span className="pcard__rarity">{rarity.label}</span>
+            {card.stars > 0 && <span className="stars">{'★'.repeat(card.stars)}</span>}
+            {card.youth && <span className="pcard__youth">Youth</span>}
+          </div>
         </div>
         <div className="pcard__art">
           <Silhouette colors={colors} pos={card.pos} />
@@ -86,24 +92,25 @@ export function MiniCard({ card, onClick, selected, warn, dim }) {
       <span className="mini__ovr">{ovr}</span>
       <span className="mini__pos">{card.pos}</span>
       <span className="mini__name">{card.name.length <= 9 ? card.name : last}</span>
+      {card.stars > 0 && <span className="mini__stars">{'★'.repeat(card.stars)}</span>}
       {warn && <span className="mini__warn" title="Out of position">{warn}</span>}
     </button>
   );
 }
 
-export function CoachCard({ coach, role, onClick }) {
-  const passive = COACH_PASSIVES[coach.passive];
+export function CoachCard({ coach, role, onClick, selected }) {
+  const passive = COACH_PASSIVES[coach.passive] || { name: 'No passive', text: 'A stand-in until you sign a coach.' };
   const strength = role === 'assistant' ? ' (50%)' : '';
   return (
-    <button type="button" className={`ccard r-${coach.rarity}`} onClick={onClick} disabled={!onClick}>
-      <div className="ccard__role">{role === 'assistant' ? 'Assistant' : 'Head coach'}</div>
+    <button type="button" className={`ccard r-${coach.rarity}${selected ? ' is-selected' : ''}`} onClick={onClick} disabled={!onClick}>
+      <div className="ccard__role">{role === 'assistant' ? 'Assistant' : role === 'new' ? 'Coach card' : 'Head coach'} · {RARITIES[coach.rarity]?.label}{coach.stars ? ` ${'★'.repeat(coach.stars)}` : ''}</div>
       <div className="ccard__name">{coach.name}</div>
       <div className="ccard__row">
         {role !== 'assistant' && <span className="chip">{coach.formation}</span>}
         <span className="chip chip--soft" title={passive.text}>{passive.name}{strength}</span>
       </div>
       <div className="ccard__text">{passive.text}</div>
-      <div className="ccard__left">{coach.matchesLeft} matches left</div>
+      <div className="ccard__left">{coach.matchesLeft == null ? 'No retirement' : `${coach.matchesLeft} matches left`}</div>
     </button>
   );
 }
@@ -123,5 +130,32 @@ export function BoostCard({ id, count, onClick, active, disabled, compact, reaso
       {!compact && <span className="bcard__text">{boost.text}</span>}
       {count !== undefined && <span className="bcard__count">×{count}</span>}
     </button>
+  );
+}
+
+export function OffseasonCard({ item, onClick, footer, disabled, selected }) {
+  const def = OFFSEASON_CARDS[item.type];
+  return (
+    <button type="button" className={`ocard r-${item.rarity}${selected ? ' is-selected' : ''}`} onClick={onClick} disabled={disabled}>
+      <div className="ocard__top">
+        <span className="ocard__group">{GROUP_LABEL[def.group]}</span>
+        <span className="ocard__rarity">{RARITIES[item.rarity].label}</span>
+      </div>
+      <span className="ocard__icon" aria-hidden="true">{def.icon}</span>
+      <span className="ocard__name">{def.name}</span>
+      <span className="ocard__text">{cardText(item.type, item.rarity)}</span>
+      {footer && <span className="ocard__footer">{footer}</span>}
+    </button>
+  );
+}
+
+export function PackArt({ packId, small }) {
+  const pack = PACKS[packId];
+  return (
+    <div className={`pack pack--${packId}${small ? ' pack--small' : ''}`}>
+      <span className="pack__shine" />
+      <span className="pack__name">{pack.name.replace(' Pack', '')}</span>
+      <span className="pack__count">{pack.count} {pack.kind === 'coach' ? 'coaches' : 'players'}</span>
+    </div>
   );
 }

@@ -12,18 +12,18 @@ export const USER_CLUB = {
 
 export const USER_SQUAD = [
   { id: 'c-ibarra', name: 'Marco Ibarra', pos: 'GK', rarity: 'uncommon', att: 22, def: 64, phy: 58, trait: null, matchesLeft: 171 },
-  { id: 'c-carvajal', name: 'Dani Carvajal', pos: 'DEF', rarity: 'rare', att: 62, def: 72, phy: 66, trait: 'leader', matchesLeft: 104 },
+  { id: 'p-dani-carvajal', name: 'Dani Carvajal', pos: 'DEF', rarity: 'rare', att: 62, def: 72, phy: 66, trait: 'leader', matchesLeft: 104 },
   { id: 'c-cantero', name: 'Luis Cantero', pos: 'DEF', rarity: 'common', att: 44, def: 63, phy: 61, trait: null, matchesLeft: 182 },
-  { id: 'c-pedri', name: 'Pedri', pos: 'MID', rarity: 'epic', att: 83, def: 70, phy: 76, trait: 'playmaker', matchesLeft: 158 },
+  { id: 'p-pedri', name: 'Pedri', pos: 'MID', rarity: 'epic', att: 83, def: 70, phy: 76, trait: 'playmaker', matchesLeft: 158 },
   { id: 'c-saez', name: 'Pablo Sáez', pos: 'MID', rarity: 'common', att: 60, def: 58, phy: 63, trait: 'engine', matchesLeft: 166 },
   { id: 'c-ortega', name: 'Rubén Ortega', pos: 'MID', rarity: 'common', att: 58, def: 61, phy: 60, trait: null, matchesLeft: 149 },
-  { id: 'c-aspas', name: 'Iago Aspas', pos: 'FWD', rarity: 'rare', att: 76, def: 34, phy: 60, trait: 'clutch', matchesLeft: 102 },
+  { id: 'p-iago-aspas', name: 'Iago Aspas', pos: 'FWD', rarity: 'rare', att: 76, def: 34, phy: 60, trait: 'clutch', matchesLeft: 102 },
   { id: 'c-mena', name: 'Hugo Mena', pos: 'GK', rarity: 'academy', att: 18, def: 54, phy: 52, trait: null, matchesLeft: null },
   { id: 'c-gil', name: 'Tomás Gil', pos: 'DEF', rarity: 'common', att: 40, def: 60, phy: 62, trait: 'wall', matchesLeft: 190 },
   { id: 'c-vela', name: 'Andrés Vela', pos: 'FWD', rarity: 'uncommon', att: 65, def: 32, phy: 66, trait: 'poacher', matchesLeft: 176 },
 ];
 
-export const USER_LINEUP = ['c-ibarra', 'c-carvajal', 'c-cantero', 'c-pedri', 'c-saez', 'c-ortega', 'c-aspas'];
+export const USER_LINEUP = ['c-ibarra', 'p-dani-carvajal', 'c-cantero', 'p-pedri', 'c-saez', 'c-ortega', 'p-iago-aspas'];
 export const USER_BENCH = ['c-mena', 'c-gil', 'c-vela'];
 
 export const USER_COACHES = {
@@ -83,7 +83,7 @@ export const OPPONENTS = [
     colors: { primary: '#f4f4f4', secondary: '#c9a227', away: '#2a2a72' },
     coach: { name: 'Head coach', passive: 'motivator' },
     keyPlayers: [
-      { id: 'rma-courtois', name: 'Thibaut Courtois', pos: 'GK', rarity: 'epic', att: 25, def: 86, phy: 70, trait: 'shotStopper' },
+      { id: 'rma-courtois', name: 'Thibaut Courtois', pos: 'GK', rarity: 'epic', att: 25, def: 84, phy: 70, trait: 'shotStopper' },
       { id: 'rma-bellingham', name: 'Jude Bellingham', pos: 'MID', rarity: 'legend', att: 88, def: 76, phy: 85, trait: 'bigGame' },
       { id: 'rma-mbappe', name: 'Kylian Mbappé', pos: 'FWD', rarity: 'legend', att: 93, def: 38, phy: 84, trait: 'poacher' },
     ],

@@ -4,7 +4,7 @@
 // point where a side can change mentality, make substitutions and play boosts.
 // Knockout draws go to a penalty shootout.
 
-import { FORMATIONS, slotFit } from './cards.js';
+import { FORMATIONS, slotFit, overall } from './cards.js';
 import { makeRng } from './rng.js';
 import { COACH_PASSIVES } from '../data/coachPassives.js';
 import { BOOSTS } from '../data/boosts.js';
@@ -33,7 +33,8 @@ const clone = (v) => structuredClone(v);
 
 // team input: { id, name, short, colors, formation, players: [cards],
 //   lineup: [playerId x7 in formation slot order], bench: [playerId x<=3],
-//   coach, assistant, loadout: [boostId], isAI }
+//   coach, assistant, loadout: [boostId], isAI,
+//   mods: { all, home, comeback, drain, finishing, underdog } }  (season effects, fractions)
 export function createMatch({ home, away, context = {}, seed = 1 }) {
   return {
     seed: seed >>> 0,
@@ -76,7 +77,10 @@ function buildTeam(input, isHome, context) {
     players[slot.playerId].enteredAt = 0;
   }
   const tactician = passiveValue(input.coach, input.assistant, 'tactician');
+  const ovr = Math.round(slots.reduce((s, slot) => s + overall(players[slot.playerId].card), 0) / slots.length);
   return {
+    ovr,
+    mods: { all: 0, home: 0, comeback: 0, drain: 0, finishing: 0, underdog: 0, ...(input.mods || {}) },
     id: input.id,
     name: input.name,
     short: input.short,
@@ -246,8 +250,13 @@ function modifiers(state, side, seg) {
   const field = onPitch(team);
   const active = team.effects.filter((e) => e.from <= seg && e.to >= seg);
   const sum = (type) => active.filter((e) => e.type === type).reduce((s, e) => s + e.value, 0);
-  let all = sum('all');
-  if (team.isHome) all += HOME_BONUS;
+  const season = team.mods;
+  const opp = state.teams[1 - side];
+  const [own, against] = side === 0 ? state.score : [state.score[1], state.score[0]];
+  let all = sum('all') + season.all;
+  if (team.isHome) all += HOME_BONUS + season.home;
+  if (seg >= 4 && own < against) all += season.comeback;
+  if (opp.ovr > team.ovr + 1) all += season.underdog;
   if (seg >= 3) all += teamPassive(team, 'motivator');
   if (competition === 'cup') all += teamPassive(team, 'cupSpecialist');
   all += field.filter(({ p }) => p.card.trait === 'leader').length * 0.03;
@@ -345,6 +354,7 @@ export function playSegment(state) {
       const finish = clamp(2 / (1 + Math.exp(-(shooter.att - gkDef) / 12)), 0.45, 1.7);
       let p = BASE_CONVERSION * (0.45 + 1.1 * chance.quality) * finish;
       if (shooter.p.card.trait === 'poacher') p *= 1.15;
+      p *= 1 + team.mods.finishing;
       p = clamp(p, 0.04, 0.8);
       shooter.p.shots += 1;
       const name = shooter.p.card.name;
@@ -405,7 +415,7 @@ export function playSegment(state) {
     const guru = teamPassive(team, 'fitnessGuru');
     const mentality = { attacking: 1.15, balanced: 1, defensive: 0.9 }[team.mentality];
     for (const { slot, p } of onPitch(team)) {
-      let drain = 9 * (1.4 - p.card.phy / 100) * mentality * (1 - guru);
+      let drain = 9 * (1.4 - p.card.phy / 100) * mentality * (1 - guru) * (1 - team.mods.drain);
       if (p.card.trait === 'engine') drain *= 0.5;
       if (slot.pos === 'GK') drain *= 0.4;
       p.stamina = clamp(p.stamina - drain, 0, 100);

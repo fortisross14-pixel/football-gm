@@ -15,13 +15,17 @@ npm run balance    # simulate thousands of matches and print goal/win rates
 npm run build      # static build in dist/
 ```
 
-## Milestone 1: what's playable
+## What's playable
 
-- **Squad screen:** 7 starters on a pitch, 3 on the bench, head coach and assistant. Tap two cards to swap them, tap "View card" for the full card.
-- **Friendly matches** against 3 opponents (Normal / Hard / Very hard), as League or Cup (knockout, with penalties), home or away.
-- **Boosts:** bring up to 3 into a match and play them at any break (Golden Chance, Second Wind, Captain's Speech…).
-- **The match:** 6 blocks of 15 minutes with live commentary, stamina rings, subs and mentality. Auto-play is available.
-- **After the match:** coins, man of the match, player ratings. Cards lose 1 match each time they play and retire at 0.
+- **Season:** an 8-club league (14 matchdays) with a table, fixtures and a top-scorer list. You play your own matches, and the other games are simulated.
+- **Matches:** 6 blocks of 15 minutes with live commentary, subs, mentality and boosts (up to 3 per match). Penalties in knockout games.
+- **Shop:** Bronze, Silver, Gold, Elite and Coach packs (odds shown), plus boosts.
+- **Pack opening:**
+  - Cards reveal one by one.
+  - For each card you choose Keep (pick who it replaces in your 10), Merge a duplicate (+1★, +2 stats, +30 matches) or Discard for coins.
+- **Cards tab:** your squad, items (unopened packs, off-season cards, boosts), a card album with completion %, and the Hall of Fame.
+- **Season end:** prize money, reward packs and a free off-season card. Then the **Transfer Market** opens with 25 off-season card types (poach rivals' players, free agents, youth, stadium upgrades, season events…), each with a rarity that sets its strength.
+- **Card wear:** players and coaches lose a match each time they play and retire at 0.
 
 Progress is saved in the browser.
 
@@ -32,6 +36,10 @@ Progress is saved in the browser.
 | `src/engine/match.js` | Match engine (pure functions, seeded randomness) |
 | `src/engine/cards.js` | Rarities, traits, formations, overall rating |
 | `src/engine/aiTeam.js` | Builds AI squads from a club rating + key players |
-| `src/state/club.js` | Your club's state, rewards, retirements, saving |
-| `src/data/` | Demo club, opponents, boosts, coach passives |
+| `src/state/club.js` | Your club: rewards, packs, keep/merge/discard, season end, Transfer Market, saving |
+| `src/engine/season.js` | Fixtures, table, scorers, simulating other games |
+| `src/engine/packs.js` | Pack odds, guarantees, duplicates |
+| `src/data/pool.js` | Card pool: 112 players, 16 coaches |
+| `src/data/offseason.js` | The 25 off-season card types |
+| `src/data/` | Demo club, league clubs, boosts, coach passives |
 | `src/ui/` | React screens and card components |

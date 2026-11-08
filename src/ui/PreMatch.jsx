@@ -15,7 +15,7 @@ export function boostSlotsFor(coaches) {
 export default function PreMatch({ state, opponent, setup, loadout, setLoadout, onStart, onBack }) {
   const slots = boostSlotsFor(state.coaches);
   const starters = state.lineup.map((id) => state.squad.find((c) => c.id === id));
-  const available = (id) => (state.inventory[id] || 0) - loadout.filter((x) => x === id).length;
+  const available = (id) => (state.inventory.boosts[id] || 0) - loadout.filter((x) => x === id).length;
   const add = (id) => {
     if (loadout.length >= slots || available(id) <= 0) return;
     setLoadout([...loadout, id]);
@@ -25,7 +25,7 @@ export default function PreMatch({ state, opponent, setup, loadout, setLoadout, 
   const us = { colors: state.club.colors, short: state.club.short, name: state.club.name, ovr: teamOverall(starters) };
   const them = { colors: opponent.colors, short: opponent.short, name: opponent.name, ovr: opponent.rating };
   const [left, right] = home ? [us, them] : [them, us];
-  const owned = BOOST_IDS.filter((id) => (state.inventory[id] || 0) > 0);
+  const owned = BOOST_IDS.filter((id) => (state.inventory.boosts[id] || 0) > 0);
 
   return (
     <div className="screen">
@@ -33,7 +33,7 @@ export default function PreMatch({ state, opponent, setup, loadout, setLoadout, 
         <TeamBlock team={left} />
         <div className="matchup__vs">
           <span>VS</span>
-          <small>{setup.knockout ? 'Cup · knockout' : 'League'}</small>
+          <small>{setup.label}</small>
         </div>
         <TeamBlock team={right} />
       </div>
@@ -54,7 +54,7 @@ export default function PreMatch({ state, opponent, setup, loadout, setLoadout, 
       </div>
 
       <div className="boost-grid">
-        {owned.length === 0 && <p className="hint">You have no boosts left.</p>}
+        {owned.length === 0 && <p className="hint">You have no boosts left. Buy more in the shop.</p>}
         {owned.map((id) => (
           <BoostCard
             key={id}

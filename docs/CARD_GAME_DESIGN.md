@@ -1,7 +1,10 @@
-# Football Cards — Game Design Document (v1.3)
+# Football Cards — Game Design Document (v1.4)
 
 > Replaces the old management-sim design (`GAME_DESIGN_DOCUMENT.md`), which is kept for reference only.
 > Language: English. Platform: web (React + Vite), mobile-first.
+
+**Changes in v1.4**
+- 25 off-season card types, each with a rarity that sets its strength. Lower rarities show up more often in the Transfer Market.
 
 **Changes in v1.3**
 - 5 rarities: **Common, Uncommon, Rare, Epic, Legend**.
@@ -222,55 +225,75 @@ You bring up to **3 boosts** per match (4 with the *Tactician* coach). You can p
 | Super Sub | The next substitute comes on with +15% stats | 70 |
 | Game Management | If leading in the last segment: opponent chances −40% | 60 |
 
-### 4.5 Infrastructure (off-season, consumable → permanent level at the club)
+### 4.5 Facilities (built with off-season cards)
 
-Building work happens in the summer, so these cards can only be played in the off-season. Facility levels **belong to the club**, not to you. If you leave, the levels stay behind. Each card raises a facility by 1 level, up to level 5, and gets more expensive per level.
+Facility levels (0–5) **belong to the club**, not to you. If you leave, the levels stay behind. They're raised with the Club cards in the Transfer Market (§4.6). The card's **rarity sets the highest level it can build**:
 
-| Facility | Effect per level | Price L1→L5 |
-|---|---|---|
-| **Stadium Evolution** (sold in the Transfer Market) | Base home-game income: 40 / 70 / 110 / 160 / 230 / 320 (L0–L5) × division multiplier | 300 / 700 / 1500 / 3000 / 6000 |
-| **Merchandise Expansion** | Merch multiplier ×0.5 / 1 / 1.5 / 2 / 2.5 / 3 on squad popularity | 250 / 600 / 1300 / 2600 / 5000 |
-| **Training Ground** | Cohesion gain per match +2 / 3 / 4 / 5 / 6 / 7, max cohesion bonus 4 / 5 / 6 / 7 / 8 / 10% | 300 / 700 / 1500 / 3000 / 6000 |
-| *(optional)* Youth Academy | Generic replacements get better (OVR cap 55 → 64), and Golden Generation is stronger | 400 / 900 / 1800 / 3500 / 7000 |
+| Rarity | Common | Uncommon | Rare | Epic | Legend |
+|---|---|---|---|---|---|
+| Builds | +1, up to level 2 | +1, up to level 3 | +1, up to level 4 | +1, up to level 5 | +2 levels |
 
-Clubs start with levels that match their size: L3 clubs around 1/0/1, L2 around 2/2/2, L1 around 4/4/3.
+| Facility | Effect at levels 0 / 1 / 2 / 3 / 4 / 5 |
+|---|---|
+| **Stadium** | Home-game income 40 / 70 / 110 / 160 / 230 / 320 × division multiplier |
+| **Merchandise** | Squad popularity × 0.5 / 1 / 1.5 / 2 / 2.5 / 3 × 2 coins per match |
+| **Training ground** | Cohesion +4 / 6 / 8 / 10 / 12 / 14 per match, and a max bonus of 4 / 5 / 6 / 7 / 8 / 10% all stats |
+| **Youth academy** | Academy fill-ins rated 48 / 50 / 52 / 54 / 56 / 58, and better Youth Intake players |
 
-**Cohesion (0–100):** goes up each match with an unchanged starting 7. Each new starter costs −10. At 100 cohesion the team gets the full bonus from the Training Ground level.
+Clubs start with levels that match their size. The demo club starts at stadium 1, merchandise 0, training 1, academy 0.
 
-### 4.6 Transfer Market (off-season)
+**Cohesion (0–100):** goes up after every match by the Training ground amount. Each new starter compared with the last match costs −10 (Tactical Continuity sets a floor). The bonus is cohesion% × the Training ground's max bonus.
 
-When the season ends, the **Transfer Market** opens. It offers a rotating selection of off-season cards: transfer cards, infrastructure and the 3 season events. Transfer cards also drop as rewards. They are played before the new season starts.
+### 4.6 Off-season cards and the Transfer Market
 
-| Card | Effect | Price |
-|---|---|---|
-| **Career Extension** | +15 matches to one player or coach | 300 |
-| **Stadium Evolution** | Stadium +1 level (§4.5) | 300 → 6000 by level |
-| **Poach** | Try to sign a named player from another club. Success depends on the player's rarity (below). Success: the card joins your squad (you release someone if full). Failure: the Poach card is lost. | 600 |
+When the season ends, the **Transfer Market** opens with 9 off-season cards for sale. Every off-season card has a **rarity** that sets how strong it is, and **lower rarities appear more often** (Common 45%, Uncommon 28%, Rare 17%, Epic 8%, Legend 2%). You also get 1 random off-season card as a season reward.
 
-**Poach success chance, by the target's rarity:**
+There are **25 card types** in three groups:
+- **Transfer:** squad moves. You can play as many as you like.
+- **Club:** facilities and deals. You can play as many as you like.
+- **Season event:** lasts the whole next season. Only **1 per season**.
 
-| Common | Uncommon | Rare | Epic | Legend |
+Effects at Common and Legend (Uncommon, Rare and Epic sit in between):
+
+| Card | Type | Common | Legend | Price (C → L) |
 |---|---|---|---|---|
-| 85% | 65% | 40% | 18% | 6% |
+| ⏳ **Career Extension** | Transfer | +10 matches to one player or coach. | +45 matches to one player or coach. | 150 → 1200 |
+| 🎯 **Poach** | Transfer | Try to sign a named player from a league rival. Lower-rarity targets are easier. | Try to sign a named player from a league rival. +40% success chance. Lower-rarity targets are easier. | 300 → 2400 |
+| ✍ **Free Agent** | Transfer | Sign a random common player in the position you choose. | Sign a random legend player in the position you choose. | 220 → 1760 |
+| 🌱 **Youth Intake** | Transfer | An academy youngster of common level joins in the position you choose. Very long career. | An academy youngster of legend level joins in the position you choose. Very long career. | 180 → 1440 |
+| ✨ **Golden Generation** | Transfer | Your academy produces 2 youngsters of uncommon level. | Your academy produces 2 youngsters of legend level. | 450 → 3600 |
+| 🧓 **Veteran Signing** | Transfer | Sign a player one rarity above common in the position you choose, with only 20 matches left. | Sign a player one rarity above legend in the position you choose, with only 50 matches left. | 200 → 1600 |
+| 💪 **Personal Trainer** | Transfer | +2 ATT, DEF and PHY to one player. | +7 ATT, DEF and PHY to one player. | 150 → 1200 |
+| 🔁 **Position Retraining** | Transfer | Move one player to a new position (−4 to all stats). | Move one player to a new position with no stat loss. | 120 → 960 |
+| 🎓 **Trait Coach** | Transfer | Teach one player a random new trait. | Teach one player the trait of your choice. | 150 → 1200 |
+| 📋 **Tactical Course** | Transfer | Your head coach learns a new formation of your choice. | Your head coach learns a new formation of your choice and can switch passive. | 150 → 1200 |
+| 🏟 **Stadium Evolution** | Club | Stadium +1 level, up to level 2. More income per home game. | Stadium +2 levels (max 5). More income per home game. | 250 → 2000 |
+| 👕 **Merchandise Expansion** | Club | Merchandise +1 level, up to level 2. Popular players sell more shirts. | Merchandise +2 levels (max 5). | 220 → 1760 |
+| 🏋 **Training Ground** | Club | Training ground +1 level, up to level 2. Faster, stronger cohesion. | Training ground +2 levels (max 5). | 250 → 2000 |
+| 🏫 **Youth Academy** | Club | Youth academy +1 level, up to level 2. Better academy players. | Youth academy +2 levels (max 5). | 250 → 2000 |
+| 🤝 **Shirt Sponsor** | Club | +10 coins for every match next season. | +90 coins for every match next season. | 100 → 800 |
+| 📦 **Boost Crate** | Club | 3 random in-game boosts. | 8 random in-game boosts. | 150 → 1200 |
+| 🏰 **Fortress Season** | Season event | +4% all stats at home. | +13% all stats at home. | 300 → 2400 |
+| 🔥 **Indomitable Spirit** | Season event | When losing from 60': +8% all stats. | When losing from 60': +20% all stats. | 300 → 2400 |
+| ✈ **Marketing Tour** | Season event | Merchandise income ×1.25. | Merchandise income ×2.2. | 250 → 2000 |
+| 🔭 **Scouting Network** | Season event | Better pack odds all season (3 points moved from Common to higher rarities). | Better pack odds all season (18 points moved from Common to higher rarities). | 350 → 2800 |
+| 🧩 **Tactical Continuity** | Season event | Cohesion never drops below 30. | Cohesion never drops below 80. | 250 → 2000 |
+| ⛺ **Pre-season Camp** | Season event | +4% all stats in the first 3 matchdays. | +9% all stats in the first 6 matchdays. | 250 → 2000 |
+| 🫀 **Fitness Program** | Season event | Stamina drains 10% slower. | Stamina drains 35% slower. | 250 → 2000 |
+| 🐺 **Underdog Mentality** | Season event | +5% all stats against higher-rated teams. | +16% all stats against higher-rated teams. | 250 → 2000 |
+| 🎯 **Shooting Drills** | Season event | +5% finishing all season. | +18% finishing all season. | 300 → 2400 |
 
-- You browse other clubs' squads to choose the target, so poaching is the way to go after one specific player.
-- Only one attempt per target player per off-season.
-- The low Legend chance keeps poaching from being a cheaper route to Legends than Elite packs.
+**Poach:** the success chance depends on the target's rarity, plus the Poach card's own bonus (max 95%). A failed attempt loses the card, and each player can only be approached once per off-season.
 
-### 4.7 Season events (off-season, one season long)
+| Target | Common | Uncommon | Rare | Epic | Legend |
+|---|---|---|---|---|---|
+| Base chance | 85% | 65% | 40% | 18% | 6% |
 
-| Event | Effect | Price |
-|---|---|---|
-| Golden Generation | Your academy produces 2 Rare-or-better youth players (fictional names, 180+ matches) | 1500 |
-| Fortress Season | Home bonus goes from +5% to +12% all season | 800 |
-| Indomitable Spirit | When losing after 70': +15% all stats | 900 |
-| Marketing Tour | Merch income ×1.5 this season | 700 |
-| Scouting Network | Better pack odds this season | 1000 |
-| Tactical Continuity | Cohesion can't drop below 60 this season | 700 |
-| Continental Nights | +10% stats in continental and Club World Cup matches | 900 |
-| Cup Run | +10% stats in cup matches, and cup prizes ×2 | 600 |
+Any card you gain from an off-season card (Poach, Free Agent, Youth Intake, Golden Generation, Veteran Signing) goes through the same Keep / Merge / Discard screen as a pack.
 
-The Transfer Market offers **3 random events** each off-season. You play **1** per season. Unused events stay in your inventory.
+### 4.7 Season events
+
+The season events are the "Season event" rows in the table above. Their effect lasts the whole next season, and a new one can be picked each off-season.
 
 ---
 
@@ -499,7 +522,10 @@ Your 2 carried cards replace squad cards of your choice. Cards that move with yo
 | Milestone | Status |
 |---|---|
 | M1 Core match + squad | **Done:** playable demo (see `README.md`), engine tests and balance script |
-| M2 Reward loop + one season | Next |
+| M2 Reward loop + one season | **Done:** shop, 5 pack types, pack opening with Keep/Merge/Discard, "My cards" (squad, items, album, Hall of Fame), 8-club league season with table/fixtures/scorers, season prizes, off-season Transfer Market with 25 card types, cohesion, facilities, card pool of 112 players + 16 coaches |
+| M3 Full world | Next |
+
+**Measured economy (M2, 60 simulated seasons with the demo squad):** average finish 3.6th of 8, about 2,200 coins per season (around 4 Silver packs).
 
 **Measured balance (M1, `npm run balance`):**
 - About 3.1–3.5 goals per match between equal teams.

@@ -1,24 +1,7 @@
 import React, { useState } from 'react';
-import { FORMATIONS, slotFit, teamOverall } from '../engine/cards.js';
+import { FORMATIONS, slotFit, teamOverall, autoArrange } from '../engine/cards.js';
 import { MiniCard, PlayerCard, CoachCard } from './Card.jsx';
 import Sheet from './Sheet.jsx';
-
-// Puts starters into the formation's slots: natural positions first, then best fit.
-export function autoArrange(starterCards, formation) {
-  const slots = FORMATIONS[formation];
-  const result = Array(slots.length).fill(null);
-  const left = [...starterCards];
-  slots.forEach((slot, i) => {
-    const idx = left.findIndex((c) => c.pos === slot.pos);
-    if (idx >= 0) result[i] = left.splice(idx, 1)[0];
-  });
-  slots.forEach((slot, i) => {
-    if (result[i]) return;
-    left.sort((a, b) => slotFit(b.pos, slot.pos) - slotFit(a.pos, slot.pos));
-    result[i] = left.shift();
-  });
-  return result.map((c) => c.id);
-}
 
 export default function Squad({ state, setState }) {
   const [selected, setSelected] = useState(null); // { zone: 'slot' | 'bench', index }

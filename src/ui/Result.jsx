@@ -48,7 +48,7 @@ export default function Result({ match, userSide, rewards, retired, coinsAfter, 
           <span>Total</span>
           <b className="coins">◎ {coins}</b>
         </div>
-        <p className="hint">Balance: ◎ {coinsAfter}. Coins buy packs and boosts from milestone 2.</p>
+        <p className="hint">Balance: ◎ {coinsAfter}. Spend it on packs and boosts in the shop.</p>
       </section>
 
       <section>

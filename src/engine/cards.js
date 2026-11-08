@@ -73,3 +73,30 @@ export function teamOverall(players) {
   if (!players.length) return 0;
   return Math.round(players.reduce((sum, p) => sum + overall(p), 0) / players.length);
 }
+
+// Rarity that matches an overall rating.
+export function rarityForOverall(ovr) {
+  if (ovr >= 83) return 'legend';
+  if (ovr >= 75) return 'epic';
+  if (ovr >= 68) return 'rare';
+  if (ovr >= 62) return 'uncommon';
+  if (ovr >= 55) return 'common';
+  return 'academy';
+}
+
+// Puts starters into the formation's slots: natural positions first, then best fit.
+export function autoArrange(starterCards, formation) {
+  const slots = FORMATIONS[formation];
+  const result = Array(slots.length).fill(null);
+  const left = [...starterCards];
+  slots.forEach((slot, i) => {
+    const idx = left.findIndex((c) => c.pos === slot.pos);
+    if (idx >= 0) result[i] = left.splice(idx, 1)[0];
+  });
+  slots.forEach((slot, i) => {
+    if (result[i]) return;
+    left.sort((a, b) => slotFit(b.pos, slot.pos) - slotFit(a.pos, slot.pos));
+    result[i] = left.shift();
+  });
+  return result.map((c) => c.id);
+}
