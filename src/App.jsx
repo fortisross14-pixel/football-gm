@@ -1,36 +1,253 @@
-import React,{useEffect,useRef,useState} from 'react';
-import StartFlow from './components/StartFlow.jsx';import SaveSlots from './components/SaveSlots.jsx';import Shell from './components/Shell.jsx';
-import Inbox from './screens/Inbox.jsx';import CompetitionsV4 from './screens/CompetitionsV4.jsx';import SquadV4 from './screens/SquadV4.jsx';import CoachV4 from './screens/CoachV4.jsx';import TrainingV4 from './screens/TrainingV4.jsx';import TransfersV4 from './screens/TransfersV4.jsx';import StaffV4 from './screens/StaffV4.jsx';import BoardV4 from './screens/BoardV4.jsx';import GM from './screens/GM.jsx';import BusinessOverviewV4 from './screens/BusinessOverviewV4.jsx';import SponsorsV4 from './screens/SponsorsV4.jsx';import KitV4 from './screens/KitV4.jsx';import MerchV4 from './screens/MerchV4.jsx';import HospitalityV4 from './screens/HospitalityV4.jsx';import MediaV4 from './screens/MediaV4.jsx';import SuppliersV4 from './screens/SuppliersV4.jsx';import FinanceV4 from './screens/FinanceV4.jsx';import TicketsV4 from './screens/TicketsV4.jsx';import MatchDayV43 from './screens/MatchDayV43.jsx';import {InfrastructureOverviewV4,StadiumV4,ClubFacilitiesV4,SportFacilitiesV4} from './screens/InfrastructureV4.jsx';
-import {createGame,advanceDays,advanceToNextMatch,isMatchReady,simulateCurrentMatch,activateSponsorRight,setTactic,coachIntervene,fireCoach,takeControl,appointInterim,startStaffSearch,submitStaffNegotiation,signStaffAgreement,createStaffPosition,dismissStaff,askCoachStaffRecommendation,submitClubOffer,submitPlayerOffer,completeTransfer,startSponsorSearch,submitSponsorNegotiation,signSponsor,startManufacturerSearch,signManufacturer,saveKitDesign,produceMerch,upgradeMerchChannel,setMerchPrice,setMediaProgram,scheduleEvent,signSupplier,startInvestment,takeDebt,requestBoardCapital,requestObjectiveChange,commissionFacilityProject,leaseCommercialUnit,updateTicketZone,setTrainingPlan} from './game/v4.js';
-import {loadGameFromSlot,saveGameToSlot} from './game/storage.js';
+import React, { useEffect, useRef, useState } from 'react';
+import { createMatch } from './engine/match.js';
+import { randomSeed } from './engine/rng.js';
+import { clubById, aiTeamFor } from './engine/season.js';
+import {
+  newClubState, buildUserTeam, matchRewards, applyMatch,
+  buyPack, buyBoost, openOwnedPack, keepPending, mergePending, discardPending, closeSeason, buyMarketCard,
+  startNextSeason, useOffseasonCard, POOL_BY_ID, nextUserGame, acceptOffer, discardCommons,
+} from './state/club.js';
+import { Crest } from './ui/Art.jsx';
+import Home from './ui/Home.jsx';
+import Squad from './ui/Squad.jsx';
+import PreMatch from './ui/PreMatch.jsx';
+import Match from './ui/Match.jsx';
+import Result from './ui/Result.jsx';
+import Shop from './ui/Shop.jsx';
+import Collection from './ui/Collection.jsx';
+import League from './ui/League.jsx';
+import PackOpening from './ui/PackOpening.jsx';
+import ClubInfo from './ui/ClubInfo.jsx';
+import Career from './ui/Career.jsx';
+import Menu, { SettingsSheet } from './ui/Menu.jsx';
+import NewCareer from './ui/NewCareer.jsx';
+import Tip from './ui/Tip.jsx';
+import Sheet from './ui/Sheet.jsx';
+import { loadSlot, saveSlot, loadSettings, saveSettings } from './state/storage.js';
 
-export default function App(){
-  const [view,setView]=useState('slots'),[activeSlot,setActiveSlot]=useState(null),[slotName,setSlotName]=useState(''),[game,setGame]=useState(null),[screen,setScreen]=useState('inbox'),[category,setCategory]=useState(null),[saveState,setSaveState]=useState({status:'idle',message:''}),[startError,setStartError]=useState('');
-  const saveTimer=useRef(null);
-  useEffect(()=>{
-    if(view!=='game'||!game||!activeSlot)return;
-    if(saveTimer.current)clearTimeout(saveTimer.current);
-    setSaveState({status:'saving',message:'Guardando…'});
-    const snapshot=game,slot=activeSlot,name=slotName;
-    saveTimer.current=setTimeout(async()=>{
-      const result=await saveGameToSlot(slot,name,snapshot);
-      setSaveState(result.ok?{status:'saved',message:'Guardado'}:{status:'error',message:result.error||'No se pudo guardar'});
-    },450);
-    return()=>{if(saveTimer.current)clearTimeout(saveTimer.current);};
-  },[game,view,activeSlot,slotName]);
-  const resetNav=()=>{setScreen('inbox');setCategory(null)};
-  const continueSlot=async id=>{const result=await loadGameFromSlot(id);if(!result.ok){setStartError(result.error);return;}setActiveSlot(id);setSlotName(result.meta.slotName);setGame(result.game);resetNav();setView('game');setStartError('');};
-  const newSlot=(id,name)=>{setActiveSlot(id);setSlotName(name);setGame(null);resetNav();setView('new');setStartError('');};
-  const beginCareer=async(club,gm)=>{try{const next=createGame(club,gm);setSaveState({status:'saving',message:'Creando partida…'});const result=await saveGameToSlot(activeSlot,slotName,next);if(!result.ok){setSaveState({status:'error',message:result.error||'No se pudo guardar'});setStartError(result.error||'No se pudo crear el guardado.');return;}setGame(next);setSaveState({status:'saved',message:'Guardado'});resetNav();setView('game');setStartError('');}catch(error){console.error('Career start failed',error);setStartError(`No se pudo iniciar la carrera: ${error?.message||error}`);setView('new');}};
-  const manualSave=async()=>{if(!game||!activeSlot)return {ok:false};if(saveTimer.current)clearTimeout(saveTimer.current);setSaveState({status:'saving',message:'Guardando…'});const result=await saveGameToSlot(activeSlot,slotName,game);setSaveState(result.ok?{status:'saved',message:'Guardado ahora'}:{status:'error',message:result.error||'No se pudo guardar'});return result;};
-  const exitToSlots=async()=>{const result=await manualSave();if(result&&!result.ok)return;setGame(null);setActiveSlot(null);setSlotName('');resetNav();setView('slots');};
-  if(view==='slots')return <><SaveSlots onContinue={continueSlot} onNew={newSlot}/>{startError&&<div className="toast-error">{startError}</div>}</>;
-  if(view==='new')return <><StartFlow saveName={slotName} onCancel={()=>setView('slots')} onStart={beginCareer}/>{startError&&<div className="toast-error">{startError}</div>}</>;
-  if(!game)return <SaveSlots onContinue={continueSlot} onNew={newSlot}/>;
-  const screenCategory={matchday:'sport',competitions:'sport',squad:'sport',coach:'sport',training:'sport',transfers:'sport',staff:'club',board:'club',gm:'club',business:'business',sponsors:'business',kit:'business',merch:'business',hospitality:'business',media:'business',suppliers:'business',finance:'business',infrastructure:'infrastructure',stadium:'infrastructure',tickets:'infrastructure',clubFacilities:'infrastructure',sportFacilities:'infrastructure'};const navigate=id=>{setScreen(id);setCategory(screenCategory[id]||null)};const props={game,setGame};let content=<Inbox {...props} setScreen={navigate}/>;
-  if(screen==='matchday')content=<MatchDayV43 game={game} onSimulate={()=>simulateCurrentMatch(game)} onLeave={g=>{setGame(g);setScreen('inbox');setCategory(null)}}/>;if(screen==='competitions')content=<CompetitionsV4 game={game}/>;if(screen==='squad')content=<SquadV4 game={game}/>;if(screen==='coach')content=<CoachV4 game={game} setTactic={p=>setGame(setTactic(game,p))} intervene={(id,f)=>setGame(coachIntervene(game,id,f))} fire={()=>setGame(fireCoach(game))} takeControl={()=>setGame(takeControl(game))} appointInterim={k=>setGame(appointInterim(game,k))} startSearch={(r,d)=>setGame(startStaffSearch(game,r,d))} negotiate={(r,id,s,e)=>setGame(submitStaffNegotiation(game,r,id,s,e))} sign={(r,id)=>setGame(signStaffAgreement(game,r,id))}/>;
-  if(screen==='training')content=<TrainingV4 game={game} setPlan={(p,f)=>setGame(setTrainingPlan(game,p,f))}/>;if(screen==='transfers')content=<TransfersV4 game={game} offerClub={(id,a)=>setGame(submitClubOffer(game,id,a))} offerPlayer={(id,s,b)=>setGame(submitPlayerOffer(game,id,s,b))} complete={id=>setGame(completeTransfer(game,id))}/>;if(screen==='staff')content=<StaffV4 game={game} createPosition={r=>setGame(createStaffPosition(game,r))} startSearch={(r,d)=>setGame(startStaffSearch(game,r,d))} negotiate={(r,id,s,e)=>setGame(submitStaffNegotiation(game,r,id,s,e))} sign={(r,id)=>setGame(signStaffAgreement(game,r,id))} dismiss={r=>setGame(dismissStaff(game,r))} recommend={r=>setGame(askCoachStaffRecommendation(game,r))}/>;if(screen==='board')content=<BoardV4 game={game} requestCapital={a=>setGame(requestBoardCapital(game,a))} requestObjective={id=>setGame(requestObjectiveChange(game,id))}/>;if(screen==='gm')content=<GM {...props}/>;
-  if(screen==='business')content=<BusinessOverviewV4 game={game} setScreen={navigate}/>;if(screen==='sponsors')content=<SponsorsV4 game={game} startSearch={(slot,scope,d)=>setGame(startSponsorSearch(game,slot,scope,d))} negotiate={(id,a)=>setGame(submitSponsorNegotiation(game,id,a))} sign={id=>setGame(signSponsor(game,id))} activate={id=>setGame(activateSponsorRight(game,id))}/>;if(screen==='kit')content=<KitV4 game={game} startSearch={d=>setGame(startManufacturerSearch(game,d))} signManufacturer={id=>setGame(signManufacturer(game,id))} saveDesign={p=>setGame(saveKitDesign(game,p))}/>;if(screen==='merch')content=<MerchV4 game={game} produce={(k,q)=>setGame(produceMerch(game,k,q))} upgradeChannel={k=>setGame(upgradeMerchChannel(game,k))} setPrice={(k,p)=>setGame(setMerchPrice(game,k,p))}/>;if(screen==='hospitality')content=<HospitalityV4 game={game} schedule={(t,d)=>setGame(scheduleEvent(game,t,d))}/>;if(screen==='media')content=<MediaV4 game={game} setMedia={p=>setGame(setMediaProgram(game,p))}/>;if(screen==='suppliers')content=<SuppliersV4 game={game} sign={(c,o)=>setGame(signSupplier(game,c,o))}/>;if(screen==='finance')content=<FinanceV4 game={game} invest={(t,a,d)=>setGame(startInvestment(game,t,a,d))} debt={a=>setGame(takeDebt(game,a))}/>;
-  if(screen==='infrastructure')content=<InfrastructureOverviewV4 game={game} setScreen={navigate}/>;if(screen==='stadium')content=<StadiumV4 game={game} onBuild={(g,id,t)=>setGame(commissionFacilityProject(game,g,id,t))} onUnit={(slot,type)=>setGame(leaseCommercialUnit(game,slot,type))}/>;if(screen==='tickets')content=<TicketsV4 game={game} updateZone={(z,p)=>setGame(updateTicketZone(game,z,p))}/>;if(screen==='clubFacilities')content=<ClubFacilitiesV4 game={game} onBuild={(g,id,t)=>setGame(commissionFacilityProject(game,g,id,t))}/>;if(screen==='sportFacilities')content=<SportFacilitiesV4 game={game} onBuild={(g,id,t)=>setGame(commissionFacilityProject(game,g,id,t))}/>;
-  return <Shell game={game} screen={screen} setScreen={navigate} category={category} setCategory={setCategory} onAdvance={n=>{const g=advanceDays(game,n);setGame(g);if(isMatchReady(g)){setScreen('matchday');setCategory('sport')}}} onNextMatch={()=>{const g=advanceToNextMatch(game);setGame(g);setScreen('matchday');setCategory('sport')}} saveName={slotName} saveState={saveState} onSave={manualSave} onExit={exitToSlots}>{content}</Shell>;
+// One-time hints, shown the first time each screen opens.
+const TIPS = {
+  home: 'This is your club. Play your next match from here. Your board objective sits under the fixture, so keep an eye on it.',
+  squad: 'Tap a card, then another, to swap them. The head coach sets the formation. Cohesion grows when you keep the same starting 7.',
+  cards: 'Your players, items (packs, off-season cards, boosts), the album of every card in the game, and retired legends.',
+  shop: 'Packs give random players: keep or discard each one. Boosts help during a match. The Transfer Market opens after the season.',
+  league: 'Every league in the world plays each matchday. Browse any country, the cups, and last season\'s champions.',
+  club: 'Facilities, money in and out, and your trophy cabinet. Facilities are upgraded with off-season Club cards.',
+  career: 'Your reputation decides which clubs will hire you. Meet the board objective; miss it twice in a row and you\'re out.',
+  opening: 'New card! Keep it (pick who it replaces), merge a duplicate for +1★, or discard it for coins.',
+};
+
+const TABS = [
+  { id: 'home', label: 'Club', icon: '⌂' },
+  { id: 'squad', label: 'Squad', icon: '◫' },
+  { id: 'cards', label: 'Cards', icon: '▤' },
+  { id: 'shop', label: 'Shop', icon: '◎' },
+  { id: 'league', label: 'League', icon: '≡' },
+];
+
+// Root: main menu, new career, or a game in a save slot.
+export default function App() {
+  const [view, setView] = useState({ name: 'menu' });
+  const [settings, setSettingsState] = useState(loadSettings);
+  const setSettings = (s) => { setSettingsState(s); saveSettings(s); };
+  useEffect(() => {
+    document.documentElement.classList.toggle('reduce-motion', !!settings.reduceMotion);
+  }, [settings.reduceMotion]);
+
+  if (view.name === 'menu') {
+    return (
+      <Menu
+        settings={settings}
+        setSettings={setSettings}
+        onContinue={(n) => { const st = loadSlot(n); if (st) setView({ name: 'game', slot: n, state: st }); }}
+        onNew={(n) => setView({ name: 'new', slot: n })}
+        onImport={(n, st) => { saveSlot(n, st); setView({ name: 'game', slot: n, state: st }); }}
+      />
+    );
+  }
+  if (view.name === 'new') {
+    return (
+      <NewCareer
+        onCancel={() => setView({ name: 'menu' })}
+        onStart={(opts) => {
+          const st = newClubState(randomSeed(), opts);
+          saveSlot(view.slot, st);
+          setView({ name: 'game', slot: view.slot, state: st });
+        }}
+      />
+    );
+  }
+  return <Game key={view.slot} slot={view.slot} initial={view.state} settings={settings} setSettings={setSettings} onExit={() => setView({ name: 'menu' })} />;
+}
+
+function Game({ slot, initial, settings, setSettings, onExit }) {
+  const [state, setState] = useState(initial);
+  const [screen, setScreen] = useState('home');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const saveTimer = useRef(null);
+  const [loadout, setLoadout] = useState([]);
+  const [live, setLive] = useState(null);
+  const [outcome, setOutcome] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  // Save shortly after every change (and right away when leaving).
+  useEffect(() => {
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => saveSlot(slot, state), 300);
+    return () => clearTimeout(saveTimer.current);
+  }, [state, slot]);
+  const exit = () => { clearTimeout(saveTimer.current); saveSlot(slot, state); onExit(); };
+  const seeTip = (id) => setState((s) => ({ ...s, seenTips: [...(s.seenTips || []), id] }));
+  const tip = (id) => settings.tips && !(state.seenTips || []).includes(id) ? id : null;
+  useEffect(() => { window.scrollTo(0, 0); }, [screen]);
+  useEffect(() => {
+    if (!toast) return undefined;
+    const t = setTimeout(() => setToast(null), 3800);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const fixture = nextUserGame(state);
+  const opponent = fixture ? clubById(state.world, fixture.opponentId) : null;
+
+  const kickoff = () => {
+    const seed = randomSeed();
+    // The competition's home side goes first, so scores line up with the fixture.
+    const userHomeSide = fixture.homeId === state.club.id;
+    const user = buildUserTeam(state, loadout, userHomeSide && !fixture.neutral);
+    const ai = aiTeamFor(state.world, opponent.id, POOL_BY_ID, seed);
+    const [home, away] = userHomeSide ? [user, ai] : [ai, user];
+    const match = createMatch({ home, away, seed, context: { competition: fixture.competition, knockout: fixture.knockout, neutral: fixture.neutral } });
+    setLive({ match, userSide: userHomeSide ? 0 : 1, game: fixture });
+    setScreen('match');
+  };
+
+  const finish = (match) => {
+    const { userSide, game } = live;
+    const rewards = matchRewards(state, match, userSide, game);
+    const applied = applyMatch(state, match, userSide, opponent, rewards, randomSeed(), game);
+    setState(applied.state);
+    setOutcome({ match, userSide, rewards, retired: applied.retired, coinsAfter: applied.state.coins });
+    setLoadout([]);
+    setScreen('result');
+  };
+
+  const useCard = (itemUid, target) => {
+    const r = useOffseasonCard(state, itemUid, target, randomSeed());
+    setState(r.state);
+    setToast({ text: r.message, tone: r.success === false ? 'bad' : 'good' });
+  };
+
+  const isTab = TABS.some((t) => t.id === screen) || screen === 'club' || screen === 'career';
+
+  return (
+    <div className={`app${isTab ? ' app--tabs' : ''}`}>
+      {screen !== 'match' && (
+        <header className="topbar">
+          <button type="button" className="topbar__crest" onClick={() => setScreen('club')} aria-label="Club details">
+            <Crest colors={state.club.colors} short={state.club.short} size={30} />
+          </button>
+          <div className="topbar__club">
+            <b>{state.club.name}</b>
+            <span>{state.club.division}</span>
+          </div>
+          <div className="topbar__coins" aria-label="Coins"><span key={state.coins} className="coin-bump">◎ {state.coins.toLocaleString()}</span></div>
+          <button type="button" className="icon-btn topbar__menu" onClick={() => setMenuOpen(true)} aria-label="Menu">☰</button>
+        </header>
+      )}
+
+      <main>
+        {screen === 'home' && (
+          <Home
+            state={state}
+            onPlay={() => setScreen('prematch')}
+            onCloseSeason={() => setState((s) => closeSeason(s, randomSeed()))}
+            onStartSeason={() => setState((s) => startNextSeason(s, randomSeed()))}
+            goTo={setScreen}
+          />
+        )}
+        {screen === 'squad' && <Squad state={state} setState={setState} />}
+        {screen === 'cards' && (
+          <Collection state={state} onOpenPack={(i) => setState((s) => openOwnedPack(s, i, randomSeed()))} onUseCard={useCard} />
+        )}
+        {screen === 'shop' && (
+          <Shop
+            state={state}
+            onBuyPack={(id) => setState((s) => buyPack(s, id, randomSeed()))}
+            onBuyBoost={(id) => setState((s) => buyBoost(s, id))}
+            onBuyOffer={(uid) => setState((s) => buyMarketCard(s, uid))}
+          />
+        )}
+        {screen === 'league' && <League state={state} />}
+        {screen === 'club' && <ClubInfo state={state} onBack={() => setScreen('home')} />}
+        {screen === 'career' && (
+          <Career
+            state={state}
+            onBack={() => setScreen('home')}
+            onAccept={(clubId, keys) => {
+              setState((s) => acceptOffer(s, clubId, keys, randomSeed()));
+              setToast({ text: 'New club, new challenge. Your squad is ready.', tone: 'good' });
+              setScreen('home');
+            }}
+          />
+        )}
+        {screen === 'prematch' && fixture && (
+          <PreMatch
+            state={state}
+            opponent={opponent}
+            setup={{ home: fixture.isHome || (fixture.neutral && fixture.homeId === state.club.id), label: fixture.label, competition: fixture.competition }}
+            loadout={loadout}
+            setLoadout={setLoadout}
+            onStart={kickoff}
+            onBack={() => setScreen('home')}
+          />
+        )}
+        {screen === 'match' && live && <Match initial={live.match} userSide={live.userSide} onFinish={finish} settings={settings} showTip={tip('match')} onTipSeen={() => seeTip('match')} />}
+        {screen === 'result' && outcome && <Result {...outcome} onDone={() => setScreen('home')} />}
+      </main>
+
+      {isTab && (
+        <nav className="tabbar" aria-label="Main">
+          {TABS.map((t) => (
+            <button key={t.id} type="button" className={screen === t.id ? 'is-on' : ''} onClick={() => setScreen(t.id)}>
+              <span className="tabbar__icon" aria-hidden="true">{t.icon}</span>
+              <span>{t.label}</span>
+              {t.id === 'shop' && state.phase === 'offseason' && <i className="tabbar__dot" />}
+              {t.id === 'cards' && state.inventory.packs.length > 0 && <i className="tabbar__dot" />}
+            </button>
+          ))}
+        </nav>
+      )}
+
+      {state.pendingOpen && screen !== 'match' && (
+        <PackOpening
+          state={state}
+          onKeep={(opts) => setState((s) => keepPending(s, opts))}
+          onMerge={() => setState((s) => mergePending(s))}
+          onDiscard={() => setState((s) => discardPending(s))}
+          onDiscardCommons={() => setState((s) => discardCommons(s))}
+          reduceMotion={settings.reduceMotion}
+        />
+      )}
+
+      {toast && <div className={`toast toast--${toast.tone}`} role="status">{toast.text}</div>}
+
+      {isTab && tip(screen) && TIPS[screen] && <Tip text={TIPS[screen]} onClose={() => seeTip(screen)} />}
+      {state.pendingOpen && screen !== 'match' && tip('opening') && <Tip text={TIPS.opening} onClose={() => seeTip('opening')} top />}
+
+      {menuOpen && (
+        <Sheet title="Menu" onClose={() => setMenuOpen(false)}>
+          <div className="menu-sheet">
+            <p className="hint">{state.gmName} · {state.club.name} · saved automatically in slot {slot}.</p>
+            <button type="button" className="btn btn--ghost btn--block" onClick={() => { setMenuOpen(false); setScreen('career'); }}>Career</button>
+            <button type="button" className="btn btn--ghost btn--block" onClick={() => { setMenuOpen(false); setScreen('club'); }}>Club, finances & trophies</button>
+            <button type="button" className="btn btn--ghost btn--block" onClick={() => { setMenuOpen(false); setSettingsOpen(true); }}>Settings</button>
+            <button type="button" className="btn btn--ghost btn--block" onClick={() => setState((s) => ({ ...s, seenTips: [] }))}>Show tips again</button>
+            <button type="button" className="btn btn--primary btn--block" onClick={exit}>Save & exit to main menu</button>
+          </div>
+        </Sheet>
+      )}
+      {settingsOpen && <SettingsSheet settings={settings} setSettings={setSettings} onClose={() => setSettingsOpen(false)} />}
+    </div>
+  );
 }
