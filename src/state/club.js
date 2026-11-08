@@ -6,7 +6,7 @@ import { PLAYER_CARDS, COACH_CARDS, CARD_BY_ID, CLUBS_BY_DIVISION, CLUB_POOLS } 
 import { aiOffseason, userAcademyIntake, ACADEMY_COUNT, ACADEMY_MAX_TIER } from '../engine/transfers.js';
 import { DIVISIONS, DIVISION_BY_ID } from '../data/world/structure.js';
 import { BOOST_IDS, BOOSTS } from '../data/boosts.js';
-import { OFFSEASON_CARDS, OFFSEASON_IDS, MARKET_WEIGHTS, TIERS, tierIndex, cardValue, cardPrice } from '../data/offseason.js';
+import { OFFSEASON_CARDS, OFFSEASON_IDS, MARKET_WEIGHTS, TIERS, tierIndex, cardValue, cardPrice, SIGNING_TIERS } from '../data/offseason.js';
 import { makeGenericCard, FILLER_RATING } from '../engine/aiTeam.js';
 import { makeRng } from '../engine/rng.js';
 import { RARITIES, TRAITS, POSITIONS, overall, rarityForOverall, autoArrange } from '../engine/cards.js';
@@ -328,7 +328,7 @@ export function buyBoost(state, boostId) {
 }
 
 // ---------------------------------------------------------------------------
-// Keep / merge / discard for any new card (packs, poach, free agents, youth)
+// Keep / merge / discard for any new card (packs, signings, academy)
 
 export const isCoach = (card) => card.role === 'coach' || card.role === 'assistant';
 
@@ -468,7 +468,7 @@ export function closeSeason(state, seed) {
   next.activeEvent = null;
   next.perks = { shirtSponsor: 0 };
   next.phase = 'offseason';
-  next.market = { offers: makeMarketOffers(next, rng), poachTried: [] };
+  next.market = { offers: makeMarketOffers(next, rng) };
   return next;
 }
 
@@ -490,8 +490,8 @@ function randomOffseasonCard(state, rng, group = null) {
 function makeMarketOffers(state, rng) {
   const groups = ['transfer', 'transfer', 'transfer', 'transfer', 'club', 'club', 'event', 'event', 'event'];
   const offers = groups.map((g) => randomOffseasonCard(state, rng, g));
-  // Always offer at least one Poach so there's a way to target a rival's player.
-  if (!offers.some((o) => o.type === 'poach')) offers[0] = { ...offers[0], type: 'poach' };
+  // Always offer at least one signing card.
+  if (!offers.some((o) => OFFSEASON_CARDS[o.type].scope)) offers[0] = { ...offers[0], type: 'worldSigning' };
   return offers.map((o) => ({ ...o, price: cardPrice(o.type, o.rarity), sold: false }));
 }
 
@@ -519,20 +519,21 @@ export function startNextSeason(state, seed) {
 // ---------------------------------------------------------------------------
 // Using off-season cards
 
-export const POACH_BASE = [85, 65, 40, 18, 6];
-
-export function poachChance(targetCard, poachRarity) {
-  return Math.min(95, POACH_BASE[tierIndex(targetCard.rarity)] + cardValue('poach', poachRarity));
+// Everyone a signing card could bring: free agents and players at other clubs.
+export function signingCandidates(state, tiers, scope) {
+  const mine = new Set(ownedIds(state));
+  const resting = new Set(Object.keys(state.world?.resting || {}));
+  const nation = DIVISION_BY_ID[state.club.divisionId].code;
+  const ok = (c) => !mine.has(c.id) && !resting.has(c.id) && tiers.includes(TIERS.indexOf(c.rarity));
+  const all = PLAYER_CARDS.filter(ok);
+  if (scope !== 'national') return all;
+  const local = all.filter((c) => c.nation === nation);
+  return local.length ? local : all;
 }
 
-// Rivals' named players: the clubs in your (next season's) division.
-export function poachTargets(state) {
-  if (!state.world) return [];
-  return state.world.divisions[state.club.divisionId]
-    .filter((id) => id !== state.club.id)
-    .map((id) => state.world.clubs[id])
-    .flatMap((c) => c.keyPlayers.map((id) => ({ club: c, card: POOL_BY_ID[id] })))
-    .filter((t) => t.card);
+// Which club (if any) currently holds a card.
+export function holderOf(state, cardId) {
+  return Object.values(state.world?.clubs || {}).find((c) => c.keyPlayers.includes(cardId)) || null;
 }
 
 // Checks whether a card can be used now, with a reason for the UI.
@@ -548,8 +549,8 @@ export function canUseOffseason(state, item) {
     if (level >= 5) return { ok: false, reason: 'Already at max level.' };
     if (t < 4 && level >= cap) return { ok: false, reason: `This rarity only builds up to level ${cap}. You're at ${level}.` };
   }
-  if (item.type === 'poach' && !poachTargets(state).some((t) => !state.market?.poachTried.includes(t.card.id))) {
-    return { ok: false, reason: 'No rival players left to approach this off-season.' };
+  if (def.scope && !signingCandidates(state, SIGNING_TIERS[tierIndex(item.rarity)], def.scope).length) {
+    return { ok: false, reason: 'Nobody available to sign right now.' };
   }
   return { ok: true };
 }
@@ -558,7 +559,7 @@ const removeItem = (next, itemUid) => {
   next.inventory.offseason = next.inventory.offseason.filter((i) => i.uid !== itemUid);
 };
 
-// target: { playerId, coachRole, position, trait, formation, passive, poachId }
+// target: { playerId, coachRole, position, trait, formation, passive }
 // Returns { state, message, success }.
 export function useOffseasonCard(state, itemUid, target = {}, seed = 1) {
   const item = state.inventory.offseason.find((i) => i.uid === itemUid);
@@ -638,20 +639,21 @@ export function useOffseasonCard(state, itemUid, target = {}, seed = 1) {
       }
       return { state: next, message: `Boost Crate: ${got.join(', ')}.`, success: true };
     }
-    case 'freeAgent': {
-      if (!POSITIONS.includes(target.position)) return { state, message: 'Pick a position.' };
-      const owned = new Set(ownedIds(next));
-      const card = drawFromPool(rng, PLAYER_POOL, t, (c) => c.pos === target.position && !owned.has(c.id))
-        || drawFromPool(rng, PLAYER_POOL, t, (c) => c.pos === target.position);
-      queue([card], 'Free Agent');
-      return { state: next, message: `${card.name} is available.`, success: true };
+    case 'worldSigning':
+    case 'nationalSigning': {
+      const pick = rng.pick(signingCandidates(state, SIGNING_TIERS[t], def.scope));
+      const from = holderOf(state, pick.id);
+      queue([structuredClone(pick)], from ? `Signed from ${from.name}` : 'Free agent');
+      return { state: next, message: `${pick.name} ${from ? `agrees to leave ${from.name}` : 'is a free agent'} and wants to join you.`, success: true };
     }
     case 'veteranSigning': {
-      if (!POSITIONS.includes(target.position)) return { state, message: 'Pick a position.' };
-      const owned = new Set(ownedIds(next));
-      const card = drawFromPool(rng, PLAYER_POOL, Math.min(4, t + 1), (c) => c.pos === target.position && !owned.has(c.id));
+      const tier = Math.min(4, Math.max(1, t + 1));
+      const options = signingCandidates(state, [tier], 'world');
+      if (!options.length) return { state, message: 'Nobody available to sign right now.' };
+      const card = structuredClone(rng.pick(options));
+      const from = holderOf(state, card.id);
       card.matchesLeft = v;
-      queue([card], 'Veteran Signing');
+      queue([card], from ? `Veteran from ${from.name}` : 'Veteran free agent');
       return { state: next, message: `${card.name} wants one last adventure.`, success: true };
     }
     case 'youthIntake': {
@@ -666,16 +668,6 @@ export function useOffseasonCard(state, itemUid, target = {}, seed = 1) {
         .map((c) => (c.fallbackTier !== undefined ? youthPlayer(next, rng, rng.pick(['DEF', 'MID', 'FWD']), v) : c));
       queue(found, 'Golden Generation');
       return { state: next, message: 'Your academy has produced two special talents!', success: true };
-    }
-    case 'poach': {
-      const pick = poachTargets(state).find((x) => x.card.id === target.poachId);
-      if (!pick || next.market.poachTried.includes(pick.card.id)) return { state, message: 'Pick a rival player to approach.' };
-      next.market.poachTried.push(pick.card.id);
-      const chance = poachChance(pick.card, item.rarity);
-      const success = rng.next() * 100 < chance;
-      if (!success) return { state: next, message: `${pick.club.name} refused to sell ${pick.card.name} (${chance}% chance). The Poach card is lost.`, success: false };
-      queue([structuredClone(pick.card)], `Poached from ${pick.club.name}`);
-      return { state: next, message: `${pick.club.name} accepted! ${pick.card.name} can join you.`, success: true };
     }
     default:
       return { state, message: 'This card has no effect yet.' };

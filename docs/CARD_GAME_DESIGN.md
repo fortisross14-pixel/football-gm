@@ -6,6 +6,7 @@
 **Changes in v1.5**
 - Club squads come from history pools (any era). Each club has a few named cards and generic Commons for the rest.
 - Every off-season brings academies, AI signings, retirements and a free market (§4.8).
+- Poach and Free Agent are replaced by random **World Signing** and **National Signing** cards. You don't pick the player.
 
 **Changes in v1.4**
 - 25 off-season card types, each with a rarity that sets its strength. Lower rarities show up more often in the Transfer Market.
@@ -131,7 +132,7 @@ Clubs qualify through **last season's** league results. For season 1, the seeded
 
 | Phase | Events |
 |---|---|
-| Off-season | **Transfer Market** opens: play transfer cards (extend careers, evolve the stadium, poach players), play 1 season event, shop |
+| Off-season | **Transfer Market** opens: play transfer cards (extend careers, evolve the stadium, sign players), play 1 season event, shop |
 | Weeks 1–2 | League MD 1–2 · Europe qualifying |
 | Weeks 3–4 | League MD 3–4 · Continental group game 1 · Cup R16 (16-club cups) |
 | Weeks 5–6 | League MD 5–6 · Continental group game 2 · Cup QF |
@@ -262,11 +263,11 @@ Effects at Common and Legend (Uncommon, Rare and Epic sit in between):
 | Card | Type | Common | Legend | Price (C → L) |
 |---|---|---|---|---|
 | ⏳ **Career Extension** | Transfer | +10 matches to one player or coach. | +45 matches to one player or coach. | 150 → 1200 |
-| 🎯 **Poach** | Transfer | Try to sign a named player from a league rival. Lower-rarity targets are easier. | Try to sign a named player from a league rival. +40% success chance. Lower-rarity targets are easier. | 300 → 2400 |
-| ✍ **Free Agent** | Transfer | Sign a random common player in the position you choose. | Sign a random legend player in the position you choose. | 220 → 1760 |
-| 🌱 **Youth Intake** | Transfer | An academy youngster of common level joins in the position you choose. Very long career. | An academy youngster of legend level joins in the position you choose. Very long career. | 180 → 1440 |
-| ✨ **Golden Generation** | Transfer | Your academy produces 2 youngsters of uncommon level. | Your academy produces 2 youngsters of legend level. | 450 → 3600 |
-| 🧓 **Veteran Signing** | Transfer | Sign a player one rarity above common in the position you choose, with only 20 matches left. | Sign a player one rarity above legend in the position you choose, with only 50 matches left. | 200 → 1600 |
+| 🌍 **World Signing** | Transfer | Sign a random Uncommon player from any country: a free agent or someone at another club. | Sign a random Epic or Legend player from any country: a free agent or someone at another club. | 250 → 2000 |
+| 🏳 **National Signing** | Transfer | Sign a random Uncommon player from your club's country: a free agent or someone at another club. | Sign a random Epic or Legend player from your club's country: a free agent or someone at another club. | 220 → 1760 |
+| 🌱 **Youth Intake** | Transfer | An academy player of common level in the position you choose: a club legend if one is available. | An academy player of legend level in the position you choose: a club legend if one is available. | 180 → 1440 |
+| ✨ **Golden Generation** | Transfer | Your academy produces 2 uncommon players: club legends where possible, from elsewhere if not. | Your academy produces 2 legend players: club legends where possible, from elsewhere if not. | 450 → 3600 |
+| 🧓 **Veteran Signing** | Transfer | Sign a random player one rarity above common, with only 20 matches left. | Sign a random player one rarity above legend, with only 50 matches left. | 200 → 1600 |
 | 💪 **Personal Trainer** | Transfer | +2 ATT, DEF and PHY to one player. | +7 ATT, DEF and PHY to one player. | 150 → 1200 |
 | 🔁 **Position Retraining** | Transfer | Move one player to a new position (−4 to all stats). | Move one player to a new position with no stat loss. | 120 → 960 |
 | 🎓 **Trait Coach** | Transfer | Teach one player a random new trait. | Teach one player the trait of your choice. | 150 → 1200 |
@@ -274,7 +275,7 @@ Effects at Common and Legend (Uncommon, Rare and Epic sit in between):
 | 🏟 **Stadium Evolution** | Club | Stadium +1 level, up to level 2. More income per home game. | Stadium +2 levels (max 5). More income per home game. | 250 → 2000 |
 | 👕 **Merchandise Expansion** | Club | Merchandise +1 level, up to level 2. Popular players sell more shirts. | Merchandise +2 levels (max 5). | 220 → 1760 |
 | 🏋 **Training Ground** | Club | Training ground +1 level, up to level 2. Faster, stronger cohesion. | Training ground +2 levels (max 5). | 250 → 2000 |
-| 🏫 **Youth Academy** | Club | Youth academy +1 level, up to level 2. Better academy players. | Youth academy +2 levels (max 5). | 250 → 2000 |
+| 🏫 **Youth Academy** | Club | Youth academy +1 level, up to level 2. More and better academy players each off-season. | Youth academy +2 levels (max 5). | 250 → 2000 |
 | 🤝 **Shirt Sponsor** | Club | +10 coins for every match next season. | +90 coins for every match next season. | 100 → 800 |
 | 📦 **Boost Crate** | Club | 3 random in-game boosts. | 8 random in-game boosts. | 150 → 1200 |
 | 🏰 **Fortress Season** | Season event | +4% all stats at home. | +13% all stats at home. | 300 → 2400 |
@@ -287,13 +288,17 @@ Effects at Common and Legend (Uncommon, Rare and Epic sit in between):
 | 🐺 **Underdog Mentality** | Season event | +5% all stats against higher-rated teams. | +16% all stats against higher-rated teams. | 250 → 2000 |
 | 🎯 **Shooting Drills** | Season event | +5% finishing all season. | +18% finishing all season. | 300 → 2400 |
 
-**Poach:** the success chance depends on the target's rarity, plus the Poach card's own bonus (max 95%). A failed attempt loses the card, and each player can only be approached once per off-season.
+**Signings are random.** You don't choose the player. A signing card sets the rarity and the scope, and the game picks someone at random from everyone who fits. That can be a free agent or a player at another club, who then leaves that club if you keep him.
 
-| Target | Common | Uncommon | Rare | Epic | Legend |
+| Signing card rarity | Common | Uncommon | Rare | Epic | Legend |
 |---|---|---|---|---|---|
-| Base chance | 85% | 65% | 40% | 18% | 6% |
+| Brings a player who is | Uncommon | Uncommon or Rare | Rare | Epic | Epic or Legend |
 
-Any card you gain from an off-season card (Poach, Free Agent, Youth Intake, Golden Generation, Veteran Signing) goes through the same Keep / Merge / Discard screen as a pack.
+- **World Signing:** any country.
+- **National Signing:** your club's country.
+- **Veteran Signing:** one rarity higher, but with only a few matches left.
+
+Any card you gain from an off-season card (signings, Youth Intake, Golden Generation) goes through the same Keep / Merge / Discard screen as a pack.
 
 ### 4.7 Season events
 
@@ -310,7 +315,7 @@ The season events are the "Season event" rows in the table above. Their effect l
 | Divisions 2 and 3 | 3–5 | 0–2 |
 
 - **Named cards are Uncommon or better.** The rest of the 10-card squad is generic Common players with surname-only names. Their quality depends on the division, but they are always Common.
-- **One card, one club, always.** A card is held by at most one club or by you. If you get a card that an AI club holds (from a pack or a Poach), it leaves that club.
+- **One card, one club, always.** A card is held by at most one club or by you. If you get a card that an AI club holds (from a pack or a signing), it leaves that club.
 
 **Every off-season, for every club (yours included):**
 
@@ -486,7 +491,7 @@ Your 2 carried cards replace squad cards of your choice. Cards that move with yo
 2. **Squad:** pitch view with 7 starters, 3 bench, head coach and assistant. Drag to swap. Cohesion meter.
 3. **My cards:** players, coaches, inventory (boosts, off-season cards, unopened packs), card album with completion %, Hall of Fame.
 4. **Shop:** packs and boosts all season. Pack opening with a rarity reveal and Keep/Discard.
-5. **Transfer Market (off-season):** transfer cards, infrastructure, season events, and the Poach target browser.
+5. **Transfer Market (off-season):** transfer cards, infrastructure, season events, and signing cards.
 6. **Match:** pitch, commentary, decision drawer with subs, mentality and boosts. Penalty shootout view.
 7. **Competitions:** league table, fixtures, top scorers, cup bracket, continental groups and bracket, Club World Cup.
 8. **Career:** reputation, board objective, job offers, "take 2 cards" picker, GM history.
@@ -546,7 +551,7 @@ Your 2 carried cards replace squad cards of your choice. Cards that move with yo
 5. **Starting career:** a rookie GM picks from 3 offers from L3 clubs. Sandbox mode is a later stretch goal.
 6. **Asia Other / APAC Other:** West and Central Asia / East Asia and Oceania.
 7. **Rarities:** Common, Uncommon, Rare, Epic, Legend.
-8. **Transfer Market:** off-season cards, not a weekly store. Poaching is easier the lower the target's rarity.
+8. **Transfer Market:** off-season cards, not a weekly store. Signings are random: the card sets rarity and scope, not the player.
 
 ---
 

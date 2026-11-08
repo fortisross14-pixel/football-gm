@@ -597,8 +597,6 @@ main { padding: 0 16px; }
 .chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip-btn { background: var(--surface); border: 1px solid var(--line-2); border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 600; }
 .chip-btn.is-on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
-.poach-row { grid-template-columns: 36px 1fr 46px 30px; }
-.poach-row__chance { font-family: var(--font-display); font-weight: 700; color: var(--gold); text-align: right; }
 .sub-row__pos.r-common, .sub-row__pos.r-uncommon, .sub-row__pos.r-rare, .sub-row__pos.r-epic, .sub-row__pos.r-legend { color: var(--rc); }
 
 /* Pack opening */

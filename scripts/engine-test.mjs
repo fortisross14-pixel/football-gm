@@ -7,7 +7,7 @@ import { buildAiTeam } from '../src/engine/aiTeam.js';
 import { overall, rarityForOverall } from '../src/engine/cards.js';
 import { openPack, PACKS } from '../src/engine/packs.js';
 import { standings, userFixture, aiTeamFor, clubById } from '../src/engine/season.js';
-import { OFFSEASON_IDS, OFFSEASON_CARDS, cardText, TIERS } from '../src/data/offseason.js';
+import { OFFSEASON_IDS, OFFSEASON_CARDS, cardText, TIERS, SIGNING_TIERS } from '../src/data/offseason.js';
 import { PLAYER_POOL, COACH_POOL } from '../src/data/pool.js';
 import { OPPONENTS } from '../src/data/demo.js';
 import { DIVISION_BY_ID } from '../src/data/world/structure.js';
@@ -15,7 +15,7 @@ import { startingDraw, aiOffseason } from '../src/engine/transfers.js';
 import { CLUB_POOLS, PLAYER_CARDS } from '../src/data/world/index.js';
 import {
   newClubState, buildUserTeam, matchRewards, applyMatch, buyPack, keepPending, mergePending, discardPending,
-  pendingCard, duplicateOf, closeSeason, buyMarketCard, useOffseasonCard, startNextSeason, poachTargets, POOLS, POOL_BY_ID,
+  pendingCard, duplicateOf, closeSeason, buyMarketCard, useOffseasonCard, startNextSeason, POOLS, POOL_BY_ID,
 } from '../src/state/club.js';
 
 let passed = 0;
@@ -128,7 +128,7 @@ test('a full season runs, ends and opens the Transfer Market', () => {
   assert.equal(s.phase, 'offseason');
   assert.ok(s.coins > coins);
   assert.equal(s.market.offers.length, 9);
-  assert.ok(s.market.offers.some((o) => o.type === 'poach'));
+  assert.ok(s.market.offers.some((o) => ['worldSigning', 'nationalSigning'].includes(o.type)));
   assert.ok(s.inventory.offseason.length >= 1);
   s.coins = 99999;
   s = buyMarketCard(s, s.market.offers[0].uid);
@@ -152,11 +152,9 @@ test('all 25 off-season card types can be used', () => {
       s.facilities = { stadium: 0, merch: 0, training: 0, academy: 0 };
       const target = {
         playerId: s.lineup[3], position: 'FWD', trait: 'clutch', formation: '3-1-2', passive: 'tactician', coachRole: undefined,
-        poachId: poachTargets(s)[0]?.card.id,
       };
       const r = useOffseasonCard(s, 'x', target, 9);
-      if (type === 'poach') assert.ok(r.message.length > 0);
-      else assert.equal(r.success, true, `${type}/${rarity}: ${r.message}`);
+      assert.equal(r.success, true, `${type}/${rarity}: ${r.message}`);
       if (OFFSEASON_CARDS[type].group === 'event') assert.equal(r.state.activeEvent.type, type);
     }
   }
@@ -220,6 +218,31 @@ test('off-season: academies, signings and retirements keep one card per club', (
   const avg = Object.values(w.clubs).reduce((a, c) => a + c.keyPlayers.length, 0) / 304;
   assert.ok(avg > 2, `squads ran dry: ${avg.toFixed(2)} named per club`);
   for (const c of Object.values(w.clubs)) assert.ok(c.keyPlayers.length <= 10);
+});
+
+test('signing cards bring a random player of the right rarity, maybe from another club', () => {
+  let base = fresh();
+  for (let md = 0; md < 14; md += 1) base = playMatchday(base, 1300 + md);
+  base = resolve(closeSeason(base, 2));
+  let fromClub = 0;
+  for (let i = 0; i < 40; i += 1) {
+    const s = structuredClone(base);
+    const rarity = ['common', 'uncommon', 'rare', 'epic', 'legend'][i % 5];
+    const type = i % 2 ? 'nationalSigning' : 'worldSigning';
+    s.inventory.offseason = [{ uid: 'x', type, rarity }];
+    const r = useOffseasonCard(s, 'x', {}, 100 + i);
+    assert.equal(r.success, true, r.message);
+    const card = r.state.pendingOpen.cards[0];
+    assert.ok(SIGNING_TIERS[i % 5].includes(['common', 'uncommon', 'rare', 'epic', 'legend'].indexOf(card.rarity)));
+    if (r.state.pendingOpen.source.startsWith('Signed from')) {
+      fromClub += 1;
+      const holder = Object.values(r.state.world.clubs).find((c) => c.keyPlayers.includes(card.id));
+      assert.ok(holder, 'should still be at the club until kept');
+      const kept = keepPending(r.state, { replaceId: r.state.bench[0] });
+      assert.ok(!Object.values(kept.world.clubs).some((c) => c.keyPlayers.includes(card.id)), 'keeping removes them from the club');
+    }
+  }
+  assert.ok(fromClub > 0, 'some signings should come from other clubs');
 });
 
 test('a card retires at zero matches and is replaced', () => {

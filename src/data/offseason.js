@@ -15,6 +15,11 @@ const PRICE_MULT = [1, 1.7, 2.8, 4.5, 8];
 
 const pct = (v) => `${v}%`;
 
+// Which player rarities (tier indexes) a signing card of each rarity can bring.
+export const SIGNING_TIERS = [[1], [1, 2], [2], [3], [3, 4]];
+const TIER_LABEL = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legend'];
+const signingLabel = (t) => SIGNING_TIERS[t].map((i) => TIER_LABEL[i]).join(' or ');
+
 export const OFFSEASON_CARDS = {
   // ---------------------------------------------------------------- Transfers
   careerExtension: {
@@ -22,15 +27,15 @@ export const OFFSEASON_CARDS = {
     values: [10, 15, 20, 30, 45],
     text: (v) => `+${v} matches to one player or coach.`,
   },
-  poach: {
-    name: 'Poach', group: 'transfer', icon: '🎯', base: 300, target: 'poach',
-    values: [0, 8, 15, 25, 40],
-    text: (v) => `Try to sign a named player from a league rival.${v ? ` +${v}% success chance.` : ''} Lower-rarity targets are easier.`,
-  },
-  freeAgent: {
-    name: 'Free Agent', group: 'transfer', icon: '✍', base: 220, target: 'position',
+  worldSigning: {
+    name: 'World Signing', group: 'transfer', icon: '🌍', base: 250, target: null, scope: 'world',
     values: [0, 1, 2, 3, 4],
-    text: (v, r) => `Sign a random ${r} player in the position you choose.`,
+    text: (v, r, t) => `Sign a random ${signingLabel(t)} player from any country: a free agent or someone at another club.`,
+  },
+  nationalSigning: {
+    name: 'National Signing', group: 'transfer', icon: '🏳', base: 220, target: null, scope: 'national',
+    values: [0, 1, 2, 3, 4],
+    text: (v, r, t) => `Sign a random ${signingLabel(t)} player from your club's country: a free agent or someone at another club.`,
   },
   youthIntake: {
     name: 'Youth Intake', group: 'transfer', icon: '🌱', base: 180, target: 'position',
@@ -43,9 +48,9 @@ export const OFFSEASON_CARDS = {
     text: (v) => `Your academy produces 2 ${['uncommon', 'uncommon', 'rare', 'epic', 'legend'][v]} players: club legends where possible, from elsewhere if not.`,
   },
   veteranSigning: {
-    name: 'Veteran Signing', group: 'transfer', icon: '🧓', base: 200, target: 'position',
+    name: 'Veteran Signing', group: 'transfer', icon: '🧓', base: 200, target: null,
     values: [20, 25, 30, 40, 50],
-    text: (v, r) => `Sign a player one rarity above ${r} in the position you choose, with only ${v} matches left.`,
+    text: (v, r) => `Sign a random player one rarity above ${r}, with only ${v} matches left.`,
   },
   personalTrainer: {
     name: 'Personal Trainer', group: 'transfer', icon: '💪', base: 150, target: 'player',

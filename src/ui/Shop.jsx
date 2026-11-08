@@ -88,7 +88,7 @@ export default function Shop({ state, onBuyPack, onBuyBoost, onBuyOffer }) {
         ) : (
           <div className="panel locked">
             <b>Closed during the season</b>
-            <p className="hint">The Transfer Market opens when the season ends. It sells off-season cards: transfers, poaching, stadium upgrades and season events.</p>
+            <p className="hint">The Transfer Market opens when the season ends. It sells off-season cards: signings, academy, stadium upgrades and season events.</p>
           </div>
         )
       )}

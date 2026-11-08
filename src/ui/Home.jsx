@@ -112,7 +112,7 @@ function Offseason({ state, goTo, onStart }) {
       <span className="season-end__label">Off-season · next: {state.club.division}</span>
       {move && <p className={`promo ${move.type === 'promoted' ? 'is-up' : 'is-down'}`}>{move.type === 'promoted' ? '▲ Promoted' : '▼ Relegated'} to {state.club.division}</p>}
       <b className="offseason__title">Transfer Market is open</b>
-      <p className="hint">Buy off-season cards, then play them from Cards → Items: extend careers, poach rivals' players, upgrade the club and pick a season event.</p>
+      <p className="hint">Buy off-season cards, then play them from Cards → Items: sign players, extend careers, upgrade the club and pick a season event.</p>
       <div className="offseason__facilities">
         {Object.entries(state.facilities).map(([k, lvl]) => (
           <span key={k}><b>L{lvl}</b>{FACILITY_LABEL[k]}</span>

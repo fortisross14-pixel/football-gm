@@ -7,7 +7,7 @@ import { BOOST_IDS } from '../data/boosts.js';
 import { OFFSEASON_CARDS, TIERS, cardValue } from '../data/offseason.js';
 import { COACH_PASSIVES } from '../data/coachPassives.js';
 import { PLAYER_POOL, COACH_POOL } from '../data/pool.js';
-import { canUseOffseason, poachTargets, poachChance } from '../state/club.js';
+import { canUseOffseason } from '../state/club.js';
 
 export default function Collection({ state, onOpenPack, onUseCard }) {
   const [tab, setTab] = useState('squad');
@@ -170,7 +170,6 @@ function UseCardSheet({ state, item, onClose, onUse }) {
   const [formation, setFormation] = useState(null);
   const [passive, setPassive] = useState(null);
   const [coachRole, setCoachRole] = useState(null);
-  const [poachId, setPoachId] = useState(null);
 
   const players = state.squad;
   const pickPlayers = (filter = () => true) => (
@@ -246,23 +245,6 @@ function UseCardSheet({ state, item, onClose, onUse }) {
       );
       ready = ready && formation;
       break;
-    case 'poach': {
-      const tried = state.market?.poachTried || [];
-      body = (
-        <div className="sub-list">
-          {poachTargets(state).map(({ club, card }) => (
-            <button key={card.id} type="button" className={`sub-row poach-row${poachId === card.id ? ' is-selected' : ''}`} disabled={tried.includes(card.id)} onClick={() => setPoachId(card.id)}>
-              <span className={`sub-row__pos r-${card.rarity}`}>{card.pos}</span>
-              <span className="sub-row__name">{card.name}<em> · {club.short} · {RARITIES[card.rarity].label}</em></span>
-              <span className="poach-row__chance">{tried.includes(card.id) ? 'Tried' : `${poachChance(card, item.rarity)}%`}</span>
-              <span className="sub-row__ovr">{overall(card)}</span>
-            </button>
-          ))}
-        </div>
-      );
-      ready = ready && poachId;
-      break;
-    }
     default:
       body = null;
   }
@@ -277,9 +259,9 @@ function UseCardSheet({ state, item, onClose, onUse }) {
           type="button"
           className="btn btn--primary btn--block"
           disabled={!ready}
-          onClick={() => onUse({ playerId, position, trait, formation, passive, coachRole, poachId })}
+          onClick={() => onUse({ playerId, position, trait, formation, passive, coachRole })}
         >
-          {item.type === 'poach' ? 'Make the approach' : 'Use card'}
+          {OFFSEASON_CARDS[item.type].scope || item.type === 'veteranSigning' ? 'Sign someone' : 'Use card'}
         </button>
       </div>
     </Sheet>
