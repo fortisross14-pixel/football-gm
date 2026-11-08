@@ -22,7 +22,7 @@ const STAT_SHAPE = {
 export const FILLER_RATING = { 1: 60, 2: 58, 3: 56 };
 export const AI_SETTLED_BONUS = 0.1;
 // Higher divisions are tougher: their AI squads play with more of an edge.
-export const AI_SETTLED_BY_LEVEL = { 1: 0.18, 2: 0.14, 3: 0.1 };
+export const AI_SETTLED_BY_LEVEL = { 1: 0.2, 2: 0.16, 3: 0.12 };
 
 export function genericName(rng, used = new Set()) {
   let name = rng.pick(SURNAMES);
@@ -126,6 +126,6 @@ const STYLES = [
 export function aiTactics(club) {
   let h = 0;
   for (const ch of String(club.id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  const top = club.level === 1 ? [0, 1, 2, 3] : club.level === 2 ? [1, 2, 3, 5] : [3, 4, 5, 6];
+  const top = club.level === 1 ? [0, 1, 2, 3] : club.level === 2 ? [0, 1, 2, 3, 6] : [1, 2, 3, 3, 6];
   return { ...STYLES[top[h % top.length]] };
 }

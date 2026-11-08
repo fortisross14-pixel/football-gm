@@ -463,7 +463,7 @@ export function playSegment(state) {
     const mine = tac(side);
     const theirs = tac(opp);
     lambda *= { short: 0.95, mixed: 1, direct: 1.1 }[mine.passing];
-    lambda *= { deep: 0.94, normal: 1, high: 1 }[mine.line];
+    lambda *= { deep: 0.96, normal: 1, high: 1 }[mine.line];
     lambda *= { deep: 1.05, normal: 1, high: 0.9 }[theirs.line];
     if (them.mods.active.some((e) => e.type === 'gameManagement')) lambda *= 0.6;
     lambda *= Math.max(0.2, 1 - them.mods.sum('oppChances'));
