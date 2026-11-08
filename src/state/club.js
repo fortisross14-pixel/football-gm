@@ -12,6 +12,7 @@ import { makeGenericCard, FILLER_RATING, squadStrength } from '../engine/aiTeam.
 import { makeRng } from '../engine/rng.js';
 import { archiveSeason, foldRecords, compactEntry } from '../engine/history.js';
 import { ensureGms, updateGms } from '../engine/gms.js';
+import { newStats, emptyBook, recordGame as recordStats, recordTitle, coachKey } from '../engine/statsbook.js';
 import { styleDistance, clubIdentity } from '../data/philosophies.js';
 import { isDerby, derbyName } from '../data/rivals.js';
 import { normalizeTactics } from '../engine/tactics.js';
@@ -19,7 +20,7 @@ import { RARITIES, TRAITS, POSITIONS, overall, rarityForOverall, autoArrange } f
 import { PACKS, openPack, mergeDuplicate, drawFromPool, MAX_STARS } from '../engine/packs.js';
 import { applyCurses, buildWorld, createSeason, playMatchday, goalsFromMatch, standings, removeKeyPlayer, endOfSeason, divisionName, refreshStrengths, userFixture, quickResult } from '../engine/season.js';
 import {
-  CALENDAR, createCompetitions, prepareSlot, recordGame, quickKnockout, involves, qualifiers, tablesByStrength, tablesFromSeason, CONTINENT_NAME, CONTINENTS,
+  CALENDAR, createCompetitions, prepareSlot, recordGame, quickKnockout, involves, compKey, qualifiers, tablesByStrength, tablesFromSeason, CONTINENT_NAME, CONTINENTS,
 } from '../engine/competitions.js';
 
 export const SAVE_VERSION = 3;
@@ -130,6 +131,7 @@ export function newClubState(seed = 12345, { clubId = USER_CLUB.id, gmName = 'Yo
     history: [],
     playerStats: {},
     seasonStats: {},
+    stats: newStats(1), // live stats book, every game in the world (engine/statsbook.js)
     archive: [], // one entry per finished season, every league and cup (engine/history.js)
     records: null, // all-time player records folded from the archive
     careerLog: [], // your seasons: club, league, finish, record, trophies, leaders
@@ -188,6 +190,7 @@ function advanceToUser(state, seed) {
     for (const e of entries) {
       const r = quickKnockout(rng, next.world, e, quickResult, POOL_BY_ID);
       recordGame(season.comps, e, r.score, r.pens);
+      recordStats(next.stats, { world: next.world, poolById: POOL_BY_ID, comp: compKey(e), homeId: e.game.home, awayId: e.game.away, score: r.score, goals: r.goals, userClubId: next.club.id });
     }
     season.slot += 1;
   }
@@ -447,9 +450,17 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
   if (next.season) {
     const [homeId, awayId] = userSide === 0 ? [team.id, match.teams[1].id] : [match.teams[0].id, team.id];
     const slot = CALENDAR[next.season.slot];
+    next.stats = next.stats || newStats(next.season.year);
+    // Your game in the live stats book, with the real ratings and clean sheets.
+    const lines = match.result.appeared[userSide].map((id) => {
+      const p = team.players[id];
+      return { id, name: p.card.name, pos: p.card.pos, goals: p.goals, rating: p.rating || 6, cs: p.card.pos === 'GK' && conceded === 0 && (p.minutes ?? 90) >= 45, motm: id === motmId };
+    });
+    const statsArgs = { world: next.world, poolById: POOL_BY_ID, homeId, awayId, score: match.score, goals: goalsFromMatch(match), detail: { side: userSide, lines }, userClubId: next.club.id, userName: next.gmName || 'You' };
     if (slot === 'L') {
+      recordStats(next.stats, { ...statsArgs, comp: `L:${next.club.divisionId}` });
       const userGame = { divisionId: next.club.divisionId, homeId, awayId, score: match.score, goals: goalsFromMatch(match) };
-      next.season = playMatchday(next.season, next.world, userGame, POOL_BY_ID, seed + 7);
+      next.season = playMatchday(next.season, next.world, userGame, POOL_BY_ID, seed + 7, next.stats, next.club.id);
     } else {
       const rng = makeRng(seed + 7);
       const entries = prepareSlot(next.season.comps, slot, next.world, 1);
@@ -457,10 +468,12 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
         if (involves(e, next.club.id)) {
           const pens = match.shootout ? [...match.shootout.score] : null;
           recordGame(next.season.comps, e, match.score, pens);
+          recordStats(next.stats, { ...statsArgs, comp: compKey(e) });
           awardTrophy(next, e);
         } else {
           const r = quickKnockout(rng, next.world, e, quickResult, POOL_BY_ID);
           recordGame(next.season.comps, e, r.score, r.pens);
+          recordStats(next.stats, { world: next.world, poolById: POOL_BY_ID, comp: compKey(e), homeId: e.game.home, awayId: e.game.away, score: r.score, goals: r.goals, userClubId: next.club.id });
         }
       }
     }
@@ -713,6 +726,14 @@ export function closeSeason(state, seed) {
   next.records = foldRecords(next.records, entry, (id) => !!CARD_BY_ID[id]);
   next.archive = [...(next.archive || []), compactEntry(entry)];
   ensureGms(next.world, seed + 5, state.season.year, state.club.id);
+  // Coaches' titles in the stats book, then a fresh season page.
+  next.stats = next.stats || newStats(state.season.year);
+  const titleTo = (clubId) => clubId && recordTitle(next.stats, coachKey(next.world, clubId, state.club.id), clubId === state.club.id ? (state.gmName || 'You') : (next.world.gms?.[clubId]?.name || 'Manager'), clubId);
+  for (const lg of Object.values(entry.leagues)) titleTo(lg.table[0][0]);
+  for (const c of [...Object.values(entry.cups), ...Object.values(entry.continental), entry.cwc]) titleTo(c?.winner);
+  next.stats.lastSeason = next.stats.season;
+  next.stats.season = emptyBook();
+  next.stats.year = state.season.year + 1;
   updateGms(next.world, { archiveEntry: entry, seed: seed + 6, userClubId: state.club.id, year: state.season.year });
   next.careerLog = [...(next.careerLog || []), {
     year: state.season.year, clubId: state.club.id, divId: state.club.divisionId, position,
