@@ -692,3 +692,6 @@ main { padding: 0 16px; }
 .res-dot { width: 5px; height: 5px; margin: 0 1px; }
 @media (max-width: 380px) { .table__form { display: none; } }
 .pcard__classic { color: var(--gold); }
+.news { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.news li { background: var(--surface); border-left: 3px solid var(--rc); border-radius: 8px; padding: 7px 10px; font-size: 13px; display: flex; flex-direction: column; }
+.news li span { color: var(--muted); font-size: 12px; }

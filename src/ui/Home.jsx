@@ -4,7 +4,7 @@ import { Table } from './League.jsx';
 import { teamOverall, RARITIES } from '../engine/cards.js';
 import { userFixture, clubById, standings } from '../engine/season.js';
 import { OFFSEASON_CARDS, cardText } from '../data/offseason.js';
-import { effectiveCohesion, seasonSummary, FACILITY_LABEL } from '../state/club.js';
+import { effectiveCohesion, seasonSummary, FACILITY_LABEL, academyInfo } from '../state/club.js';
 import { PACKS } from '../engine/packs.js';
 
 export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo, onReset }) {
@@ -118,6 +118,7 @@ function Offseason({ state, goTo, onStart }) {
           <span key={k}><b>L{lvl}</b>{FACILITY_LABEL[k]}</span>
         ))}
       </div>
+      <p className="hint">Youth academy L{state.facilities.academy}: {academyInfo(state.facilities.academy).count} player(s) a year, up to {RARITIES[academyInfo(state.facilities.academy).best].label}. Club legends come first.</p>
       {ev ? (
         <p className="hint hint--accent">Next season's event: {OFFSEASON_CARDS[ev.type].name} ({RARITIES[ev.rarity].label}): {cardText(ev.type, ev.rarity)}</p>
       ) : <p className="hint">No season event picked yet.</p>}

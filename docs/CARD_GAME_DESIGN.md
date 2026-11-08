@@ -1,7 +1,11 @@
-# Football Cards — Game Design Document (v1.4)
+# Football Cards — Game Design Document (v1.5)
 
 > Replaces the old management-sim design (`GAME_DESIGN_DOCUMENT.md`), which is kept for reference only.
 > Language: English. Platform: web (React + Vite), mobile-first.
+
+**Changes in v1.5**
+- Club squads come from history pools (any era). Each club has a few named cards and generic Commons for the rest.
+- Every off-season brings academies, AI signings, retirements and a free market (§4.8).
 
 **Changes in v1.4**
 - 25 off-season card types, each with a rarity that sets its strength. Lower rarities show up more often in the Transfer Market.
@@ -294,6 +298,35 @@ Any card you gain from an off-season card (Poach, Free Agent, Youth Intake, Gold
 ### 4.7 Season events
 
 The season events are the "Season event" rows in the table above. Their effect lasts the whole next season, and a new one can be picked each off-season.
+
+### 4.8 Club squads, history pools and the academy
+
+**Every club has a history pool:** real players from any era who are associated with the club. For example, Real Madrid's pool includes Di Stéfano, Isco, Pirri, Zamorano, Buyo and Míchel Salgado. A player belongs to only one club's pool.
+
+| Club | Pool size | Starting named cards (random from the pool) |
+|---|---|---|
+| Top clubs (23, e.g. Real Madrid, Bayern, Boca) | 14–20 | 6–7 |
+| Other Division 1 clubs | 5–10 | 3–4 |
+| Divisions 2 and 3 | 3–5 | 0–2 |
+
+- **Named cards are Uncommon or better.** The rest of the 10-card squad is generic Common players with surname-only names. Their quality depends on the division, but they are always Common.
+- **One card, one club, always.** A card is held by at most one club or by you. If you get a card that an AI club holds (from a pack or a Poach), it leaves that club.
+
+**Every off-season, for every club (yours included):**
+
+1. **Wear and retirement:** AI cards lose a season of matches, and retire at 0. A retired player rests for 3 seasons, then can come back through an academy or a signing.
+2. **Academy intake:** the club's Youth Academy level sets how many cards and how rare. Golden Generation and Youth Intake add more.
+
+   | Academy level | 0 | 1 | 2 | 3 | 4 | 5 |
+   |---|---|---|---|---|---|---|
+   | Cards per year | 1 | 1 | 2 | 2 | 3 | 3 |
+   | Best rarity | Uncommon | Rare | Rare | Epic | Epic | Legend |
+
+   Cards come from the club's own history pool first, so club legends return. If the pool has nothing suitable, which is often the case for a small club using Golden Generation, the card comes from elsewhere, preferring the club's country. If nothing is free, you get a fictional youngster. Your intake goes through Keep/Discard.
+3. **AI signings:** AI clubs sign free players (cards nobody holds) to get back to their usual number of named players. Top clubs also add a star now and then. Real Madrid can sign Lampard, Landon Donovan or Messi if they're free.
+4. **Squad caps:** each AI club keeps at most its starting maximum + 1 named cards. The weakest named card is released to the free market.
+
+The League tab's "Last season" view lists the biggest signings and academy graduates.
 
 ---
 

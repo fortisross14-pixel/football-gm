@@ -187,6 +187,19 @@ function LastSeason({ state }) {
           <li key={d.id}><span>{d.name}</span><b>{last.champions[d.id]}</b></li>
         ))}
       </ul>
+      {last.news?.length > 0 && (
+        <>
+          <h3 className="sub-title">Big moves</h3>
+          <ul className="news">
+            {last.news.slice(0, 12).map((n) => (
+              <li key={`${n.clubId}-${n.cardId}`} className={`r-${n.rarity}`}>
+                <b>{n.name}</b>
+                <span>{n.type === 'academy' ? 'comes through the academy at' : 'signs for'} {n.club}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       <h3 className="sub-title">Promoted and relegated</h3>
       <ul className="moves">
         {last.moves.filter((m) => m.type === 'promoted').map((m) => {
