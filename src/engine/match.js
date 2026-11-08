@@ -26,6 +26,40 @@ const DEFENSE_WEIGHT = { GK: 0, DEF: 1, MID: 0.5, FWD: 0.15 };
 const CONTROL_WEIGHT = { GK: 0, DEF: 0.5, MID: 1, FWD: 0.5 };
 const SHOOTER_WEIGHT = { GK: 0, DEF: 0.4, MID: 1.4, FWD: 3 };
 
+// Team instructions, set before the match (Squad screen). Each has a trade-off.
+export const DEFAULT_TACTICS = { press: 'mid', passing: 'mixed', line: 'normal' };
+export const TACTICS = {
+  press: {
+    label: 'Pressing',
+    options: {
+      low: { name: 'Low block', text: 'Saves legs (−15% stamina drain). Rivals keep the ball more (+5% their control).' },
+      mid: { name: 'Mid', text: 'Balanced.' },
+      high: { name: 'High press', text: 'Rivals lose control (−10%) and you win the ball high (+chance quality), but legs burn: +35% stamina drain. Pairs well with fitness coaches and stamina skills.' },
+    },
+  },
+  passing: {
+    label: 'Passing',
+    options: {
+      short: { name: 'Short', text: '+8% midfield control and better chances, a few fewer shots.' },
+      mixed: { name: 'Mixed', text: 'Balanced.' },
+      direct: { name: 'Direct', text: '+10% shots, worse quality and −8% control. Strong forwards (PHY 78+) turn long balls into good chances.' },
+    },
+  },
+  line: {
+    label: 'Defensive line',
+    options: {
+      deep: { name: 'Deep', text: 'Hard to break down (−rival chance quality), but you sit back: fewer shots of your own, more for them.' },
+      normal: { name: 'Normal', text: 'Balanced.' },
+      high: { name: 'High', text: 'Squeezes the pitch: rivals shoot less, but balls in behind are dangerous (+their quality), worse with slow defenders (PHY under 70). +5% drain.' },
+    },
+  },
+};
+
+const avgPhy = (team, pos) => {
+  const list = onPitch(team).filter(({ slot }) => slot.pos === pos).map(({ p }) => p.card.phy);
+  return list.length ? list.reduce((a, b) => a + b, 0) / list.length : 70;
+};
+
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const clone = (v) => structuredClone(v);
 
@@ -97,6 +131,7 @@ function buildTeam(input, isHome, context) {
     bench: [...input.bench],
     players,
     mentality: 'balanced',
+    tactics: { ...DEFAULT_TACTICS, ...(input.tactics || {}) },
     subsLeft: MAX_SUBS,
     boostSlots: BASE_BOOST_SLOTS + Math.floor(tactician),
     loadout: [...(input.loadout || [])],
@@ -401,7 +436,15 @@ export function playSegment(state) {
   const seg = next.segment;
   announceEvents(next, seg);
   const powers = [teamPower(next, 0, seg), teamPower(next, 1, seg)];
-  const ctrl = (side) => Math.max(0.3, 1 + powers[side].mods.sum('control') - powers[1 - side].mods.sum('oppControl'));
+  const tac = (side) => next.teams[side].tactics || DEFAULT_TACTICS;
+  const ctrl = (side) => {
+    let v = 1 + powers[side].mods.sum('control') - powers[1 - side].mods.sum('oppControl');
+    if (tac(side).passing === 'short') v += 0.08;
+    if (tac(side).passing === 'direct') v -= 0.08;
+    if (tac(1 - side).press === 'high') v -= tac(side).passing === 'short' ? 0.15 : tac(side).passing === 'direct' ? 0.04 : 0.1;
+    if (tac(1 - side).press === 'low') v += 0.05;
+    return Math.max(0.3, v);
+  };
   const cA = (powers[0].control * ctrl(0)) ** CONTROL_EXPONENT;
   const cB = (powers[1].control * ctrl(1)) ** CONTROL_EXPONENT;
   const share = [cA / (cA + cB), cB / (cA + cB)];
@@ -417,6 +460,11 @@ export function playSegment(state) {
     let lambda = 2 * BASE_CHANCES * share[side];
     lambda *= { attacking: 1.25, balanced: 1, defensive: 0.7 }[team.mentality];
     lambda *= { attacking: 1.15, balanced: 1, defensive: 0.95 }[oppTeam.mentality];
+    const mine = tac(side);
+    const theirs = tac(opp);
+    lambda *= { short: 0.95, mixed: 1, direct: 1.1 }[mine.passing];
+    lambda *= { deep: 0.9, normal: 1, high: 1 }[mine.line];
+    lambda *= { deep: 1.05, normal: 1, high: 0.9 }[theirs.line];
     if (them.mods.active.some((e) => e.type === 'gameManagement')) lambda *= 0.6;
     lambda *= Math.max(0.2, 1 - them.mods.sum('oppChances'));
 
@@ -429,6 +477,17 @@ export function playSegment(state) {
     if (trailing && seg >= 3) lambda *= 1.15;
     if (team.mentality === 'attacking') quality += 0.02;
     if (oppTeam.mentality === 'defensive') quality -= 0.04;
+    // Counters: high press beats short passing, direct beats the press and a high line,
+    // short passing picks a deep block apart.
+    if (mine.press === 'high' && theirs.passing !== 'direct') quality += theirs.passing === 'short' ? 0.03 : 0.02;
+    if (mine.passing === 'short') quality += (theirs.line === 'deep' || theirs.press === 'low') ? 0.04 : 0.02;
+    if (mine.passing === 'direct') {
+      quality += avgPhy(team, 'FWD') >= 78 ? 0.02 : -0.03;
+      if (theirs.line === 'high') quality += 0.05;
+      if (theirs.line === 'deep') quality -= 0.03;
+    }
+    if (theirs.line === 'deep') quality -= 0.06;
+    if (theirs.line === 'high') quality += avgPhy(oppTeam, 'DEF') < 70 ? 0.06 : 0.03;
 
     const chances = [];
     const count = rng.poisson(lambda);
@@ -513,7 +572,9 @@ export function playSegment(state) {
     const guru = teamPassive(team, 'fitnessGuru');
     const mentality = { attacking: 1.15, balanced: 1, defensive: 0.9 }[team.mentality];
     for (const { slot, p } of onPitch(team)) {
-      let drain = 9 * (1.4 - p.card.phy / 100) * mentality * (1 - guru) * (1 - team.mods.drain);
+      const t = team.tactics || DEFAULT_TACTICS;
+      const style = { low: 0.85, mid: 1, high: 1.35 }[t.press] * (t.line === 'high' ? 1.05 : 1);
+      let drain = 9 * (1.4 - p.card.phy / 100) * mentality * style * (1 - guru) * (1 - team.mods.drain);
       if (p.card.trait === 'engine') drain *= 0.5;
       if (slot.pos === 'GK') drain *= 0.4;
       p.stamina = clamp(p.stamina - drain, 0, 100);

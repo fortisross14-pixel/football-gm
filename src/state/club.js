@@ -264,6 +264,7 @@ export function buildUserTeam(state, loadout, isHome) {
     isAI: false,
     isHome,
     mods: seasonMods(state),
+    tactics: state.tactics,
     eventName: state.activeEvent ? OFFSEASON_CARDS[state.activeEvent.type].name : null,
   };
 }

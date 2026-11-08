@@ -107,7 +107,25 @@ export function buildAiTeam(club, seed = 7) {
     assistant: null,
     loadout: [],
     isAI: true,
+    tactics: aiTactics(club, seed),
     // AI squads play together all season: the same edge your cohesion gives you.
     mods: { all: club.settled ?? AI_SETTLED_BY_LEVEL[club.level] ?? AI_SETTLED_BONUS },
   };
+}
+
+// Each AI club has a style: big clubs press and pass, smaller ones sit deeper and go direct.
+const STYLES = [
+  { press: 'high', passing: 'short', line: 'high' },
+  { press: 'mid', passing: 'short', line: 'normal' },
+  { press: 'high', passing: 'mixed', line: 'normal' },
+  { press: 'mid', passing: 'mixed', line: 'normal' },
+  { press: 'low', passing: 'direct', line: 'deep' },
+  { press: 'mid', passing: 'direct', line: 'normal' },
+  { press: 'low', passing: 'mixed', line: 'deep' },
+];
+export function aiTactics(club) {
+  let h = 0;
+  for (const ch of String(club.id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const top = club.level === 1 ? [0, 1, 2, 3] : club.level === 2 ? [1, 2, 3, 5] : [3, 4, 5, 6];
+  return { ...STYLES[top[h % top.length]] };
 }

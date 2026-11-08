@@ -1,6 +1,6 @@
 import React from 'react';
 import { BOOSTS, BOOST_IDS } from '../data/boosts.js';
-import { BASE_BOOST_SLOTS } from '../engine/match.js';
+import { BASE_BOOST_SLOTS, TACTICS } from '../engine/match.js';
 import { COACH_PASSIVES } from '../data/coachPassives.js';
 import { teamOverall } from '../engine/cards.js';
 import { seasonMods } from '../state/club.js';
@@ -134,6 +134,7 @@ function Scouting({ state, opponent, starters }) {
           <h3 className="sub-title">{opponent.short}</h3>
           {theirs.length ? theirs.map(({ c, sk }) => <p key={c.id} className="scouting__row" title={sk.desc}><b>{sk.icon} {sk.name}</b> <span>{c.name}</span></p>) : <p className="hint">No skills expected.</p>}
           {keys.length > 0 && <p className="hint">Key players: {keys.map((c) => c.name).join(', ')}</p>}
+          <p className="hint">Style: {TACTICS.press.options[ai.tactics.press].name} · {TACTICS.passing.options[ai.tactics.passing].name} passing · {TACTICS.line.options[ai.tactics.line].name} line</p>
         </div>
       </div>
     </section>
