@@ -1,8 +1,40 @@
-// League season: fixtures, table, scorers, AI-vs-AI results.
+// World season: every division's fixtures, tables and scorers, fast AI results,
+// and promotion/relegation at the end.
 import { makeRng } from './rng.js';
-import { overall } from './cards.js';
-import { simulateMatch } from './match.js';
 import { buildAiTeam } from './aiTeam.js';
+import { DIVISIONS, DIVISION_BY_ID, LEVEL_RATING } from '../data/world/structure.js';
+
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+// ---------------------------------------------------------------------------
+// World (clubs and which division they're in). Persists across seasons.
+
+// clubsByDivision: { divId: [club data] }, players: cards with clubId, ownedIds: user's cards.
+export function buildWorld(clubsByDivision, players, ownedIds = []) {
+  const owned = new Set(ownedIds);
+  const clubs = {};
+  const divisions = {};
+  for (const div of DIVISIONS) {
+    const list = clubsByDivision[div.id] || [];
+    divisions[div.id] = list.map((c) => c.id);
+    for (const c of list) clubs[c.id] = { ...c, divisionId: div.id, keyPlayers: [] };
+  }
+  for (const p of players) {
+    if (p.clubId && clubs[p.clubId] && !owned.has(p.id)) clubs[p.clubId].keyPlayers.push(p.id);
+  }
+  return { clubs, divisions };
+}
+
+export const clubById = (world, id) => world.clubs[id];
+
+export function removeKeyPlayer(world, playerId) {
+  const next = structuredClone(world);
+  for (const c of Object.values(next.clubs)) c.keyPlayers = c.keyPlayers.filter((id) => id !== playerId);
+  return next;
+}
+
+// ---------------------------------------------------------------------------
+// Fixtures
 
 // Double round-robin with the circle method: 8 clubs → 14 matchdays of 4 games.
 export function makeFixtures(ids, seed) {
@@ -26,68 +58,33 @@ export function makeFixtures(ids, seed) {
   return [...rounds, ...second].map((games) => games.map((g) => ({ ...g, score: null })));
 }
 
-// Gives each AI club up to 2 named key players from the pool near its rating.
-export function assignKeyPlayers(clubs, pool, ownedIds, seed) {
-  const rng = makeRng(seed);
-  const taken = new Set(ownedIds);
-  return clubs.map((club) => {
-    const keys = [];
-    for (let k = 0; k < 2; k += 1) {
-      const options = pool.filter((c) => !taken.has(c.id) && c.pos !== 'GK' && Math.abs(overall(c) - (club.rating + 2)) <= 4 && !keys.some((x) => x.pos === c.pos));
-      if (!options.length) break;
-      const pick = rng.pick(options);
-      taken.add(pick.id);
-      keys.push(pick.id);
-    }
-    return { ...club, keyPlayers: keys };
+const emptyRow = () => ({ p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0, form: [] });
+
+export function createSeason({ year, world, seed }) {
+  const divisions = {};
+  DIVISIONS.forEach((div, i) => {
+    const ids = world.divisions[div.id];
+    if (!ids || ids.length < 2) return;
+    divisions[div.id] = {
+      fixtures: makeFixtures(ids, seed + i * 101),
+      table: Object.fromEntries(ids.map((id) => [id, emptyRow()])),
+      scorers: {},
+    };
   });
+  return { year, matchday: 0, done: false, divisions };
 }
 
-export function createSeason({ year, userClub, aiClubs, pool, ownedIds, seed }) {
-  const clubs = [
-    { id: userClub.id, name: userClub.name, short: userClub.short, colors: userClub.colors, isUser: true },
-    ...assignKeyPlayers(aiClubs, pool, ownedIds, seed),
-  ];
-  const table = {};
-  for (const c of clubs) table[c.id] = { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0, form: [] };
-  return {
-    year,
-    clubs,
-    fixtures: makeFixtures(clubs.map((c) => c.id), seed + 1),
-    matchday: 0,
-    table,
-    scorers: {}, // playerId → { name, clubId, goals }
-    done: false,
-  };
-}
+export const MATCHDAYS = 14;
 
-export const clubById = (season, id) => season.clubs.find((c) => c.id === id);
+// ---------------------------------------------------------------------------
+// Results
 
-export function standings(season) {
-  return Object.entries(season.table)
-    .map(([id, row]) => ({ id, ...row, gd: row.gf - row.ga }))
-    .sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.id.localeCompare(b.id));
-}
-
-export function userFixture(season, userId) {
-  const games = season.fixtures[season.matchday];
-  if (!games) return null;
-  const game = games.find((g) => g.home === userId || g.away === userId);
-  if (!game) return null;
-  const isHome = game.home === userId;
-  return { ...game, isHome, opponentId: isHome ? game.away : game.home };
-}
-
-// Records one match. goals: [{ side: 0|1, playerId, name }]
-export function recordResult(season, homeId, awayId, score, goals) {
-  const next = structuredClone(season);
-  const game = next.fixtures[next.matchday].find((g) => g.home === homeId && g.away === awayId);
-  game.score = [...score];
+function record(div, homeId, awayId, score, goals) {
+  const game = div.fixtures.flat().find((g) => g.home === homeId && g.away === awayId && !g.score);
+  if (game) game.score = [...score];
   const [h, a] = score;
-  const rows = [next.table[homeId], next.table[awayId]];
-  rows.forEach((row, i) => {
-    const gf = i === 0 ? h : a;
-    const ga = i === 0 ? a : h;
+  [[homeId, h, a], [awayId, a, h]].forEach(([id, gf, ga]) => {
+    const row = div.table[id];
     row.p += 1;
     row.gf += gf;
     row.ga += ga;
@@ -96,19 +93,55 @@ export function recordResult(season, homeId, awayId, score, goals) {
     row.form = [...row.form, res].slice(-5);
   });
   for (const g of goals) {
+    if (!g.playerId) continue;
     const clubId = g.side === 0 ? homeId : awayId;
-    const s = next.scorers[g.playerId] || { name: g.name, clubId, goals: 0 };
+    const s = div.scorers[g.playerId] || { name: g.name, clubId, goals: 0 };
     s.goals += 1;
     s.clubId = clubId;
-    next.scorers[g.playerId] = s;
+    div.scorers[g.playerId] = s;
   }
-  return next;
 }
 
-export function aiTeamFor(season, clubId, poolById, seed) {
-  const club = clubById(season, clubId);
-  const keyPlayers = (club.keyPlayers || []).map((id) => poolById[id]).filter(Boolean);
-  return buildAiTeam({ ...club, keyPlayers }, seed);
+// Fast rating-based result for AI-vs-AI games, calibrated against the full engine:
+// about 3.3 goals per game, home side wins ~45% between equal teams.
+export function quickResult(world, homeId, awayId, poolById, rng) {
+  const h = world.clubs[homeId];
+  const a = world.clubs[awayId];
+  const diff = h.rating - a.rating;
+  const lh = 1.6 * Math.exp(diff / 17 + 0.07);
+  const la = 1.6 * Math.exp(-diff / 17 - 0.07);
+  const score = [rng.poisson(lh), rng.poisson(la)];
+  const goals = [];
+  [h, a].forEach((club, side) => {
+    for (let i = 0; i < score[side]; i += 1) {
+      const keys = club.keyPlayers.map((id) => poolById[id]).filter((p) => p && p.pos !== 'GK');
+      if (keys.length && rng.next() < 0.6) {
+        const p = rng.weighted(keys, (c) => ({ FWD: 3, MID: 1.4, DEF: 0.4 }[c.pos] || 0) * c.att);
+        goals.push({ side, playerId: p.id, name: p.name });
+      } else goals.push({ side, playerId: null });
+    }
+  });
+  return { score, goals };
+}
+
+// Plays the matchday: records the user's game (already played) and quick-sims every other game.
+// userGame: { divisionId, homeId, awayId, score, goals }
+export function playMatchday(season, world, userGame, poolById, seed) {
+  const next = structuredClone(season);
+  const rng = makeRng(seed);
+  for (const [divId, div] of Object.entries(next.divisions)) {
+    for (const g of div.fixtures[next.matchday]) {
+      if (userGame && divId === userGame.divisionId && g.home === userGame.homeId && g.away === userGame.awayId) {
+        record(div, g.home, g.away, userGame.score, userGame.goals);
+      } else {
+        const r = quickResult(world, g.home, g.away, poolById, rng);
+        record(div, g.home, g.away, r.score, r.goals);
+      }
+    }
+  }
+  next.matchday += 1;
+  if (next.matchday >= MATCHDAYS) next.done = true;
+  return next;
 }
 
 export function goalsFromMatch(match) {
@@ -117,33 +150,82 @@ export function goalsFromMatch(match) {
     .map((e) => ({ side: e.side, playerId: e.playerId, name: match.teams[e.side].players[e.playerId].card.name }));
 }
 
-// Plays every other game of the current matchday, then moves to the next one.
-export function finishMatchday(season, userId, poolById, seed) {
-  let next = season;
-  const rng = makeRng(seed);
-  for (const g of season.fixtures[season.matchday]) {
-    if (g.home === userId || g.away === userId) continue;
-    const s = rng.int(1, 2 ** 30);
-    const home = { ...aiTeamFor(next, g.home, poolById, s), isHome: true };
-    const away = aiTeamFor(next, g.away, poolById, s + 1);
-    const m = simulateMatch({ home, away, seed: s });
-    next = recordResult(next, g.home, g.away, m.score, goalsFromMatch(m));
-  }
-  next = structuredClone(next);
-  next.matchday += 1;
-  if (next.matchday >= next.fixtures.length) next.done = true;
-  return next;
+// ---------------------------------------------------------------------------
+// Queries
+
+export function standings(season, divId) {
+  const div = season.divisions[divId];
+  if (!div) return [];
+  return Object.entries(div.table)
+    .map(([id, row]) => ({ id, ...row, gd: row.gf - row.ga }))
+    .sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.id.localeCompare(b.id));
 }
 
-export function removeKeyPlayer(season, playerId) {
-  const next = structuredClone(season);
-  for (const c of next.clubs) if (c.keyPlayers) c.keyPlayers = c.keyPlayers.filter((id) => id !== playerId);
-  return next;
+export function userFixture(season, divId, userId) {
+  const games = season.divisions[divId]?.fixtures[season.matchday];
+  if (!games) return null;
+  const game = games.find((g) => g.home === userId || g.away === userId);
+  if (!game) return null;
+  const isHome = game.home === userId;
+  return { ...game, isHome, opponentId: isHome ? game.away : game.home };
 }
 
-export function topScorers(season, limit = 10) {
-  return Object.entries(season.scorers)
+export function topScorers(season, divId, limit = 10) {
+  const div = season.divisions[divId];
+  if (!div) return [];
+  return Object.entries(div.scorers)
     .map(([id, s]) => ({ id, ...s }))
     .sort((a, b) => b.goals - a.goals || a.name.localeCompare(b.name))
     .slice(0, limit);
 }
+
+export function aiTeamFor(world, clubId, poolById, seed) {
+  const club = world.clubs[clubId];
+  const keyPlayers = club.keyPlayers.map((id) => poolById[id]).filter(Boolean);
+  return buildAiTeam({ ...club, coach: { passive: club.passive }, keyPlayers }, seed);
+}
+
+// ---------------------------------------------------------------------------
+// End of season: champions, promotion and relegation, rating drift.
+
+export function endOfSeason(season, world, seed) {
+  const rng = makeRng(seed);
+  const next = structuredClone(world);
+  const champions = {};
+  const moves = [];
+  for (const div of DIVISIONS) {
+    const table = standings(season, div.id);
+    if (table.length) champions[div.id] = table[0].id;
+  }
+  // 1 up and 1 down between adjacent tiers of the same country.
+  for (const div of DIVISIONS) {
+    const lower = DIVISIONS.find((d) => d.code === div.code && d.tier === div.tier + 1);
+    if (!lower) continue;
+    const up = standings(season, lower.id)[0]?.id;
+    const down = standings(season, div.id).at(-1)?.id;
+    if (!up || !down) continue;
+    next.divisions[div.id] = next.divisions[div.id].map((id) => (id === down ? up : id));
+    next.divisions[lower.id] = next.divisions[lower.id].map((id) => (id === up ? down : id));
+    next.clubs[up].divisionId = div.id;
+    next.clubs[down].divisionId = lower.id;
+    moves.push({ clubId: up, from: lower.id, to: div.id, type: 'promoted' });
+    moves.push({ clubId: down, from: div.id, to: lower.id, type: 'relegated' });
+  }
+  // Ratings drift toward their (new) division and move a little with results.
+  for (const div of DIVISIONS) {
+    const ids = next.divisions[div.id];
+    const [lo, hi] = LEVEL_RATING[div.level];
+    const mean = ids.reduce((s, id) => s + next.clubs[id].rating, 0) / ids.length;
+    const table = standings(season, div.id);
+    for (const id of ids) {
+      const club = next.clubs[id];
+      const pos = table.findIndex((r) => r.id === id);
+      const form = pos >= 0 ? (3.5 - pos) * 0.3 : 0;
+      const drift = (mean - club.rating) * 0.15 + form + rng.int(-1, 1);
+      club.rating = clamp(Math.round(club.rating + drift), lo, hi);
+    }
+  }
+  return { world: next, champions, moves };
+}
+
+export const divisionName = (divId) => DIVISION_BY_ID[divId]?.name || divId;

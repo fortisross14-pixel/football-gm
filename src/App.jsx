@@ -42,13 +42,13 @@ export default function App() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const fixture = state.phase === 'season' ? userFixture(state.season, state.club.id) : null;
-  const opponent = fixture ? clubById(state.season, fixture.opponentId) : null;
+  const fixture = state.phase === 'season' ? userFixture(state.season, state.club.divisionId, state.club.id) : null;
+  const opponent = fixture ? clubById(state.world, fixture.opponentId) : null;
 
   const kickoff = () => {
     const seed = randomSeed();
     const user = buildUserTeam(state, loadout, fixture.isHome);
-    const ai = aiTeamFor(state.season, opponent.id, POOL_BY_ID, seed);
+    const ai = aiTeamFor(state.world, opponent.id, POOL_BY_ID, seed);
     const [home, away] = fixture.isHome ? [user, ai] : [ai, user];
     const match = createMatch({ home, away, seed, context: { competition: 'league' } });
     setLive({ match, userSide: fixture.isHome ? 0 : 1 });

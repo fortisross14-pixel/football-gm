@@ -23,14 +23,14 @@ const user = (club, loadout = []) => buildUserTeam(club, loadout, true);
 
 // Plays the user's league match for the current matchday (AI controls both sides).
 function playMatchday(state, seed) {
-  const fx = userFixture(state.season, state.club.id);
+  const fx = userFixture(state.season, state.club.divisionId, state.club.id);
   const oppId = fx.opponentId;
-  const ai = aiTeamFor(state.season, oppId, POOL_BY_ID, seed);
+  const ai = aiTeamFor(state.world, oppId, POOL_BY_ID, seed);
   const me = buildUserTeam(state, [], fx.isHome);
   const [home, away] = fx.isHome ? [me, ai] : [ai, me];
   const m = simulateMatch({ home, away, seed });
   const side = fx.isHome ? 0 : 1;
-  return applyMatch(state, m, side, clubById(state.season, oppId), matchRewards(state, m, side), seed).state;
+  return applyMatch(state, m, side, clubById(state.world, oppId), matchRewards(state, m, side), seed).state;
 }
 
 test('card pool rarities match overall ratings', () => {
@@ -110,7 +110,7 @@ test('a full season runs, ends and opens the Transfer Market', () => {
   let s = fresh();
   for (let md = 0; md < 14; md += 1) s = playMatchday(s, 100 + md);
   assert.equal(s.phase, 'seasonEnd');
-  const table = standings(s.season);
+  const table = standings(s.season, s.club.divisionId);
   assert.equal(table.length, 8);
   assert.ok(table.every((r) => r.p === 14));
   assert.equal(table.reduce((a, r) => a + r.gf, 0), table.reduce((a, r) => a + r.ga, 0));
@@ -150,6 +150,31 @@ test('all 25 off-season card types can be used', () => {
       if (OFFSEASON_CARDS[type].group === 'event') assert.equal(r.state.activeEvent.type, type);
     }
   }
+});
+
+test('promotion and relegation move clubs between tiers', () => {
+  let s = fresh();
+  for (let md = 0; md < 14; md += 1) s = playMatchday(s, 700 + md);
+  s.season.divisions['esp-3'].table.racing.pts = 999; // force the title
+  s = closeSeason(s, 8);
+  assert.equal(s.club.divisionId, 'esp-2');
+  assert.equal(s.club.level, 2);
+  assert.equal(s.lastSeason.userMove.type, 'promoted');
+  assert.equal(s.lastSeason.moves.length, 26); // 13 pairs of adjacent tiers
+  for (const ids of Object.values(s.world.divisions)) assert.equal(ids.length, 8);
+  assert.ok(s.world.divisions['esp-2'].includes('racing'));
+  s = startNextSeason(s, 9);
+  assert.ok(userFixture(s.season, 'esp-2', 'racing'));
+});
+
+test('the world has 38 full divisions and a big card pool', () => {
+  const s = fresh();
+  assert.equal(Object.keys(s.world.divisions).length, 38);
+  assert.equal(Object.keys(s.world.clubs).length, 304);
+  assert.ok(PLAYER_POOL.length + 0 >= 112);
+  assert.ok(POOLS.player.length >= 400, `pool ${POOLS.player.length}`);
+  const named = Object.values(s.world.clubs).filter((c) => c.keyPlayers.length > 0).length;
+  assert.ok(named >= 280, `${named} clubs with named players`);
 });
 
 test('a card retires at zero matches and is replaced', () => {

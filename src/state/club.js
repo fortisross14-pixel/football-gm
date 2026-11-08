@@ -2,20 +2,23 @@
 // Every function takes the state and returns a new one (plus extra info where useful).
 
 import { USER_CLUB, USER_SQUAD, USER_LINEUP, USER_BENCH, USER_COACHES, START_INVENTORY, LEVEL_MULTIPLIER } from '../data/demo.js';
-import { PLAYER_POOL, COACH_POOL } from '../data/pool.js';
-import { LEAGUE, AI_CLUBS } from '../data/league.js';
+import { PLAYER_CARDS, COACH_CARDS, CARD_BY_ID, CLUBS_BY_DIVISION } from '../data/world/index.js';
+import { DIVISIONS, DIVISION_BY_ID } from '../data/world/structure.js';
 import { BOOST_IDS, BOOSTS } from '../data/boosts.js';
 import { OFFSEASON_CARDS, OFFSEASON_IDS, MARKET_WEIGHTS, TIERS, tierIndex, cardValue, cardPrice } from '../data/offseason.js';
 import { makeGenericCard } from '../engine/aiTeam.js';
 import { makeRng } from '../engine/rng.js';
 import { RARITIES, TRAITS, POSITIONS, overall, rarityForOverall, autoArrange } from '../engine/cards.js';
 import { PACKS, openPack, mergeDuplicate, drawFromPool, MAX_STARS } from '../engine/packs.js';
-import { createSeason, recordResult, finishMatchday, goalsFromMatch, standings, removeKeyPlayer } from '../engine/season.js';
+import { buildWorld, createSeason, playMatchday, goalsFromMatch, standings, removeKeyPlayer, endOfSeason, divisionName } from '../engine/season.js';
 
 export const SAVE_VERSION = 2;
 
-export const POOLS = { player: PLAYER_POOL, coach: COACH_POOL };
-export const POOL_BY_ID = Object.fromEntries([...PLAYER_POOL, ...COACH_POOL].map((c) => [c.id, c]));
+export const POOLS = { player: PLAYER_CARDS, coach: COACH_CARDS };
+export const POOL_BY_ID = CARD_BY_ID;
+const PLAYER_POOL = PLAYER_CARDS;
+export const PRIZES = [1000, 600, 400, 300, 200, 150, 100, 50];
+export const START_DIVISION = 'esp-3';
 
 const STADIUM_INCOME = [40, 70, 110, 160, 230, 320];
 const MERCH_MULT = [0.5, 1, 1.5, 2, 2.5, 3];
@@ -24,7 +27,7 @@ const COHESION_MAX_BONUS = [0.04, 0.05, 0.06, 0.07, 0.08, 0.1];
 export const FACILITY_LABEL = { stadium: 'Stadium', merch: 'Merchandise', training: 'Training ground', academy: 'Youth academy' };
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-const mult = (state) => LEVEL_MULTIPLIER[state.club.level] || 1;
+const mult = (state) => LEVEL_MULTIPLIER[DIVISION_BY_ID[state.club.divisionId]?.level] || 1;
 const uid = (state) => {
   state.nextUid = (state.nextUid || 1) + 1;
   return `u${state.nextUid}`;
@@ -37,7 +40,7 @@ export function newClubState(seed = 12345) {
   const squad = structuredClone(USER_SQUAD);
   const state = {
     version: SAVE_VERSION,
-    club: { ...USER_CLUB, level: LEAGUE.level, division: LEAGUE.name },
+    club: clubInfo(USER_CLUB, START_DIVISION),
     coins: 300,
     squad,
     lineup: [...USER_LINEUP],
@@ -59,10 +62,18 @@ export function newClubState(seed = 12345) {
     market: null,
     pendingOpen: null,
     nextUid: 1,
+    world: null,
     season: null,
+    lastSeason: null,
   };
-  state.season = createSeason({ year: 1, userClub: state.club, aiClubs: AI_CLUBS, pool: PLAYER_POOL, ownedIds: ownedIds(state), seed });
+  state.world = buildWorld(CLUBS_BY_DIVISION, PLAYER_CARDS, ownedIds(state));
+  state.season = createSeason({ year: 1, world: state.world, seed });
   return state;
+}
+
+function clubInfo(club, divisionId) {
+  const div = DIVISION_BY_ID[divisionId];
+  return { ...club, divisionId, level: div.level, division: div.name };
 }
 
 export const ownedIds = (state) => [...state.squad.map((c) => c.id), state.coaches.coach?.id, state.coaches.assistant?.id].filter(Boolean);
@@ -222,11 +233,11 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed) {
   });
   next.history = next.history.slice(0, 30);
 
-  // League table, other games, next matchday.
+  // League table and every other game in the world, then the next matchday.
   if (next.season) {
     const [homeId, awayId] = userSide === 0 ? [team.id, match.teams[1].id] : [match.teams[0].id, team.id];
-    next.season = recordResult(next.season, homeId, awayId, match.score, goalsFromMatch(match));
-    next.season = finishMatchday(next.season, next.club.id, POOL_BY_ID, seed + 7);
+    const userGame = { divisionId: next.club.divisionId, homeId, awayId, score: match.score, goals: goalsFromMatch(match) };
+    next.season = playMatchday(next.season, next.world, userGame, POOL_BY_ID, seed + 7);
     if (next.season.done) next.phase = 'seasonEnd';
   }
   return { state: next, retired: [...retired, ...retiredCoaches] };
@@ -356,7 +367,7 @@ export function discardPending(state) {
 }
 
 function removeFromRivals(next, cardId) {
-  if (next.season) next.season = removeKeyPlayer(next.season, cardId);
+  if (next.world) next.world = removeKeyPlayer(next.world, cardId);
 }
 
 export const canMerge = (state, card) => {
@@ -368,11 +379,18 @@ export const canMerge = (state, card) => {
 // Season end and off-season
 
 export function seasonSummary(state) {
-  const table = standings(state.season);
+  const divId = state.club.divisionId;
+  const div = DIVISION_BY_ID[divId];
+  const table = standings(state.season, divId);
   const position = table.findIndex((r) => r.id === state.club.id) + 1;
-  const prize = (LEAGUE.prizes[position - 1] || 0) * mult(state);
+  const prize = (PRIZES[position - 1] || 0) * mult(state);
+  const upper = DIVISIONS.find((d) => d.code === div.code && d.tier === div.tier - 1);
+  const lower = DIVISIONS.find((d) => d.code === div.code && d.tier === div.tier + 1);
+  const promoted = position === 1 && !!upper;
+  const relegated = position === table.length && !!lower;
   const packs = position === 1 ? ['gold'] : position <= 3 ? ['silver'] : [];
-  return { table, position, prize, packs };
+  if (promoted) packs.push('silver');
+  return { table, position, prize, packs, promoted, relegated, upper, lower, division: div };
 }
 
 export function closeSeason(state, seed) {
@@ -381,8 +399,20 @@ export function closeSeason(state, seed) {
   const { position, prize, packs, table } = seasonSummary(state);
   next.coins += prize;
   next.inventory.packs.push(...packs);
-  const champion = next.season.clubs.find((c) => c.id === table[0].id);
-  next.trophies.push({ season: next.season.year, competition: LEAGUE.name, position, champion: champion.name });
+  const champion = next.world.clubs[table[0].id];
+  next.trophies.push({ season: next.season.year, competition: state.club.division, position, champion: champion.name });
+  const end = endOfSeason(next.season, next.world, seed);
+  next.world = end.world;
+  const userMove = end.moves.find((m) => m.clubId === next.club.id) || null;
+  next.club = clubInfo(next.club, next.world.clubs[next.club.id].divisionId);
+  next.lastSeason = {
+    year: next.season.year,
+    position,
+    division: state.club.division,
+    userMove,
+    champions: Object.fromEntries(Object.entries(end.champions).map(([d, id]) => [d, next.world.clubs[id].name])),
+    moves: end.moves.map((m) => ({ ...m, name: next.world.clubs[m.clubId].name, fromName: divisionName(m.from), toName: divisionName(m.to) })),
+  };
   // One free off-season card as a season reward.
   const rng = makeRng(seed);
   next.inventory.offseason.push(randomOffseasonCard(next, rng));
@@ -430,10 +460,7 @@ export function buyMarketCard(state, offerUid) {
 export function startNextSeason(state, seed) {
   if (state.phase !== 'offseason' || state.pendingOpen) return state;
   const next = structuredClone(state);
-  // Rival clubs change a little each year.
-  const rng = makeRng(seed);
-  const aiClubs = AI_CLUBS.map((c) => ({ ...c, rating: clamp(c.rating + rng.int(-2, 2), 60, 76) }));
-  next.season = createSeason({ year: state.season.year + 1, userClub: next.club, aiClubs, pool: PLAYER_POOL, ownedIds: ownedIds(next), seed });
+  next.season = createSeason({ year: state.season.year + 1, world: next.world, seed });
   next.phase = 'season';
   next.market = null;
   next.record = { w: 0, d: 0, l: 0, gf: 0, ga: 0 };
@@ -449,11 +476,13 @@ export function poachChance(targetCard, poachRarity) {
   return Math.min(95, POACH_BASE[tierIndex(targetCard.rarity)] + cardValue('poach', poachRarity));
 }
 
+// Rivals' named players: the clubs in your (next season's) division.
 export function poachTargets(state) {
-  if (!state.season) return [];
-  return state.season.clubs
-    .filter((c) => !c.isUser)
-    .flatMap((c) => (c.keyPlayers || []).map((id) => ({ club: c, card: POOL_BY_ID[id] })))
+  if (!state.world) return [];
+  return state.world.divisions[state.club.divisionId]
+    .filter((id) => id !== state.club.id)
+    .map((id) => state.world.clubs[id])
+    .flatMap((c) => c.keyPlayers.map((id) => ({ club: c, card: POOL_BY_ID[id] })))
     .filter((t) => t.card);
 }
 

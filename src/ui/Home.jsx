@@ -50,11 +50,11 @@ export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo
 
 function NextMatch({ state, onPlay }) {
   const { season } = state;
-  const fx = userFixture(season, state.club.id);
+  const fx = userFixture(season, state.club.divisionId, state.club.id);
   if (!fx) return null;
-  const opp = clubById(season, fx.opponentId);
+  const opp = clubById(state.world, fx.opponentId);
   const starters = state.lineup.map((id) => state.squad.find((c) => c.id === id));
-  const pos = standings(season).findIndex((r) => r.id === state.club.id) + 1;
+  const pos = standings(season, state.club.divisionId).findIndex((r) => r.id === state.club.id) + 1;
   const us = { name: state.club.name, short: state.club.short, colors: state.club.colors, ovr: teamOverall(starters) };
   const them = { name: opp.name, short: opp.short, colors: opp.colors, ovr: opp.rating };
   const [left, right] = fx.isHome ? [us, them] : [them, us];
@@ -87,7 +87,7 @@ function Side({ team }) {
 }
 
 function SeasonEnd({ state, onClose }) {
-  const { position, prize, packs } = seasonSummary(state);
+  const { position, prize, packs, promoted, relegated, upper, lower } = seasonSummary(state);
   return (
     <section className={`season-end${position === 1 ? ' is-champion' : ''}`}>
       <span className="season-end__label">Season {state.season.year} complete</span>
@@ -97,7 +97,8 @@ function SeasonEnd({ state, onClose }) {
         {packs.map((p, i) => <li key={i}><span>Reward pack</span><b>{PACKS[p].name}</b></li>)}
         <li><span>Off-season card</span><b>1 random</b></li>
       </ul>
-      {position === 1 && <p className="hint">Promotion to Division 2 arrives with the full world in the next milestone.</p>}
+      {promoted && <p className="promo is-up">▲ Promoted to {upper.name}! Bigger crowds, bigger prizes (×{upper.level === 1 ? 3 : 2} rewards) and tougher rivals.</p>}
+      {relegated && <p className="promo is-down">▼ Relegated to {lower.name}. Time to rebuild.</p>}
       <button type="button" className="btn btn--primary btn--block" onClick={onClose}>Collect & open the Transfer Market</button>
     </section>
   );
@@ -105,9 +106,11 @@ function SeasonEnd({ state, onClose }) {
 
 function Offseason({ state, goTo, onStart }) {
   const ev = state.activeEvent;
+  const move = state.lastSeason?.userMove;
   return (
     <section className="offseason">
-      <span className="season-end__label">Off-season</span>
+      <span className="season-end__label">Off-season · next: {state.club.division}</span>
+      {move && <p className={`promo ${move.type === 'promoted' ? 'is-up' : 'is-down'}`}>{move.type === 'promoted' ? '▲ Promoted' : '▼ Relegated'} to {state.club.division}</p>}
       <b className="offseason__title">Transfer Market is open</b>
       <p className="hint">Buy off-season cards, then play them from Cards → Items: extend careers, poach rivals' players, upgrade the club and pick a season event.</p>
       <div className="offseason__facilities">
