@@ -19,6 +19,7 @@ npm run build      # static build in dist/
 
 - **World:** 38 divisions and 304 real clubs across Europe, the Americas, Asia and Africa. Every division plays each matchday, and clubs go up and down between tiers at season end. Browse any league's table, fixtures and scorers.
 - **Season:** you start in Spain · Division 3 with Racing Santander. Win the league to go up (and earn bigger rewards), finish last to go down.
+- **Competitions:** domestic cups, the European / Americas / Africa–APAC Cups (qualify through your league) and the Club World Cup, all interleaved with league matchdays. Trophies pay prize money and reward packs.
 - **Matches:** 6 blocks of 15 minutes with live commentary, subs, mentality and boosts (up to 3 per match). Penalties in knockout games.
 - **Shop:** Bronze, Silver, Gold, Elite and Coach packs (odds shown), plus boosts.
 - **Pack opening:**
@@ -39,6 +40,8 @@ Progress is saved in the browser.
 | `src/engine/aiTeam.js` | Builds AI squads from a club rating + key players |
 | `src/state/club.js` | Your club: rewards, packs, keep/merge/discard, season end, Transfer Market, saving |
 | `src/engine/season.js` | Fixtures, table, scorers, simulating other games |
+| `src/engine/competitions.js` | Cups, continental tournaments, Club World Cup, season calendar |
+| `src/engine/transfers.js` | History pools, academies, AI signings, retirements |
 | `src/engine/packs.js` | Pack odds, guarantees, duplicates |
 | `src/data/pool.js` | Original card pool (112 players, 16 coaches) |
 | `src/data/world/` | World structure and the 4 region files (clubs + their named players) |

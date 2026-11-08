@@ -2,9 +2,9 @@ import React from 'react';
 import { Crest } from './Art.jsx';
 import { Table } from './League.jsx';
 import { teamOverall, RARITIES } from '../engine/cards.js';
-import { userFixture, clubById, standings } from '../engine/season.js';
+import { clubById, standings } from '../engine/season.js';
 import { OFFSEASON_CARDS, cardText } from '../data/offseason.js';
-import { effectiveCohesion, seasonSummary, FACILITY_LABEL, academyInfo } from '../state/club.js';
+import { effectiveCohesion, seasonSummary, FACILITY_LABEL, academyInfo, nextUserGame } from '../state/club.js';
 import { PACKS } from '../engine/packs.js';
 
 export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo, onReset }) {
@@ -50,27 +50,30 @@ export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo
 
 function NextMatch({ state, onPlay }) {
   const { season } = state;
-  const fx = userFixture(season, state.club.divisionId, state.club.id);
-  if (!fx) return null;
-  const opp = clubById(state.world, fx.opponentId);
+  const game = nextUserGame(state);
+  if (!game) return null;
+  const opp = clubById(state.world, game.opponentId);
   const starters = state.lineup.map((id) => state.squad.find((c) => c.id === id));
   const pos = standings(season, state.club.divisionId).findIndex((r) => r.id === state.club.id) + 1;
   const us = { name: state.club.name, short: state.club.short, colors: state.club.colors, ovr: teamOverall(starters) };
-  const them = { name: opp.name, short: opp.short, colors: opp.colors, ovr: opp.rating };
-  const [left, right] = fx.isHome ? [us, them] : [them, us];
+  const them = { name: opp.name, short: opp.short, colors: opp.colors, ovr: Math.round(opp.strength) };
+  const userFirst = game.homeId === state.club.id;
+  const [left, right] = userFirst ? [us, them] : [them, us];
+  const venue = game.neutral ? 'Neutral' : game.isHome ? 'Home' : 'Away';
+  const cupGame = game.competition !== 'league';
   return (
-    <section className="next-match">
+    <section className={`next-match${cupGame ? ` next-match--${game.competition}` : ''}`}>
       <div className="next-match__meta">
-        <span>Season {season.year} · Matchday {season.matchday + 1}/14</span>
-        {season.matchday > 0 && <span>You're {ordinal(pos)}</span>}
+        <span>Season {season.year} · {game.label}</span>
+        {season.matchday > 0 && !cupGame && <span>You're {ordinal(pos)}</span>}
       </div>
       <div className="matchup matchup--hero">
         <Side team={left} />
-        <div className="matchup__vs"><span>VS</span><small>{fx.isHome ? 'Home' : 'Away'}</small></div>
+        <div className="matchup__vs"><span>VS</span><small>{venue}{game.knockout ? ' · KO' : ''}</small></div>
         <Side team={right} />
       </div>
       <button type="button" className="btn btn--primary btn--block" onClick={onPlay} disabled={!!state.pendingOpen}>
-        Play matchday {season.matchday + 1}
+        {cupGame ? `Play: ${game.label.split(' · ')[1] || game.label}` : `Play matchday ${season.matchday + 1}`}
       </button>
     </section>
   );
@@ -92,6 +95,9 @@ function SeasonEnd({ state, onClose }) {
     <section className={`season-end${position === 1 ? ' is-champion' : ''}`}>
       <span className="season-end__label">Season {state.season.year} complete</span>
       <b className="season-end__pos">{position === 1 ? '🏆 Champions!' : `${ordinal(position)} place`}</b>
+      {(state.season.userTrophies || []).length > 0 && (
+        <p className="promo is-up">🏆 Also won: {state.season.userTrophies.join(', ')}</p>
+      )}
       <ul className="season-end__rewards">
         <li><span>Prize money</span><b>◎ {prize}</b></li>
         {packs.map((p, i) => <li key={i}><span>Reward pack</span><b>{PACKS[p].name}</b></li>)}

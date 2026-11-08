@@ -407,6 +407,7 @@ Odds are per card. The guarantee upgrades one card if none of the three meets it
 |---|---|
 | Promotion | Silver |
 | Cup winner | Silver |
+| Continental runner-up | 1,000 coins |
 | League title | Gold |
 | Continental title | Elite |
 | Club World Cup | 2 × Elite |
@@ -567,7 +568,8 @@ Your 2 carried cards replace squad cards of your choice. Cards that move with yo
 | M1 Core match + squad | **Done:** playable demo (see `README.md`), engine tests and balance script |
 | M2 Reward loop + one season | **Done:** shop, 5 pack types, pack opening with Keep/Merge/Discard, "My cards" (squad, items, album, Hall of Fame), 8-club league season with table/fixtures/scorers, season prizes, off-season Transfer Market with 25 card types, cohesion, facilities, card pool of 112 players + 16 coaches |
 | M3 Full world | **Done:** 38 divisions and 304 real clubs, 475 player cards (most tagged to their real club), the whole world plays every matchday (fast sim calibrated against the full engine), promotion/relegation with rating drift, world browser in the League tab |
-| M4 Competitions | Next |
+| M4 Competitions | **Done:** domestic cups (16 or 8 clubs, lower division at home, penalties), European Cup with qualifying round, Americas and Africa–APAC Cups (2 groups of 4 → semis → neutral final), Club World Cup (3-team mini-league + final), all on one season calendar; qualification from last season's tables (season 1: by club strength); trophies with prize money and reward packs; Cups view in the League tab |
+| M5 Remaining card families | Next |
 
 **Measured economy (M2, 60 simulated seasons with the demo squad):** average finish 3.6th of 8, about 2,200 coins per season (around 4 Silver packs).
 

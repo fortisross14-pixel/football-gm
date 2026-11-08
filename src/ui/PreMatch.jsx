@@ -23,7 +23,7 @@ export default function PreMatch({ state, opponent, setup, loadout, setLoadout, 
   const removeAt = (i) => setLoadout(loadout.filter((_, j) => j !== i));
   const home = setup.home;
   const us = { colors: state.club.colors, short: state.club.short, name: state.club.name, ovr: teamOverall(starters) };
-  const them = { colors: opponent.colors, short: opponent.short, name: opponent.name, ovr: opponent.rating };
+  const them = { colors: opponent.colors, short: opponent.short, name: opponent.name, ovr: Math.round(opponent.strength ?? opponent.rating) };
   const [left, right] = home ? [us, them] : [them, us];
   const owned = BOOST_IDS.filter((id) => (state.inventory.boosts[id] || 0) > 0);
 

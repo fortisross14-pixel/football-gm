@@ -3,6 +3,7 @@ import { standings, topScorers, clubById, MATCHDAYS } from '../engine/season.js'
 import { DIVISIONS, DIVISION_BY_ID, CONTINENT_LABEL } from '../data/world/structure.js';
 import { Crest } from './Art.jsx';
 import { Segmented } from './Home.jsx';
+import Cups from './Cups.jsx';
 
 const COUNTRIES = [...new Map(DIVISIONS.map((d) => [d.code, d])).values()];
 
@@ -45,13 +46,14 @@ export default function League({ state }) {
         small
         label="View"
         value={tab}
-        options={[{ id: 'table', label: 'Table' }, { id: 'fixtures', label: 'Fixtures' }, { id: 'scorers', label: 'Scorers' }, { id: 'world', label: 'Last season' }]}
+        options={[{ id: 'table', label: 'Table' }, { id: 'fixtures', label: 'Fixtures' }, { id: 'scorers', label: 'Scorers' }, { id: 'cups', label: 'Cups' }, { id: 'world', label: 'Past' }]}
         onChange={setTab}
       />
 
       {tab === 'table' && <Table state={state} divId={divId} />}
       {tab === 'fixtures' && <Fixtures key={divId} state={state} divId={divId} />}
       {tab === 'scorers' && <Scorers state={state} divId={divId} />}
+      {tab === 'cups' && <Cups state={state} countryCode={div.code} />}
       {tab === 'world' && <LastSeason state={state} />}
     </div>
   );
@@ -181,6 +183,17 @@ function LastSeason({ state }) {
   if (!last) return <p className="hint">Champions, promotions and relegations from around the world appear here after your first season.</p>;
   return (
     <div className="last-season">
+      {last.userTrophies?.length > 0 && <p className="promo is-up">🏆 Your trophies: {last.userTrophies.join(', ')}</p>}
+      <h3 className="sub-title">Season {last.year} cups</h3>
+      <ul className="champions">
+        {['europe', 'americas', 'afap'].map((k) => last.continental?.[k] && (
+          <li key={k}><span>{{ europe: 'European Cup', americas: 'Americas Cup', afap: 'Africa–APAC Cup' }[k]}</span><b>{last.continental[k]}</b></li>
+        ))}
+        {last.cwc && <li><span>Club World Cup</span><b>{last.cwc}</b></li>}
+        {Object.entries(last.cups || {}).filter(([, w]) => w).map(([code, w]) => (
+          <li key={code}><span>{DIVISIONS.find((d) => d.code === code)?.country} Cup</span><b>{w}</b></li>
+        ))}
+      </ul>
       <h3 className="sub-title">Season {last.year} champions</h3>
       <ul className="champions">
         {DIVISIONS.filter((d) => last.champions[d.id]).map((d) => (

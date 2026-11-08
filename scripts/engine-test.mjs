@@ -15,7 +15,7 @@ import { startingDraw, aiOffseason } from '../src/engine/transfers.js';
 import { CLUB_POOLS, PLAYER_CARDS } from '../src/data/world/index.js';
 import {
   newClubState, buildUserTeam, matchRewards, applyMatch, buyPack, keepPending, mergePending, discardPending,
-  pendingCard, duplicateOf, closeSeason, buyMarketCard, useOffseasonCard, startNextSeason, POOLS, POOL_BY_ID,
+  pendingCard, duplicateOf, nextUserGame, newSeason, closeSeason, buyMarketCard, useOffseasonCard, startNextSeason, POOLS, POOL_BY_ID,
 } from '../src/state/club.js';
 
 let passed = 0;
@@ -243,6 +243,56 @@ test('signing cards bring a random player of the right rarity, maybe from anothe
     }
   }
   assert.ok(fromClub > 0, 'some signings should come from other clubs');
+});
+
+// Plays the user's next game in any competition, the way the app does.
+function playNext(state, seed) {
+  const game = nextUserGame(state);
+  const homeFirst = game.homeId === state.club.id;
+  const me = buildUserTeam(state, [], homeFirst && !game.neutral);
+  const ai = aiTeamFor(state.world, game.opponentId, POOL_BY_ID, seed);
+  const m = simulateMatch({ home: homeFirst ? me : ai, away: homeFirst ? ai : me, seed, context: { competition: game.competition, knockout: game.knockout, neutral: game.neutral } });
+  const side = homeFirst ? 0 : 1;
+  return applyMatch(state, m, side, clubById(state.world, game.opponentId), matchRewards(state, m, side, game), seed, game).state;
+}
+
+test('cups, continental tournaments and the Club World Cup all finish', () => {
+  let s = fresh();
+  let guard = 0;
+  while (s.phase === 'season' && guard < 60) { s = playNext(s, 2000 + guard); guard += 1; }
+  assert.equal(s.phase, 'seasonEnd');
+  const { comps } = s.season;
+  for (const [code, cup] of Object.entries(comps.cups)) assert.ok(cup.winner, `${code} cup has no winner`);
+  for (const k of ['europe', 'americas', 'afap']) {
+    const c = comps.continental[k];
+    assert.ok(c.winner, `${k} has no winner`);
+    assert.equal(c.groups.length, 2);
+    for (const g of c.groups) assert.ok(Object.values(g.table).every((r) => r.p === 3));
+  }
+  assert.ok(comps.cwc.winner);
+  assert.ok(comps.cwc.clubs.includes(comps.cwc.winner));
+  s = closeSeason(s, 3);
+  assert.ok(s.lastSeason.continental.europe);
+  assert.equal(s.qualification.europe.direct.length, 4);
+  assert.equal(s.qualification.americas.length, 8);
+  assert.equal(s.qualification.afap.length, 8);
+});
+
+test('a qualified club plays its continental games through the season', () => {
+  let s = fresh();
+  s.qualification.europe.direct[0] = 'racing';
+  s.season = newSeason(s, 1, 77);
+  let guard = 0;
+  const seen = new Set();
+  while (s.phase === 'season' && guard < 60) {
+    seen.add(nextUserGame(s).competition);
+    s = playNext(s, 3000 + guard);
+    guard += 1;
+  }
+  assert.ok(seen.has('continental'), 'should play continental games');
+  const groupGames = s.history.filter((h) => h.competition === 'European Cup').length;
+  assert.ok(groupGames >= 3, `played ${groupGames} European games`);
+  assert.equal(s.phase, 'seasonEnd');
 });
 
 test('a card retires at zero matches and is replaced', () => {

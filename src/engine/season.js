@@ -120,12 +120,13 @@ function record(div, homeId, awayId, score, goals) {
 
 // Fast rating-based result for AI-vs-AI games, calibrated against the full engine:
 // about 3.3 goals per game, home side wins ~45% between equal teams.
-export function quickResult(world, homeId, awayId, poolById, rng) {
+export function quickResult(world, homeId, awayId, poolById, rng, neutral = false) {
   const h = world.clubs[homeId];
   const a = world.clubs[awayId];
   const diff = (h.strength ?? h.rating) - (a.strength ?? a.rating);
-  const lh = 1.6 * Math.exp(diff / 17 + 0.07);
-  const la = 1.6 * Math.exp(-diff / 17 - 0.07);
+  const home = neutral ? 0 : 0.07;
+  const lh = 1.6 * Math.exp(diff / 17 + home);
+  const la = 1.6 * Math.exp(-diff / 17 - home);
   const score = [rng.poisson(lh), rng.poisson(la)];
   const goals = [];
   [h, a].forEach((club, side) => {

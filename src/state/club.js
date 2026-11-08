@@ -11,7 +11,10 @@ import { makeGenericCard, FILLER_RATING } from '../engine/aiTeam.js';
 import { makeRng } from '../engine/rng.js';
 import { RARITIES, TRAITS, POSITIONS, overall, rarityForOverall, autoArrange } from '../engine/cards.js';
 import { PACKS, openPack, mergeDuplicate, drawFromPool, MAX_STARS } from '../engine/packs.js';
-import { buildWorld, createSeason, playMatchday, goalsFromMatch, standings, removeKeyPlayer, endOfSeason, divisionName, refreshStrengths } from '../engine/season.js';
+import { buildWorld, createSeason, playMatchday, goalsFromMatch, standings, removeKeyPlayer, endOfSeason, divisionName, refreshStrengths, userFixture, quickResult } from '../engine/season.js';
+import {
+  CALENDAR, createCompetitions, prepareSlot, recordGame, quickKnockout, involves, qualifiers, tablesByStrength, tablesFromSeason, CONTINENT_NAME, CONTINENTS,
+} from '../engine/competitions.js';
 
 export const SAVE_VERSION = 2;
 
@@ -101,8 +104,58 @@ export function newClubState(seed = 12345) {
     lastSeason: null,
   };
   state.world = buildWorld(CLUBS_BY_DIVISION, CLUB_POOLS, POOL_BY_ID, ownedIds(state), seed + 3);
-  state.season = createSeason({ year: 1, world: state.world, seed });
+  state.qualification = qualifiers(tablesByStrength(state.world));
+  state.season = newSeason(state, 1, seed);
   return state;
+}
+
+// ---------------------------------------------------------------------------
+// The season calendar: league matchdays plus cup, continental and Club World Cup rounds.
+
+export function newSeason(state, year, seed) {
+  const season = createSeason({ year, world: state.world, seed });
+  season.slot = 0;
+  season.comps = createCompetitions(state.world, state.qualification, seed + 5);
+  return advanceToUser({ ...state, season }, seed + 9).season;
+}
+
+// Plays every round the user isn't part of, stopping at the user's next game (or the end).
+function advanceToUser(state, seed) {
+  const next = { ...state, season: structuredClone(state.season) };
+  const rng = makeRng(seed);
+  const { season } = next;
+  while (season.slot < CALENDAR.length) {
+    const slot = CALENDAR[season.slot];
+    if (slot === 'L') break;
+    const entries = prepareSlot(season.comps, slot, next.world, rng.int(1, 2 ** 30));
+    if (entries.some((e) => involves(e, next.club.id))) break;
+    for (const e of entries) {
+      const r = quickKnockout(rng, next.world, e, quickResult, POOL_BY_ID);
+      recordGame(season.comps, e, r.score, r.pens);
+    }
+    season.slot += 1;
+  }
+  return next;
+}
+
+// The user's next game: { slot, competition, label, homeId, awayId, isHome, neutral, knockout }
+export function nextUserGame(state) {
+  const { season } = state;
+  if (!season || state.phase !== 'season' || season.slot >= CALENDAR.length) return null;
+  const slot = CALENDAR[season.slot];
+  if (slot === 'L') {
+    const fx = userFixture(season, state.club.divisionId, state.club.id);
+    if (!fx) return null;
+    return { slot, competition: 'league', label: `League · Matchday ${season.matchday + 1}`, homeId: fx.home, awayId: fx.away, isHome: fx.isHome, neutral: false, knockout: false, opponentId: fx.opponentId };
+  }
+  const comps = structuredClone(season.comps);
+  const entry = prepareSlot(comps, slot, state.world, 1).find((e) => involves(e, state.club.id));
+  if (!entry) return null;
+  const isHome = entry.game.home === state.club.id;
+  return {
+    slot, competition: entry.competition, label: entry.label, homeId: entry.game.home, awayId: entry.game.away,
+    isHome: isHome && !entry.neutral, neutral: entry.neutral, knockout: entry.knockout, opponentId: isHome ? entry.game.away : entry.game.home,
+  };
 }
 
 function clubInfo(club, divisionId) {
@@ -171,15 +224,26 @@ export function squadPopularity(state) {
   return state.squad.reduce((sum, c) => sum + (RARITIES[c.rarity]?.popularity || 0) * (1 + 0.25 * (c.stars || 0)), 0);
 }
 
-export function matchRewards(state, match, userSide) {
+// Prize money per result in each competition (league and cup scale with the division).
+const RESULT_COINS = {
+  league: { win: 100, draw: 40, loss: 15, scaled: true },
+  cup: { win: 150, draw: 40, loss: 15, scaled: true },
+  continental: { win: 300, draw: 100, loss: 50, scaled: false },
+  cwc: { win: 500, draw: 150, loss: 100, scaled: false },
+};
+
+export function matchRewards(state, match, userSide, game = { competition: 'league' }) {
   const m = mult(state);
   const own = match.score[userSide];
   const conceded = match.score[1 - userSide];
   const winner = match.result.winner;
+  const pay = RESULT_COINS[game.competition] || RESULT_COINS.league;
+  const k = pay.scaled ? m : 1;
   const items = [];
-  if (winner === userSide) items.push({ label: 'Win', coins: 100 * m });
-  else if (winner === null) items.push({ label: 'Draw', coins: 40 * m });
-  else items.push({ label: 'Defeat', coins: 15 * m });
+  const lostOnPens = match.result.shootout && winner !== userSide;
+  if (winner === userSide) items.push({ label: match.result.shootout ? 'Win on penalties' : 'Win', coins: pay.win * k });
+  else if (winner === null) items.push({ label: 'Draw', coins: pay.draw * k });
+  else items.push({ label: lostOnPens ? 'Lost on penalties' : 'Defeat', coins: pay.loss * k });
   if (conceded === 0) items.push({ label: 'Clean sheet', coins: 20 * m });
   if (own >= 3) items.push({ label: '3+ goals', coins: 20 * m });
   if (match.teams[userSide].isHome) items.push({ label: `Home gate (stadium L${state.facilities.stadium})`, coins: STADIUM_INCOME[state.facilities.stadium] * m });
@@ -187,11 +251,17 @@ export function matchRewards(state, match, userSide) {
   if (state.activeEvent?.type === 'marketingTour') merch *= cardValue('marketingTour', state.activeEvent.rarity) / 100;
   if (merch > 0) items.push({ label: `Merchandise (L${state.facilities.merch})`, coins: Math.round(merch) });
   if (state.perks.shirtSponsor) items.push({ label: 'Shirt sponsor', coins: state.perks.shirtSponsor });
+  const final = game.label?.endsWith('Final');
+  if (winner === userSide && final) {
+    const prize = { cup: { coins: 600 * m, pack: 'silver' }, continental: { coins: 3000, pack: 'elite' }, cwc: { coins: 5000, pack: 'elite' } }[game.competition];
+    if (prize) items.push({ label: 'Trophy prize', coins: prize.coins });
+  } else if (final && game.competition === 'continental') items.push({ label: 'Finalist prize', coins: 1000 });
+  if (game.label?.endsWith('Qualifying') && winner === userSide) items.push({ label: 'Qualified for the group stage', coins: 300 });
   return { items, total: items.reduce((s, i) => s + i.coins, 0) };
 }
 
 // Applies a finished league match: coins, record, stats, wear, retirements, cohesion, table.
-export function applyMatch(state, match, userSide, opponent, rewards, seed) {
+export function applyMatch(state, match, userSide, opponent, rewards, seed, game = null) {
   const next = structuredClone(state);
   const team = match.teams[userSide];
   const own = match.score[userSide];
@@ -263,19 +333,52 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed) {
     score: [own, conceded],
     shootout: null,
     outcome: winner === userSide ? 'W' : winner === null ? 'D' : 'L',
-    competition: `MD ${(next.season?.matchday ?? 0) + 1}`,
+    competition: !game || game.competition === 'league' ? `MD ${(next.season?.matchday ?? 0) + 1}` : game.label.split(' · ')[0],
     venue: team.isHome ? 'H' : 'A',
   });
   next.history = next.history.slice(0, 30);
 
-  // League table and every other game in the world, then the next matchday.
+  // Record the result, play everyone else's games in this round, then move to the user's next game.
   if (next.season) {
     const [homeId, awayId] = userSide === 0 ? [team.id, match.teams[1].id] : [match.teams[0].id, team.id];
-    const userGame = { divisionId: next.club.divisionId, homeId, awayId, score: match.score, goals: goalsFromMatch(match) };
-    next.season = playMatchday(next.season, next.world, userGame, POOL_BY_ID, seed + 7);
-    if (next.season.done) next.phase = 'seasonEnd';
+    const slot = CALENDAR[next.season.slot];
+    if (slot === 'L') {
+      const userGame = { divisionId: next.club.divisionId, homeId, awayId, score: match.score, goals: goalsFromMatch(match) };
+      next.season = playMatchday(next.season, next.world, userGame, POOL_BY_ID, seed + 7);
+    } else {
+      const rng = makeRng(seed + 7);
+      const entries = prepareSlot(next.season.comps, slot, next.world, 1);
+      for (const e of entries) {
+        if (involves(e, next.club.id)) {
+          const pens = match.shootout ? [...match.shootout.score] : null;
+          recordGame(next.season.comps, e, match.score, pens);
+          awardTrophy(next, e);
+        } else {
+          const r = quickKnockout(rng, next.world, e, quickResult, POOL_BY_ID);
+          recordGame(next.season.comps, e, r.score, r.pens);
+        }
+      }
+    }
+    next.season.slot += 1;
+    const advanced = advanceToUser(next, seed + 13);
+    next.season = advanced.season;
+    if (next.season.slot >= CALENDAR.length) next.phase = 'seasonEnd';
   }
   return { state: next, retired: [...retired, ...retiredCoaches] };
+}
+
+// Silverware: cup, continental and Club World Cup wins go in the cabinet with a reward pack.
+function awardTrophy(next, entry) {
+  const comps = next.season.comps;
+  const won = (id) => id === next.club.id;
+  let trophy = null;
+  if (entry.comp === 'cup' && won(comps.cups[entry.key].winner)) trophy = { competition: `${comps.cups[entry.key].country} Cup`, packs: ['silver'] };
+  if (entry.comp === 'cont' && won(comps.continental[entry.key].winner)) trophy = { competition: CONTINENT_NAME[entry.key], packs: ['elite'] };
+  if (entry.comp === 'cwc' && won(comps.cwc.winner)) trophy = { competition: 'Club World Cup', packs: ['elite', 'elite'] };
+  if (!trophy) return;
+  next.trophies.push({ season: next.season.year, competition: trophy.competition, position: 1, champion: next.club.name });
+  next.inventory.packs.push(...trophy.packs);
+  next.season.userTrophies = [...(next.season.userTrophies || []), trophy.competition];
 }
 
 function academyPlayer(state, rng, pos) {
@@ -432,6 +535,9 @@ export function closeSeason(state, seed) {
   if (state.phase !== 'seasonEnd') return state;
   const next = structuredClone(state);
   const { position, prize, packs, table } = seasonSummary(state);
+  // Next season's continental places come from this season's final tables.
+  const final = tablesFromSeason(state.season);
+  next.qualification = qualifiers(final.tables, final.points);
   next.coins += prize;
   next.inventory.packs.push(...packs);
   const champion = next.world.clubs[table[0].id];
@@ -454,6 +560,10 @@ export function closeSeason(state, seed) {
     champions: Object.fromEntries(Object.entries(end.champions).map(([d, id]) => [d, next.world.clubs[id].name])),
     moves: end.moves.map((m) => ({ ...m, name: next.world.clubs[m.clubId].name, fromName: divisionName(m.from), toName: divisionName(m.to) })),
     news: off.news.slice(0, 30),
+    cups: Object.fromEntries(Object.entries(state.season.comps.cups).map(([code, c]) => [code, c.winner ? next.world.clubs[c.winner].name : null])),
+    continental: Object.fromEntries(CONTINENTS.map((k) => [k, state.season.comps.continental[k].winner ? next.world.clubs[state.season.comps.continental[k].winner].name : null])),
+    cwc: state.season.comps.cwc?.winner ? next.world.clubs[state.season.comps.cwc.winner].name : null,
+    userTrophies: state.season.userTrophies || [],
   };
   // Your academy intake: club legends where possible, waiting for Keep/Discard.
   const intake = userAcademyIntake(next.world, {
@@ -510,7 +620,7 @@ export function buyMarketCard(state, offerUid) {
 export function startNextSeason(state, seed) {
   if (state.phase !== 'offseason' || state.pendingOpen) return state;
   const next = structuredClone(state);
-  next.season = createSeason({ year: state.season.year + 1, world: next.world, seed });
+  next.season = newSeason(next, state.season.year + 1, seed);
   next.phase = 'season';
   next.market = null;
   next.record = { w: 0, d: 0, l: 0, gf: 0, ga: 0 };

@@ -693,3 +693,15 @@ main { padding: 0 16px; }
 .news { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .news li { background: var(--surface); border-left: 3px solid var(--rc); border-radius: 8px; padding: 7px 10px; font-size: 13px; display: flex; flex-direction: column; }
 .news li span { color: var(--muted); font-size: 12px; }
+.next-match--cup .matchup--hero { background: radial-gradient(260px 120px at 50% 0, rgba(63,140,255,.22), var(--surface)); }
+.next-match--continental .matchup--hero { background: radial-gradient(260px 120px at 50% 0, rgba(169,92,255,.26), var(--surface)); }
+.next-match--cwc .matchup--hero { background: radial-gradient(260px 120px at 50% 0, rgba(242,181,47,.3), var(--surface)); }
+.cups, .bracket { display: flex; flex-direction: column; gap: 8px; }
+.fixture { position: relative; }
+.fixture__team.is-winner { font-weight: 700; color: var(--accent); }
+.fixture__score small { font-size: 11px; color: var(--muted); font-family: var(--font-body); }
+.fixture__label { grid-column: 1 / -1; color: var(--muted); font-size: 11px; }
+.table caption.table__legend { caption-side: top; padding: 0 0 4px; color: var(--muted); }
+.fixture__score { display: flex; flex-direction: column; align-items: center; line-height: 1.05; }
+.fixture__score small { white-space: nowrap; }
+.bracket .table th:not(.table__club):not(:first-child) { width: 34px; }

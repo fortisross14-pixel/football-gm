@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { createMatch } from './engine/match.js';
 import { randomSeed } from './engine/rng.js';
-import { userFixture, clubById, aiTeamFor } from './engine/season.js';
+import { clubById, aiTeamFor } from './engine/season.js';
 import {
   newClubState, loadClubState, saveClubState, clearClubState, buildUserTeam, matchRewards, applyMatch,
   buyPack, buyBoost, openOwnedPack, keepPending, mergePending, discardPending, closeSeason, buyMarketCard,
-  startNextSeason, useOffseasonCard, POOL_BY_ID,
+  startNextSeason, useOffseasonCard, POOL_BY_ID, nextUserGame,
 } from './state/club.js';
 import { Crest } from './ui/Art.jsx';
 import Home from './ui/Home.jsx';
@@ -42,23 +42,25 @@ export default function App() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const fixture = state.phase === 'season' ? userFixture(state.season, state.club.divisionId, state.club.id) : null;
+  const fixture = nextUserGame(state);
   const opponent = fixture ? clubById(state.world, fixture.opponentId) : null;
 
   const kickoff = () => {
     const seed = randomSeed();
-    const user = buildUserTeam(state, loadout, fixture.isHome);
+    // The competition's home side goes first, so scores line up with the fixture.
+    const userHomeSide = fixture.homeId === state.club.id;
+    const user = buildUserTeam(state, loadout, userHomeSide && !fixture.neutral);
     const ai = aiTeamFor(state.world, opponent.id, POOL_BY_ID, seed);
-    const [home, away] = fixture.isHome ? [user, ai] : [ai, user];
-    const match = createMatch({ home, away, seed, context: { competition: 'league' } });
-    setLive({ match, userSide: fixture.isHome ? 0 : 1 });
+    const [home, away] = userHomeSide ? [user, ai] : [ai, user];
+    const match = createMatch({ home, away, seed, context: { competition: fixture.competition, knockout: fixture.knockout, neutral: fixture.neutral } });
+    setLive({ match, userSide: userHomeSide ? 0 : 1, game: fixture });
     setScreen('match');
   };
 
   const finish = (match) => {
-    const { userSide } = live;
-    const rewards = matchRewards(state, match, userSide);
-    const applied = applyMatch(state, match, userSide, opponent, rewards, randomSeed());
+    const { userSide, game } = live;
+    const rewards = matchRewards(state, match, userSide, game);
+    const applied = applyMatch(state, match, userSide, opponent, rewards, randomSeed(), game);
     setState(applied.state);
     setOutcome({ match, userSide, rewards, retired: applied.retired, coinsAfter: applied.state.coins });
     setLoadout([]);
@@ -121,7 +123,7 @@ export default function App() {
           <PreMatch
             state={state}
             opponent={opponent}
-            setup={{ home: fixture.isHome, label: `Matchday ${state.season.matchday + 1}` }}
+            setup={{ home: fixture.isHome || (fixture.neutral && fixture.homeId === state.club.id), label: fixture.label }}
             loadout={loadout}
             setLoadout={setLoadout}
             onStart={kickoff}
