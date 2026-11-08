@@ -5,6 +5,7 @@ import { BOOSTS } from '../data/boosts.js';
 import { OFFSEASON_CARDS, GROUP_LABEL, cardText } from '../data/offseason.js';
 import { PACKS } from '../engine/packs.js';
 import { skillOf } from '../data/skills.js';
+import { attrs, ATTR_KEYS, ATTR_LABEL } from '../engine/attributes.js';
 import { Silhouette } from './Art.jsx';
 import { nationOf } from '../data/nations.js';
 import { CARD_BY_ID } from '../data/world/index.js';
@@ -65,9 +66,7 @@ export function PlayerCard({ card, colors, stats, size = 'full', onClick, select
         <div className="pcard__name">{card.name}</div>
         {size === 'full' && cardNation(card) && <Flag card={card} withName className="pcard__nation" />}
         <div className="pcard__stats">
-          <Stat label="ATT" value={card.att} />
-          <Stat label="DEF" value={card.def} />
-          <Stat label="PHY" value={card.phy} />
+          {ATTR_KEYS.map((k) => <Stat key={k} label={ATTR_LABEL[k]} value={attrs(card)[k]} />)}
         </div>
         {trait && (
           <div className="pcard__trait" title={trait.text}>

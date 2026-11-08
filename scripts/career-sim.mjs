@@ -4,7 +4,7 @@
 import {
   newClubState, starterOffers, nextUserGame, buildUserTeam, matchRewards, applyMatch, buyPack, pendingCard,
   duplicateOf, canMerge, keepPending, mergePending, discardPending, closeSeason, buyMarketCard, useOffseasonCard,
-  startNextSeason, acceptOffer, carryOptions, seasonSummary, userStrength, canUseOffseason, POOL_BY_ID, isCoach,
+  startNextSeason, acceptOffer, carryOptions, seasonSummary, userStrength, canUseOffseason, POOL_BY_ID, isCoach, lookForOffers,
 } from '../src/state/club.js';
 import { aiTeamFor, clubById, standings } from '../src/engine/season.js';
 import { simulateMatch } from '../src/engine/match.js';
@@ -13,6 +13,7 @@ import { PACKS } from '../src/engine/packs.js';
 import { OFFSEASON_CARDS } from '../src/data/offseason.js';
 import { DIVISION_BY_ID, TOP_CLUBS } from '../src/data/world/structure.js';
 import { CONTINENTS } from '../src/engine/competitions.js';
+import { PHILOSOPHIES, coachStyle } from '../src/data/philosophies.js';
 
 const CAREERS = Number(process.argv[2]) || 12;
 const SEASONS = Number(process.argv[3]) || 10;
@@ -32,6 +33,12 @@ function bestLineup(state) {
   return { ...state, lineup, bench: state.squad.filter((c) => !lineup.includes(c.id)).map((c) => c.id) };
 }
 
+// A sensible manager plays their coach's style (process.env.TACTICS=default turns this off).
+function smartTactics(state) {
+  if (process.env.TACTICS === 'default') return state;
+  return { ...state, tactics: { ...PHILOSOPHIES[coachStyle(state.coaches.coach)].t } };
+}
+
 // Decide on every waiting card: merge duplicates, keep upgrades, discard the rest.
 function decide(state) {
   let s = state;
@@ -48,7 +55,7 @@ function decide(state) {
     const target = samePos[0] && overall(samePos[0]) < overall(card) ? samePos[0] : overall(weakest) + 3 < overall(card) ? weakest : null;
     s = target ? keepPending(s, { replaceId: target.id }) : discardPending(s);
   }
-  return bestLineup(s);
+  return smartTactics(bestLineup(s));
 }
 const rank = (r) => ['academy', 'common', 'uncommon', 'rare', 'epic', 'legend'].indexOf(r);
 
@@ -97,6 +104,7 @@ function offseason(state, seed) {
 }
 
 function chooseOffer(state) {
+  if (process.env.NO_LOOK !== '1') state = lookForOffers(state, 4242 + state.season.year);
   const offers = state.gm.offers;
   if (!offers.length) return state;
   const best = [...offers].sort((a, b) => state.world.clubs[b.clubId].strength - state.world.clubs[a.clubId].strength)[0];

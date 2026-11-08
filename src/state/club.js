@@ -4,7 +4,7 @@
 import { USER_CLUB, USER_COACHES, START_INVENTORY, LEVEL_MULTIPLIER } from '../data/demo.js';
 import { PLAYER_CARDS, COACH_CARDS, CARD_BY_ID, CLUBS_BY_DIVISION, CLUB_POOLS } from '../data/world/index.js';
 import { aiOffseason, userAcademyIntake, ACADEMY_COUNT, ACADEMY_MAX_TIER, namedCap } from '../engine/transfers.js';
-import { START_REPUTATION, START_CONFIDENCE, SACK_LINE, security, matchConfidence, seasonConfidence, carryConfidence, boardObjective, judgeObjective, reputationChanges, weighReputation, applyReputation, jobOffers, CLUB_START, requiredReputation } from '../engine/career.js';
+import { clubStart, START_REPUTATION, START_CONFIDENCE, SACK_LINE, security, matchConfidence, seasonConfidence, carryConfidence, boardObjective, judgeObjective, reputationChanges, weighReputation, applyReputation, jobOffers, CLUB_START, requiredReputation } from '../engine/career.js';
 import { DIVISIONS, DIVISION_BY_ID } from '../data/world/structure.js';
 import { BOOST_IDS, BOOSTS, BOOST_PACKS, openBoostPack, drawBoost } from '../data/boosts.js';
 import { OFFSEASON_CARDS, OFFSEASON_IDS, MARKET_WEIGHTS, TIERS, tierIndex, cardValue, cardPrice, SIGNING_TIERS } from '../data/offseason.js';
@@ -12,6 +12,8 @@ import { makeGenericCard, FILLER_RATING, squadStrength } from '../engine/aiTeam.
 import { makeRng } from '../engine/rng.js';
 import { archiveSeason, foldRecords, compactEntry } from '../engine/history.js';
 import { ensureGms, updateGms } from '../engine/gms.js';
+import { styleDistance, clubIdentity } from '../data/philosophies.js';
+import { normalizeTactics } from '../engine/tactics.js';
 import { RARITIES, TRAITS, POSITIONS, overall, rarityForOverall, autoArrange } from '../engine/cards.js';
 import { PACKS, openPack, mergeDuplicate, drawFromPool, MAX_STARS } from '../engine/packs.js';
 import { buildWorld, createSeason, playMatchday, goalsFromMatch, standings, removeKeyPlayer, endOfSeason, divisionName, refreshStrengths, userFixture, quickResult } from '../engine/season.js';
@@ -44,20 +46,24 @@ const uid = (state) => {
 // New game
 
 // Starting squad: the club's named cards plus generic Common players.
+// A rookie's squad is thin: tuned with scripts/career-sim.mjs so season 1 is a fight to stay off the bottom.
+const START_LEGENDS = 1;
+const START_FILLER_DELTA = -1;
+
 function startingSquad(clubId, divisionId, formation, seed) {
   const rng = makeRng(seed);
   const level = DIVISION_BY_ID[divisionId].level;
-  // Two legends drawn at random from the club's history pool: Uncommon ones (Rare if needed).
+  // One club legend from the history pool (Uncommon, Rare if needed); the rest are journeymen.
   const pool = (CLUB_POOLS[clubId] || []).filter((id) => POOL_BY_ID[id]);
   const byRarity = (r) => pool.filter((id) => POOL_BY_ID[id].rarity === r).sort(() => rng.next() - 0.5);
-  const named = [...byRarity('uncommon'), ...byRarity('rare')].slice(0, 2).map((id) => structuredClone(POOL_BY_ID[id]));
+  const named = [...byRarity('uncommon'), ...byRarity('rare')].slice(0, START_LEGENDS).map((id) => structuredClone(POOL_BY_ID[id]));
   const used = new Set(named.map((c) => c.name.split(' ').slice(-1)[0]));
   const want = ['GK', 'GK', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'FWD', 'FWD'];
   for (const c of named) {
     const i = want.indexOf(c.pos);
     if (i >= 0) want.splice(i, 1); else want.pop();
   }
-  const generics = want.map((pos, i) => makeGenericCard(rng, { id: `gen-${clubId}-${i}`, pos, rating: FILLER_RATING[level], used }));
+  const generics = want.map((pos, i) => makeGenericCard(rng, { id: `gen-${clubId}-${i}`, pos, rating: FILLER_RATING[level] + START_FILLER_DELTA, used }));
   const squad = [...named, ...generics];
   const lineup = autoArrange(bestSeven(squad, formation), formation);
   const bench = squad.filter((c) => !lineup.includes(c.id)).map((c) => c.id);
@@ -83,7 +89,9 @@ export function starterOffers(seed) {
   for (const div of divs) {
     if (offers.length >= 3) break;
     if (offers.some((o) => DIVISION_BY_ID[o.divisionId].code === div.code)) continue;
-    const club = rng.pick(CLUBS_BY_DIVISION[div.id] || []);
+    // A rookie gets one of the two weakest clubs in a bottom-tier league.
+    const weakest = [...(CLUBS_BY_DIVISION[div.id] || [])].sort((a, b) => a.rating - b.rating).slice(0, 2);
+    const club = rng.pick(weakest);
     if (club) offers.push({ clubId: club.id, divisionId: div.id, name: club.name, short: club.short, colors: club.colors, division: div.name, legends: (CLUB_POOLS[club.id] || []).length });
   }
   return offers;
@@ -460,6 +468,7 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
     const trophyNow = (next.season.userTrophies || []).length > (state.season?.userTrophies || []).length;
     next.gm.confidence = matchConfidence(next.gm.confidence, {
       outcome: winner === userSide ? 'W' : winner === null ? 'D' : 'L', gf: own, ga: conceded, competition, pos,
+      styleDist: styleDistance(normalizeTactics(state.tactics), clubIdentity(next.world.clubs[next.club.id])),
       target: next.gm.objective?.target, eliminated: !!game?.knockout && winner !== userSide && !trophyNow, trophy: trophyNow, level: next.club.level,
     });
   }
@@ -738,7 +747,9 @@ export function closeSeason(state, seed) {
     if (next.gm.sacked) items.push({ label: 'Sacked by the board', value: -15 });
     next.gm.reputation = applyReputation(before, items);
     next.gm.review = { season: state.season.year, objective, position, verdict, items, before, after: next.gm.reputation, sacked: next.gm.sacked };
+    next.gm.searched = false;
     next.gm.offers = jobOffers(next.world, {
+      passive: !next.gm.sacked,
       reputation: next.gm.reputation, currentClubId: next.club.id, sacked: next.gm.sacked, good: verdict !== 'missed', seed: seed + 41,
     });
   }
@@ -851,7 +862,7 @@ export function acceptOffer(state, clubId, carryKeys = [], seed = 1) {
   // 2. The new club's squad: its named cards plus generic commons, then your carried players.
   const newClub = world.clubs[clubId];
   const level = DIVISION_BY_ID[newClub.divisionId].level;
-  const start = CLUB_START[level];
+  const start = clubStart(world, clubId);
   const named = newClub.keyPlayers.map((id) => ({ ...structuredClone(POOL_BY_ID[id]), matchesLeft: world.cardLeft[id] ?? POOL_BY_ID[id].matchesLeft }));
   newClub.keyPlayers = [];
   const used = new Set(named.map((c) => c.name.split(' ').slice(-1)[0]));
@@ -915,6 +926,20 @@ export function acceptOffer(state, clubId, carryKeys = [], seed = 1) {
 }
 
 export const offerRequirement = (state, clubId) => requiredReputation(state.world, clubId);
+
+// Off-season: actively look for a new job. Once per summer; the owners notice (−6 confidence).
+export const LOOK_COST = 6;
+export function lookForOffers(state, seed) {
+  if (state.phase !== 'offseason' || !state.gm || state.gm.searched || state.gm.sacked) return state;
+  const next = structuredClone(state);
+  const verdict = next.gm.review?.verdict || 'met';
+  const found = jobOffers(next.world, { reputation: next.gm.reputation, currentClubId: next.club.id, good: verdict !== 'missed', seed });
+  const have = new Set(next.gm.offers.map((o) => o.clubId));
+  next.gm.offers = [...next.gm.offers, ...found.filter((o) => !have.has(o.clubId))];
+  next.gm.searched = true;
+  next.gm.confidence = { ...next.gm.confidence, board: Math.max(0, (next.gm.confidence?.board ?? 60) - LOOK_COST) };
+  return next;
+}
 
 // ---------------------------------------------------------------------------
 // Using off-season cards
