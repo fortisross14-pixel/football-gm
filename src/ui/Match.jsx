@@ -159,7 +159,6 @@ export default function Match({ initial, userSide, onFinish, settings = {}, show
             <i>–</i>
             <span className={flash?.side === 1 ? 'pop' : ''}>{shownScore[1]}</span>
           </div>
-          <div className="scoreboard__clock">{minuteLabel}</div>
           {match.shootout && (
             <div className="scoreboard__pens">
               ({match.shootout.kicks.slice(0, kicksShown).filter((k) => k.side === 0 && k.scored).length}–
@@ -168,7 +167,11 @@ export default function Match({ initial, userSide, onFinish, settings = {}, show
           )}
         </div>
         <ScoreTeam team={match.teams[1]} colors={kits[1]} right />
+        <div className={`scoreboard__clock${revealing ? ' is-live' : ''}`}>{minuteLabel}</div>
       </div>
+
+      <div className="match-grid">
+      <div className="match-grid__main">
 
       <div className="momentum" aria-label="Midfield control last 15 minutes">
         <i style={{ width: `${control[0] * 100}%`, background: kits[0].primary }} />
@@ -189,13 +192,16 @@ export default function Match({ initial, userSide, onFinish, settings = {}, show
         onPick={onPickPlayer}
       />
       {flash && (
-        <div className="goal-banner" key={flash.key} style={{ background: kits[flash.side].primary, color: isLight(kits[flash.side].primary) ? '#111' : '#fff' }}>
-          GOAL · {match.teams[flash.side].short}
+        <div className="goal-banner" key={flash.key} role="status">
+          <b>Goal</b>
+          <span style={{ background: kits[flash.side].primary, color: isLight(kits[flash.side].primary) ? '#0B0D12' : '#fff' }}>{match.teams[flash.side].name}</span>
         </div>
       )}
 
       {match.shootout && <Shootout match={match} shown={kicksShown} kits={kits} />}
+      </div>
 
+      <div className="match-grid__side">
       <Feed events={visibleEvents} teams={match.teams} kits={kits} />
 
       <div className="dock">
@@ -264,6 +270,8 @@ export default function Match({ initial, userSide, onFinish, settings = {}, show
         {canLeave && (
           <button type="button" className="btn btn--primary btn--block" onClick={() => onFinish(match)}>See result ›</button>
         )}
+      </div>
+      </div>
       </div>
 
       {showTip && (

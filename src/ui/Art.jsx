@@ -43,7 +43,7 @@ export function Crest({ colors, short, size = 40 }) {
         <rect x="17" y="0" width="6" height="46" fill={colors.secondary} opacity="0.35" />
       </g>
       <path d="M20 1 L38 6 V22 C38 34 30 41 20 45 C10 41 2 34 2 22 V6 Z" fill="none" stroke="rgba(255,255,255,.55)" strokeWidth="1.5" />
-      <text x="20" y="24" textAnchor="middle" fontFamily="Barlow Condensed, sans-serif" fontWeight="800" fontSize="12" fill={text}>
+      <text x="20" y="24" textAnchor="middle" fontFamily="Anton, Impact, 'Arial Narrow', sans-serif" fontWeight="400" fontSize="12" letterSpacing="0.3" fill={text}>
         {short}
       </text>
     </svg>

@@ -46,7 +46,8 @@ export default function Squad({ state, setState }) {
   const selectedCard = selected ? byId(idAt(selected)) : null;
 
   return (
-    <div className="screen">
+    <div className="screen screen--squad">
+      <div className="squad__pitch">
       <div className="squad-head">
         <div>
           <h2 className="section-title">Starting 7</h2>
@@ -87,6 +88,9 @@ export default function Squad({ state, setState }) {
         </div>
       )}
 
+      </div>
+
+      <div className="squad__side">
       <Tactics state={state} setState={setState} starters={starters} />
 
       <h3 className="sub-title">Coaching staff</h3>
@@ -98,6 +102,7 @@ export default function Squad({ state, setState }) {
         Swap head coach and assistant
       </button>
       <p className="hint">The head coach sets the formation. The assistant adds their passive at half strength.</p>
+      </div>
 
       {viewing && (
         <Sheet title="Player card" onClose={() => setViewing(null)}>

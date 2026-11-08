@@ -19,7 +19,8 @@ export default function League({ state, nav }) {
   const md = Math.min(season.matchday + 1, MATCHDAYS);
 
   return (
-    <div className="screen">
+    <div className="screen screen--league">
+      <div className="league__controls">
       <button type="button" className="div-picker" onClick={() => setPicking(!picking)} aria-expanded={picking}>
         <span className="div-picker__label">{div.country} · {CONTINENT_LABEL[div.continent]} · Level {div.level}</span>
         <b>{div.name}</b>
@@ -51,12 +52,15 @@ export default function League({ state, nav }) {
         options={[{ id: 'table', label: 'Table' }, { id: 'fixtures', label: 'Fixtures' }, { id: 'scorers', label: 'Scorers' }, { id: 'cups', label: 'Cups' }, { id: 'history', label: 'History' }]}
         onChange={setTab}
       />
+      </div>
 
+      <div className="league__body">
       {tab === 'table' && <Table state={state} divId={divId} />}
       {tab === 'fixtures' && <Fixtures key={divId} state={state} divId={divId} />}
       {tab === 'scorers' && <Scorers state={state} divId={divId} />}
       {tab === 'cups' && <Cups state={state} countryCode={div.code} />}
       {tab === 'history' && <History state={state} divId={divId} />}
+      </div>
     </div>
   );
 }

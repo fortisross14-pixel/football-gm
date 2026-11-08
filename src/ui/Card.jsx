@@ -84,9 +84,10 @@ export function PlayerCard({ card, colors, stats, size = 'full', onClick, select
 
 function Stat({ label, value }) {
   return (
-    <div className="stat">
-      <span className="stat__v">{value}</span>
+    <div className="stat" style={{ '--v': `${Math.max(0, Math.min(100, value))}%` }}>
       <span className="stat__l">{label}</span>
+      <i className="stat__bar" aria-hidden="true" />
+      <span className="stat__v">{value}</span>
     </div>
   );
 }

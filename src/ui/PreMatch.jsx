@@ -7,6 +7,7 @@ import { seasonMods } from '../state/club.js';
 import { BoostCard } from './Card.jsx';
 import { Crest } from './Art.jsx';
 import { ClubLink } from './nav.jsx';
+import { clubVars } from './Home.jsx';
 import { skillOf, MAX_SKILLS } from '../data/skills.js';
 import { aiTeamFor } from '../engine/season.js';
 import { POOL_BY_ID } from '../state/club.js';
@@ -33,7 +34,8 @@ export default function PreMatch({ state, opponent, setup, loadout, setLoadout, 
   const owned = BOOST_IDS.filter((id) => (state.inventory.boosts[id] || 0) > 0);
 
   return (
-    <div className="screen">
+    <div className="screen screen--prematch">
+      <div className="prematch__main">
       <div className="matchup">
         <TeamBlock team={left} />
         <div className="matchup__vs">
@@ -46,7 +48,9 @@ export default function PreMatch({ state, opponent, setup, loadout, setLoadout, 
       <Bonuses state={state} competition={setup.competition} />
 
       <Scouting state={state} opponent={opponent} starters={starters} />
+      </div>
 
+      <div className="prematch__side">
       <h2 className="section-title">Bring boosts</h2>
       <p className="hint">Pick up to {slots}. You can play them at any break during the match. Unused boosts go back to your inventory.</p>
 
@@ -74,6 +78,7 @@ export default function PreMatch({ state, opponent, setup, loadout, setLoadout, 
           />
         ))}
       </div>
+      </div>
 
       <div className="cta-row cta-row--sticky">
         <button type="button" className="btn btn--ghost" onClick={onBack}>Back</button>
@@ -85,7 +90,7 @@ export default function PreMatch({ state, opponent, setup, loadout, setLoadout, 
 
 function TeamBlock({ team }) {
   return (
-    <div className="matchup__team">
+    <div className="matchup__team" style={clubVars(team.colors)}>
       <Crest colors={team.colors} short={team.short} size={46} />
       <ClubLink id={team.id}><b>{team.name}</b></ClubLink>
       <span>{team.ovr} OVR</span>
