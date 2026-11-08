@@ -16,6 +16,7 @@ export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo
       {phase === 'offseason' && <Offseason state={state} goTo={goTo} onStart={onStartSeason} />}
 
       <StatusRow state={state} goTo={goTo} />
+      <button type="button" className="btn btn--ghost btn--block" onClick={() => goTo('club')}>Club: facilities, finances & trophies ›</button>
 
       <section>
         <div className="section-row">

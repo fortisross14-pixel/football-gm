@@ -152,6 +152,16 @@ export const OFFSEASON_CARDS = {
     values: [5, 7, 10, 13, 18],
     text: (v) => `+${pct(v)} finishing all season.`,
   },
+  cupRun: {
+    name: 'Cup Run', group: 'event', icon: '🏆', base: 250,
+    values: [6, 8, 10, 13, 17],
+    text: (v) => `+${pct(v)} all stats in domestic cup matches, and cup prize money ×1.5.`,
+  },
+  continentalNights: {
+    name: 'Continental Nights', group: 'event', icon: '🌙', base: 300,
+    values: [6, 8, 10, 13, 17],
+    text: (v) => `+${pct(v)} all stats in continental and Club World Cup matches.`,
+  },
 };
 
 export const OFFSEASON_IDS = Object.keys(OFFSEASON_CARDS);

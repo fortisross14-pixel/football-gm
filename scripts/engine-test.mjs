@@ -139,8 +139,8 @@ test('a full season runs, ends and opens the Transfer Market', () => {
   assert.equal(s.season.year, 2);
 });
 
-test('all 25 off-season card types can be used', () => {
-  assert.equal(OFFSEASON_IDS.length, 25);
+test('all 27 off-season card types can be used', () => {
+  assert.equal(OFFSEASON_IDS.length, 27);
   let base = fresh();
   for (let md = 0; md < 14; md += 1) base = playMatchday(base, 300 + md);
   base = resolve(closeSeason(base, 1));
@@ -293,6 +293,26 @@ test('a qualified club plays its continental games through the season', () => {
   const groupGames = s.history.filter((h) => h.competition === 'European Cup').length;
   assert.ok(groupGames >= 3, `played ${groupGames} European games`);
   assert.equal(s.phase, 'seasonEnd');
+});
+
+test('popularity grows with goals and the books track money', () => {
+  let s = fresh();
+  for (let md = 0; md < 6; md += 1) s = playMatchday(s, 4000 + md);
+  const scorers = s.squad.filter((c) => (s.playerStats[c.id]?.goals || 0) > 0);
+  assert.ok(scorers.length > 0);
+  assert.ok(scorers.every((c) => c.fame > 0));
+  assert.ok(s.finance.income.Results > 0);
+  assert.ok(s.finance.income.Gate > 0);
+});
+
+test('season events show up in the match and change it', () => {
+  const club = fresh();
+  club.activeEvent = { type: 'cupRun', rarity: 'legend' };
+  const team = buildUserTeam(club, [], true);
+  assert.equal(team.mods.cup, 0.17);
+  let m = createMatch({ home: team, away: buildAiTeam(opp, 3), seed: 4, context: { competition: 'cup', knockout: true } });
+  m = playSegment(m);
+  assert.ok(m.events.some((e) => e.text.startsWith('Cup Run')));
 });
 
 test('a card retires at zero matches and is replaced', () => {

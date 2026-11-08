@@ -3,6 +3,7 @@ import { BOOSTS, BOOST_IDS } from '../data/boosts.js';
 import { BASE_BOOST_SLOTS } from '../engine/match.js';
 import { COACH_PASSIVES } from '../data/coachPassives.js';
 import { teamOverall } from '../engine/cards.js';
+import { seasonMods } from '../state/club.js';
 import { BoostCard } from './Card.jsx';
 import { Crest } from './Art.jsx';
 
@@ -37,6 +38,8 @@ export default function PreMatch({ state, opponent, setup, loadout, setLoadout, 
         </div>
         <TeamBlock team={right} />
       </div>
+
+      <Bonuses state={state} competition={setup.competition} />
 
       <h2 className="section-title">Bring boosts</h2>
       <p className="hint">Pick up to {slots}. You can play them at any break during the match. Unused boosts go back to your inventory.</p>
@@ -85,3 +88,22 @@ function TeamBlock({ team }) {
 }
 
 export { BOOSTS };
+
+function Bonuses({ state, competition }) {
+  const m = seasonMods(state);
+  const chips = [];
+  if (m.all) chips.push(`Cohesion & form +${(m.all * 100).toFixed(1)}%`);
+  if (m.home) chips.push(`Home +${Math.round(m.home * 100)}%`);
+  if (m.comeback) chips.push(`When losing from 60' +${Math.round(m.comeback * 100)}%`);
+  if (m.underdog) chips.push(`Vs stronger teams +${Math.round(m.underdog * 100)}%`);
+  if (m.finishing) chips.push(`Finishing +${Math.round(m.finishing * 100)}%`);
+  if (m.drain) chips.push(`Stamina drain −${Math.round(m.drain * 100)}%`);
+  if (m.cup && competition === 'cup') chips.push(`Cup +${Math.round(m.cup * 100)}%`);
+  if (m.continental && (competition === 'continental' || competition === 'cwc')) chips.push(`Continental +${Math.round(m.continental * 100)}%`);
+  if (!chips.length) return null;
+  return (
+    <div className="bonus-row" aria-label="Active bonuses">
+      {chips.map((c) => <span key={c} className="chip chip--soft">{c}</span>)}
+    </div>
+  );
+}

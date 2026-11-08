@@ -80,7 +80,9 @@ function buildTeam(input, isHome, context) {
   const ovr = Math.round(slots.reduce((s, slot) => s + overall(players[slot.playerId].card), 0) / slots.length);
   return {
     ovr,
-    mods: { all: 0, home: 0, comeback: 0, drain: 0, finishing: 0, underdog: 0, ...(input.mods || {}) },
+    mods: { all: 0, home: 0, comeback: 0, drain: 0, finishing: 0, underdog: 0, cup: 0, continental: 0, ...(input.mods || {}) },
+    eventName: input.eventName || null,
+    announced: [],
     id: input.id,
     name: input.name,
     short: input.short,
@@ -258,7 +260,8 @@ function modifiers(state, side, seg) {
   if (seg >= 4 && own < against) all += season.comeback;
   if (opp.ovr > team.ovr + 1) all += season.underdog;
   if (seg >= 3) all += teamPassive(team, 'motivator');
-  if (competition === 'cup') all += teamPassive(team, 'cupSpecialist');
+  if (competition === 'cup') all += teamPassive(team, 'cupSpecialist') + season.cup;
+  if (competition === 'continental' || competition === 'cwc') all += season.continental;
   all += field.filter(({ p }) => p.card.trait === 'leader').length * 0.03;
   const att = sum('att') + teamPassive(team, 'attackMinded');
   const def = sum('def') + teamPassive(team, 'ironDiscipline') + field.filter(({ p }) => p.card.trait === 'wall').length * 0.1;
@@ -308,6 +311,7 @@ export function playSegment(state) {
   const next = clone(state);
   const rng = makeRng(next.seed);
   const seg = next.segment;
+  announceEvents(next, seg);
   const powers = [teamPower(next, 0, seg), teamPower(next, 1, seg)];
   const cA = powers[0].control ** CONTROL_EXPONENT;
   const cB = powers[1].control ** CONTROL_EXPONENT;
@@ -431,6 +435,28 @@ export function playSegment(state) {
     else return finalize(next);
   }
   return next;
+}
+
+// Commentary when a season event starts to help (once per match).
+function announceEvents(state, seg) {
+  const { competition } = state.context;
+  for (const side of [0, 1]) {
+    const team = state.teams[side];
+    const m = team.mods;
+    if (!team.eventName) continue;
+    const [own, against] = side === 0 ? state.score : [state.score[1], state.score[0]];
+    const say = (key, text) => {
+      if (team.announced.includes(key)) return;
+      team.announced.push(key);
+      state.events.push({ minute: seg * 15, side, type: 'boost', text });
+    };
+    const pct = (v) => `+${Math.round(v * 100)}%`;
+    if (m.comeback && seg >= 4 && own < against) say('comeback', `${team.eventName}: ${team.short} refuse to give up (${pct(m.comeback)})!`);
+    if (seg === 0 && m.underdog && state.teams[1 - side].ovr > team.ovr + 1) say('underdog', `${team.eventName}: ${team.short} are the underdogs and love it (${pct(m.underdog)}).`);
+    if (seg === 0 && m.home && team.isHome) say('home', `${team.eventName}: the home crowd roars (${pct(m.home)}).`);
+    if (seg === 0 && m.cup && competition === 'cup') say('cup', `${team.eventName}: cup nights bring out the best in ${team.short} (${pct(m.cup)}).`);
+    if (seg === 0 && m.continental && (competition === 'continental' || competition === 'cwc')) say('cont', `${team.eventName}: ${team.short} rise to the occasion (${pct(m.continental)}).`);
+  }
 }
 
 // ---------------------------------------------------------------------------

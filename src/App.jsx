@@ -17,6 +17,7 @@ import Shop from './ui/Shop.jsx';
 import Collection from './ui/Collection.jsx';
 import League from './ui/League.jsx';
 import PackOpening from './ui/PackOpening.jsx';
+import ClubInfo from './ui/ClubInfo.jsx';
 
 const TABS = [
   { id: 'home', label: 'Club', icon: '⌂' },
@@ -80,13 +81,15 @@ export default function App() {
     setScreen('home');
   };
 
-  const isTab = TABS.some((t) => t.id === screen);
+  const isTab = TABS.some((t) => t.id === screen) || screen === 'club';
 
   return (
     <div className={`app${isTab ? ' app--tabs' : ''}`}>
       {screen !== 'match' && (
         <header className="topbar">
-          <Crest colors={state.club.colors} short={state.club.short} size={30} />
+          <button type="button" className="topbar__crest" onClick={() => setScreen('club')} aria-label="Club details">
+            <Crest colors={state.club.colors} short={state.club.short} size={30} />
+          </button>
           <div className="topbar__club">
             <b>{state.club.name}</b>
             <span>{state.club.division}</span>
@@ -119,11 +122,12 @@ export default function App() {
           />
         )}
         {screen === 'league' && <League state={state} />}
+        {screen === 'club' && <ClubInfo state={state} onBack={() => setScreen('home')} />}
         {screen === 'prematch' && fixture && (
           <PreMatch
             state={state}
             opponent={opponent}
-            setup={{ home: fixture.isHome || (fixture.neutral && fixture.homeId === state.club.id), label: fixture.label }}
+            setup={{ home: fixture.isHome || (fixture.neutral && fixture.homeId === state.club.id), label: fixture.label, competition: fixture.competition }}
             loadout={loadout}
             setLoadout={setLoadout}
             onStart={kickoff}

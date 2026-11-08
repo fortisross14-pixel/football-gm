@@ -188,7 +188,7 @@ Clubs qualify through **last season's** league results. For season 1, the seeded
   - Leader: +cohesion gain.
   - Big Game: +10% in continental and Club World Cup matches.
 - **Matches left:** goes down by 1 each match the player takes part in (starts or comes on). Unused bench players don't lose matches, which rewards rotation. At 0 the player **retires**.
-- **Popularity:** set by rarity and grows with goals, awards and trophies. It drives merchandise income.
+- **Popularity:** rarity × (1 + 0.25 per star) plus fame. Fame grows with goals (+0.15), assists (+0.05), man of the match (+0.4), every trophy (+1.5 for the whole squad) and a league title (+1), capped at 30. Squad popularity drives merchandise income.
 - **Duplicates:** keeping a copy of a card you own merges it: +1 star (+2 to every stat, max 3 stars) and +30 matches.
 
 | Rarity | Frame | OVR range | Matches | Base popularity | Quick sell |
@@ -253,7 +253,7 @@ Clubs start with levels that match their size. The demo club starts at stadium 1
 
 When the season ends, the **Transfer Market** opens with 9 off-season cards for sale. Every off-season card has a **rarity** that sets how strong it is, and **lower rarities appear more often** (Common 45%, Uncommon 28%, Rare 17%, Epic 8%, Legend 2%). You also get 1 random off-season card as a season reward.
 
-There are **25 card types** in three groups:
+There are **27 card types** in three groups:
 - **Transfer:** squad moves. You can play as many as you like.
 - **Club:** facilities and deals. You can play as many as you like.
 - **Season event:** lasts the whole next season. Only **1 per season**.
@@ -287,6 +287,8 @@ Effects at Common and Legend (Uncommon, Rare and Epic sit in between):
 | 🫀 **Fitness Program** | Season event | Stamina drains 10% slower. | Stamina drains 35% slower. | 250 → 2000 |
 | 🐺 **Underdog Mentality** | Season event | +5% all stats against higher-rated teams. | +16% all stats against higher-rated teams. | 250 → 2000 |
 | 🎯 **Shooting Drills** | Season event | +5% finishing all season. | +18% finishing all season. | 300 → 2400 |
+| 🏆 **Cup Run** | Season event | +6% all stats in domestic cup matches, and cup prize money ×1.5. | +17% all stats in domestic cup matches, and cup prize money ×1.5. | 250 → 2000 |
+| 🌙 **Continental Nights** | Season event | +6% all stats in continental and Club World Cup matches. | +17% all stats in continental and Club World Cup matches. | 300 → 2400 |
 
 **Signings are random.** You don't choose the player. A signing card sets the rarity and the scope, and the game picks someone at random from everyone who fits. That can be a free agent or a player at another club, who then leaves that club if you keep him.
 
@@ -569,7 +571,8 @@ Your 2 carried cards replace squad cards of your choice. Cards that move with yo
 | M2 Reward loop + one season | **Done:** shop, 5 pack types, pack opening with Keep/Merge/Discard, "My cards" (squad, items, album, Hall of Fame), 8-club league season with table/fixtures/scorers, season prizes, off-season Transfer Market with 25 card types, cohesion, facilities, card pool of 112 players + 16 coaches |
 | M3 Full world | **Done:** 38 divisions and 304 real clubs, 475 player cards (most tagged to their real club), the whole world plays every matchday (fast sim calibrated against the full engine), promotion/relegation with rating drift, world browser in the League tab |
 | M4 Competitions | **Done:** domestic cups (16 or 8 clubs, lower division at home, penalties), European Cup with qualifying round, Americas and Africa–APAC Cups (2 groups of 4 → semis → neutral final), Club World Cup (3-team mini-league + final), all on one season calendar; qualification from last season's tables (season 1: by club strength); trophies with prize money and reward packs; Cups view in the League tab |
-| M5 Remaining card families | Next |
+| M5 Club systems | **Done:** Club screen (facilities with current and next-level effects, season finances, popularity, cohesion, season event, trophy cabinet), popularity that grows with goals, man-of-the-match awards and trophies, season events called out in match commentary, active bonuses shown before kick-off, Cup Run and Continental Nights events |
+| M6 GM career | Next |
 
 **Measured economy (M2, 60 simulated seasons with the demo squad):** average finish 3.6th of 8, about 2,200 coins per season (around 4 Silver packs).
 

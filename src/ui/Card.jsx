@@ -58,6 +58,9 @@ export function PlayerCard({ card, colors, stats, size = 'full', onClick, select
             </>
           )}
         </div>
+        {size === 'full' && !card.generic && (card.fame > 0 || RARITIES[card.rarity]?.popularity > 0) && (
+          <div className="pcard__pop">Popularity {Math.round(((RARITIES[card.rarity]?.popularity || 0) * (1 + 0.25 * (card.stars || 0)) + (card.fame || 0)) * 10) / 10} ★</div>
+        )}
         {stats && size === 'full' && (
           <div className="pcard__career">
             <span><b>{stats.apps}</b> apps</span>
