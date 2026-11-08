@@ -46,7 +46,14 @@ const BOT = process.env.BOT || 'average';
 globalThis.FOOTBALL_NO_STATS = process.env.STATS !== 'on';
 
 function smartTactics(state) {
-  if (process.env.TACTICS === 'default' || BOT === 'poor') return state;
+  if (process.env.TACTICS === 'default') return state;
+  if (BOT === 'poor') {
+    // Below average: every other season the plan clashes with the coach.
+    if ((state.season?.year || 1) % 2 === 0) return state;
+    const coachId = coachStyle(state.coaches.coach);
+    const worst = Object.keys(PHILOSOPHIES).sort((a, b) => styleDistance(PHILOSOPHIES[b].t, coachId) - styleDistance(PHILOSOPHIES[a].t, coachId))[0];
+    return { ...state, tactics: { ...PHILOSOPHIES[worst].t } };
+  }
   if (BOT === 'bad') {
     const ids = Object.keys(PHILOSOPHIES);
     return { ...state, tactics: { ...PHILOSOPHIES[ids[(state.season?.year * 7 + state.club.id.length) % ids.length]].t } };
@@ -54,9 +61,18 @@ function smartTactics(state) {
   if (BOT === 'great') {
     const A = userAttrs(state);
     const coachId = coachStyle(state.coaches.coach);
-    const score = (id) => suitability(PHILOSOPHIES[id].t, A) / 25 - styleDistance(PHILOSOPHIES[id].t, coachId) - 0.4 * styleDistance(PHILOSOPHIES[id].t, clubIdentity(state.world.clubs[state.club.id]));
-    const best = Object.keys(PHILOSOPHIES).sort((a, b) => score(b) - score(a))[0];
-    return { ...state, tactics: { ...PHILOSOPHIES[best].t } };
+    // Green if at all possible: close to the coach (distance ≤ 2) and the most suitable for the squad,
+    // also trying the coach's preset with each switch flipped.
+    const options = [];
+    for (const id of Object.keys(PHILOSOPHIES)) {
+      const base = PHILOSOPHIES[id].t;
+      options.push(base);
+      for (const sw of ['offsideTrap', 'setPieces', 'counter']) options.push({ ...base, [sw]: !base[sw] });
+      for (const ch of [['attack', 'wings', 'centre'], ['buildUp', 'short', 'long']]) options.push({ ...base, [ch[0]]: base[ch[0]] === ch[1] ? ch[2] : ch[1] });
+    }
+    const score = (t) => { const d = styleDistance(t, coachId); return (d <= 2 ? 100 : 0) + suitability(t, A) - d * 5; };
+    const best = options.sort((a, b) => score(b) - score(a))[0];
+    return { ...state, tactics: { ...best } };
   }
   // Play the coach's style unless it clashes with what the owners want; then meet in the club's way.
   const coach = coachStyle(state.coaches.coach);
@@ -138,7 +154,8 @@ function chooseOffer(state) {
   if (looks) state = lookForOffers(state, 4242 + state.season.year);
   const offers = state.gm.offers;
   if (!offers.length) return state;
-  const best = [...offers].sort((a, b) => state.world.clubs[b.clubId].strength - state.world.clubs[a.clubId].strength)[0];
+  // The most prestigious club that wants you (the giants first).
+  const best = [...offers].sort((a, b) => b.required - a.required)[0];
   const better = state.world.clubs[best.clubId].strength > userStrength(state) + 1 || DIVISION_BY_ID[state.world.clubs[best.clubId].divisionId].level < state.club.level;
   if (!better && !state.gm.sacked) return state;
   const players = carryOptions(state).filter((o) => o.kind === 'player').map((o) => ({ o, ovr: overall(state.squad.find((c) => `player:${c.id}` === o.key)) }));
