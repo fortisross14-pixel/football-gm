@@ -397,17 +397,31 @@ Rare, Epic and Legend cards (players and coaches) carry one intrinsic skill. Epi
 
 The AI uses its skills too: it protects leads late, chases games late and gives half-time talks. The pre-match screen shows both sides' skills.
 
-### 5.5 Tactics
+### 5.5 Tactics (Squad → Tactics)
 
-Set on the Squad screen; AI clubs have a style (big clubs press and pass, smaller ones sit deeper and go direct), shown in the pre-match scouting.
+**Five numbers per player:** Passing, Shooting, Defense, Physical, Set pieces (`src/engine/attributes.js`). DEF and PHY are stored; PAS, SHO and SET come from the card's position, attack rating, trait and a fixed per-card variation, with real-world specialists lifted (Beckham, Pirlo, Juninho… for set pieces; Xavi, Riquelme, Modrić… for passing). The Tactics screen shows the starting 7's averages, and wide vs central attackers.
 
-| Instruction | Options and trade-offs |
-|---|---|
-| Pressing | Low block (−15% stamina drain, rivals +5% control) · Mid · High press (rivals −10% control, better chances, +35% stamina drain) |
-| Passing | Short (+8% control, better chances, fewer shots) · Mixed · Direct (+10% shots, −8% control, worse chances unless forwards have PHY 78+) |
-| Defensive line | Deep (rivals' chances worse, you shoot less) · Normal · High (rivals shoot less, but balls in behind are dangerous, worse with slow defenders; +5% drain) |
+**Instructions** (`src/engine/tactics.js`), each read against those numbers:
 
-Counters: high press beats short passing; direct play beats the press and a high line; short passing picks a deep block apart. Synergies: a high press needs stamina (Fitness Guru coach, Second Wind, Fresh Legs, high-PHY squad). Each choice moves results by a few percent, never more than squad quality (`node scripts/tactics-check.mjs`).
+| Kind | Setting | What it does |
+|---|---|---|
+| Slider 1–5 | Pressing | Higher: rivals lose control, you win the ball high; +20% stamina drain per step. Physical makes it bite. |
+| Slider 1–5 | Passing tempo | Faster: more chances, quality follows Passing. Patient: more control, better openings. |
+| Slider 1–5 | Defensive line | Higher: rivals shoot less, but balls in behind hurt, more with slow (low Physical) defenders. |
+| A/B | Attack through wings / centre | Quality follows the better group (wide vs central attackers). |
+| A/B | Build-up short / long balls | Short needs Passing and suffers against a press; long skips the press, needs strong forwards. |
+| Switch | Offside trap | Fewer rival chances if defenders read the game (Defense); slow defenders get beaten. |
+| Switch | Play for set pieces | Extra dead-ball chances; worth it with a good taker. |
+| Switch | Counter-attacks | Big quality boost against high lines, pressing and attacking teams; needs Physical; costs control. |
+| 3-way | Kick-off mentality | Defend / Balanced / Attack (also changeable in the match). |
+
+**Philosophies** (`src/data/philosophies.js`): Tiki-taka, Total football, Gegenpress, Controlled possession, Pragmatic, Route one, Counter-attack, Catenaccio. Loading one sets every instruction; you can then adjust and save your own styles (up to 8). They counter each other (`node scripts/tactics-check.mjs` prints the full matrix: every preset averages 1.31–1.46 points a game against the others, with clear winners per matchup).
+
+**Coach fit:** every coach has a philosophy. Distance from it (slider steps 0.5, choices 1, switches 0.5, mentality 1) gives a team-wide bonus from +2.5% (×0.6 Common … ×1.4 Legend coach) down to −6% for a clash.
+
+**Owners:** every club has an identity (Barcelona tiki-taka, Atlético catenaccio, Liverpool gegenpress…). Playing close to it adds owners' confidence each match; a clash costs it. The screen shows coach style, the club's identity and how well the squad suits the instructions, with plain advice ("Fast tempo with Passing 61: too many passes will go astray").
+
+AI clubs play their identity with a coach that fits it. Pre-match scouting shows the rival's style.
 
 ### 5.3 Presentation
 
@@ -516,9 +530,13 @@ Your 2 carried cards replace squad cards of your choice. Cards that move with yo
 - A sacked GM gets **exactly 3 offers**: from clubs below the old one, and always from a **level lower** if sacked by a top-flight club. You still take 2 cards with you.
 - AI managers (one per club) gain and lose reputation by finishing above or below what their squad should achieve, win trophies, and get sacked after big misses. World → Managers ranks everyone, you included.
 
+### 7.5b Looking for a job
+
+Offers rarely arrive on their own (about 1 in 3 good seasons). In the off-season you can **Look for offers** once: 2–3 offers that match your reputation, at a cost of 6 owners' confidence. Clubs pay by size, not just level (`clubStart`): coins and facilities scale from the smallest to the biggest club of a level, and the giants (Real Madrid, Milan, Liverpool…) start with 9,000 coins and level 4–5 facilities.
+
 ### 7.6 Starting a career
 
-- A rookie GM starts with reputation **10** and picks from **3 offers from L3 clubs**.
+- A rookie GM starts with reputation **10** and picks from **3 offers from L3 clubs**, each one of the two weakest clubs in its league, with one club legend and journeymen for the rest. Season 1 is a fight to stay off the bottom.
 - That club's squad is your starting squad, and you also get a free **Starter Pack** (3 players, 1 guaranteed Rare).
 - **Stretch goal:** a "Sandbox" mode where you start at any club.
 

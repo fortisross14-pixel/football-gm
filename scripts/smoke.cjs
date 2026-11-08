@@ -32,6 +32,8 @@ const fs = require('fs');
   await page.waitForTimeout(400);
   await step('home', async () => {});
   await step('squad', () => page.click('.tabbar button:nth-child(2)'));
+  await step('tactics', () => page.click('.screen--squad-wrap .segmented__opts button:nth-child(2)'));
+  await step('tactics-catenaccio', () => page.click('text=Catenaccio'));
   await step('cards-owned', () => page.click('.tabbar button:nth-child(3)'));
   await step('cards-shop', () => page.click('.hub__switch .segmented__opts button:nth-child(2)'));
   await step('cards-shop-boosts', () => page.click('.screen .segmented__opts button:nth-child(2)'));

@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "node scripts/engine-test.mjs",
     "balance": "node scripts/balance.mjs",
-    "career-sim": "node scripts/career-sim.mjs"
+    "career-sim": "node scripts/career-sim.mjs",
+    "check:nations": "node scripts/check-nations.mjs"
   },
   "dependencies": {
     "react": "19.2.8",

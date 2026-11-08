@@ -4,7 +4,7 @@
 import {
   newClubState, starterOffers, nextUserGame, buildUserTeam, matchRewards, applyMatch, buyPack, pendingCard,
   duplicateOf, canMerge, keepPending, mergePending, discardPending, closeSeason, buyMarketCard, useOffseasonCard,
-  startNextSeason, acceptOffer, carryOptions, seasonSummary, userStrength, canUseOffseason, POOL_BY_ID, isCoach,
+  startNextSeason, acceptOffer, carryOptions, seasonSummary, userStrength, canUseOffseason, POOL_BY_ID, isCoach, lookForOffers,
 } from '../src/state/club.js';
 import { aiTeamFor, clubById, standings } from '../src/engine/season.js';
 import { simulateMatch } from '../src/engine/match.js';
@@ -13,6 +13,11 @@ import { PACKS } from '../src/engine/packs.js';
 import { OFFSEASON_CARDS } from '../src/data/offseason.js';
 import { DIVISION_BY_ID, TOP_CLUBS } from '../src/data/world/structure.js';
 import { CONTINENTS } from '../src/engine/competitions.js';
+import { PHILOSOPHIES, coachStyle, clubIdentity, styleDistance } from '../src/data/philosophies.js';
+import { suitability } from '../src/engine/tactics.js';
+import { teamAttrs } from '../src/engine/attributes.js';
+
+const userAttrs = (state) => teamAttrs(FORMATIONS[state.coaches.coach.formation].map((sl, i) => ({ card: state.squad.find((c) => c.id === state.lineup[i]), pos: sl.pos, x: sl.x })).filter((e) => e.card));
 
 const CAREERS = Number(process.argv[2]) || 12;
 const SEASONS = Number(process.argv[3]) || 10;
@@ -32,6 +37,33 @@ function bestLineup(state) {
   return { ...state, lineup, bench: state.squad.filter((c) => !lineup.includes(c.id)).map((c) => c.id) };
 }
 
+// Bot skill: BOT=great|average|poor|bad (default average).
+//   great:   picks the style that best fits coach and squad, shops and uses the market well
+//   average: plays the coach's style, sensible shopping (the "not making big mistakes" player)
+//   poor:    default tactics, cheap packs, little market use, looks for jobs every other summer
+//   bad:     random style each season, wastes coins on bronze packs, never uses the market
+const BOT = process.env.BOT || 'average';
+
+function smartTactics(state) {
+  if (process.env.TACTICS === 'default' || BOT === 'poor') return state;
+  if (BOT === 'bad') {
+    const ids = Object.keys(PHILOSOPHIES);
+    return { ...state, tactics: { ...PHILOSOPHIES[ids[(state.season?.year * 7 + state.club.id.length) % ids.length]].t } };
+  }
+  if (BOT === 'great') {
+    const A = userAttrs(state);
+    const coachId = coachStyle(state.coaches.coach);
+    const score = (id) => suitability(PHILOSOPHIES[id].t, A) / 25 - styleDistance(PHILOSOPHIES[id].t, coachId) - 0.4 * styleDistance(PHILOSOPHIES[id].t, clubIdentity(state.world.clubs[state.club.id]));
+    const best = Object.keys(PHILOSOPHIES).sort((a, b) => score(b) - score(a))[0];
+    return { ...state, tactics: { ...PHILOSOPHIES[best].t } };
+  }
+  // Play the coach's style unless it clashes with what the owners want; then meet in the club's way.
+  const coach = coachStyle(state.coaches.coach);
+  const club = clubIdentity(state.world.clubs[state.club.id]);
+  const pick = styleDistance(PHILOSOPHIES[coach].t, club) > 3.5 && process.env.TACTICS === 'owners' ? club : coach;
+  return { ...state, tactics: { ...PHILOSOPHIES[pick].t } };
+}
+
 // Decide on every waiting card: merge duplicates, keep upgrades, discard the rest.
 function decide(state) {
   let s = state;
@@ -48,7 +80,7 @@ function decide(state) {
     const target = samePos[0] && overall(samePos[0]) < overall(card) ? samePos[0] : overall(weakest) + 3 < overall(card) ? weakest : null;
     s = target ? keepPending(s, { replaceId: target.id }) : discardPending(s);
   }
-  return bestLineup(s);
+  return smartTactics(bestLineup(s));
 }
 const rank = (r) => ['academy', 'common', 'uncommon', 'rare', 'epic', 'legend'].indexOf(r);
 
@@ -57,7 +89,9 @@ function shop(state, seed, stats) {
   let s = state;
   for (let i = 0; i < 6; i += 1) {
     const reserve = 300;
-    const pack = s.coins >= PACKS.gold.price + reserve ? 'gold' : s.coins >= PACKS.silver.price + reserve ? 'silver' : null;
+    let pack = s.coins >= PACKS.gold.price + reserve ? 'gold' : s.coins >= PACKS.silver.price + reserve ? 'silver' : null;
+    if (BOT === 'poor') pack = s.coins >= 700 ? 'bronze' : null;
+    if (BOT === 'bad') pack = s.coins >= PACKS.bronze.price ? 'bronze' : null;
     if (!pack) break;
     s = buyPack(s, pack, seed + i);
     stats.packs[pack] = (stats.packs[pack] || 0) + 1;
@@ -69,6 +103,7 @@ function shop(state, seed, stats) {
 
 function offseason(state, seed) {
   let s = decide(state);
+  if (BOT === 'bad') return s;
   // Buy what helps: signings first, then facilities, then one event.
   const order = ['worldSigning', 'nationalSigning', 'veteranSigning', 'stadiumEvolution', 'trainingGround', 'merchExpansion', 'youthAcademy', 'personalTrainer', 'careerExtension'];
   const offers = [...s.market.offers].sort((a, b) => {
@@ -97,6 +132,8 @@ function offseason(state, seed) {
 }
 
 function chooseOffer(state) {
+  const looks = process.env.NO_LOOK !== '1' && (BOT !== 'poor' || state.season.year % 2 === 0);
+  if (looks) state = lookForOffers(state, 4242 + state.season.year);
   const offers = state.gm.offers;
   if (!offers.length) return state;
   const best = [...offers].sort((a, b) => state.world.clubs[b.clubId].strength - state.world.clubs[a.clubId].strength)[0];

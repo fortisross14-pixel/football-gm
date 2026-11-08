@@ -1,12 +1,15 @@
 // Save slots and settings in browser storage. Every call is wrapped so the game
 // still runs (without saving) when storage is blocked or full.
 import { SAVE_VERSION } from './club.js';
+import { managerEntry, makeCareerId } from './managers.js';
 
 export const SLOT_COUNT = 3;
 const slotKey = (n) => `football-cards-v${SAVE_VERSION}-slot-${n}`;
 const META_KEY = `football-cards-v${SAVE_VERSION}-slots`;
 const LEGACY_KEY = 'football-cards-save-v3';
 const SETTINGS_KEY = 'football-cards-settings';
+// Every career ever played, separate from the slots (survives deletes and overwrites).
+const MANAGERS_KEY = 'football-cards-managers';
 
 const read = (key) => {
   try {
@@ -71,20 +74,79 @@ export function loadSlot(n) {
 }
 
 export function saveSlot(n, state) {
+  // Each career gets an id the first time it is saved, so the managers book can follow it.
+  if (state && !state.careerId) {
+    try { state.careerId = makeCareerId(n, state.gmName, Date.now()); } catch { /* frozen state: book uses a slot-based id */ }
+  }
   const ok = write(slotKey(n), state);
   if (ok) {
     const meta = migrate();
     meta[n] = summary(state);
     write(META_KEY, meta);
   }
+  recordManager(n, state);
   return ok;
 }
 
 export function deleteSlot(n) {
+  // A save from before the managers book existed is recorded before it goes.
+  if (!readBook().slots[n]) { const st = loadSlot(n); if (st) recordManager(n, st); }
   remove(slotKey(n));
   const meta = migrate();
   delete meta[n];
   write(META_KEY, meta);
+  retireSlot(n);
+}
+
+// ---------------------------------------------------------------------------
+// Managers book: { entries: { [careerId]: entry }, slots: { [n]: careerId } }
+
+const readBook = () => {
+  const book = read(MANAGERS_KEY);
+  return book && typeof book === 'object' ? { entries: book.entries || {}, slots: book.slots || {} } : { entries: {}, slots: {} };
+};
+
+function retire(book, id, now) {
+  const e = book.entries[id];
+  if (e && e.status === 'active') { e.status = 'retired'; e.retiredAt = now; }
+}
+
+function recordManager(n, state) {
+  try {
+    if (!state?.club) return;
+    const book = readBook();
+    const now = Date.now();
+    const id = state.careerId || book.slots[n] || makeCareerId(n, state.gmName, now);
+    // A different career saved into this slot means the old one was overwritten.
+    if (book.slots[n] && book.slots[n] !== id) retire(book, book.slots[n], now);
+    // The same career restored into another slot moves with it.
+    for (const [k, v] of Object.entries(book.slots)) if (v === id && Number(k) !== n) delete book.slots[k];
+    book.entries[id] = managerEntry(state, { id, slot: n, prev: book.entries[id] || null, now });
+    book.slots[n] = id;
+    write(MANAGERS_KEY, book);
+  } catch {
+    // the book is a nice-to-have: never block a save
+  }
+}
+
+function retireSlot(n) {
+  const book = readBook();
+  if (!book.slots[n]) return;
+  retire(book, book.slots[n], Date.now());
+  delete book.slots[n];
+  write(MANAGERS_KEY, book);
+}
+
+// All careers, newest first. Saves made before the book existed are added the first time it's opened.
+export function listManagers() {
+  const meta = migrate();
+  let book = readBook();
+  for (let n = 1; n <= SLOT_COUNT; n += 1) {
+    if (!meta[n] || book.slots[n]) continue;
+    const state = loadSlot(n);
+    if (state) { saveSlot(n, state); book = readBook(); }
+  }
+  return Object.values(book.entries).sort((a, b) => b.updated - a.updated);
 }
 
 // Export as text the player can copy or save as a file; import checks it's a valid save.

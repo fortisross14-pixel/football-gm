@@ -2,10 +2,20 @@ import React, { useState } from 'react';
 import { FORMATIONS, slotFit, teamOverall, autoArrange } from '../engine/cards.js';
 import { MiniCard, PlayerCard, CoachCard } from './Card.jsx';
 import Sheet from './Sheet.jsx';
-import { TACTICS, DEFAULT_TACTICS } from '../engine/match.js';
-import { COACH_PASSIVES } from '../data/coachPassives.js';
+import Tactics from './Tactics.jsx';
+import { Segmented } from './Home.jsx';
 
 export default function Squad({ state, setState }) {
+  const [view, setView] = useState('xi');
+  return (
+    <div className="screen screen--squad-wrap">
+      <Segmented label="Squad" value={view} options={[{ id: 'xi', label: 'Starting 7' }, { id: 'tactics', label: 'Tactics' }]} onChange={setView} />
+      {view === 'xi' ? <Lineup state={state} setState={setState} /> : <Tactics state={state} setState={setState} />}
+    </div>
+  );
+}
+
+function Lineup({ state, setState }) {
   const [selected, setSelected] = useState(null); // { zone: 'slot' | 'bench', index }
   const [viewing, setViewing] = useState(null);
   const formation = state.coaches.coach.formation;
@@ -91,7 +101,6 @@ export default function Squad({ state, setState }) {
       </div>
 
       <div className="squad__side">
-      <Tactics state={state} setState={setState} starters={starters} />
 
       <h3 className="sub-title">Coaching staff</h3>
       <div className="coaches">
@@ -112,39 +121,6 @@ export default function Squad({ state, setState }) {
         </Sheet>
       )}
     </div>
-  );
-}
-
-// Team instructions. Small, readable trade-offs that interact with cards and coaches.
-function Tactics({ state, setState, starters }) {
-  const t = { ...DEFAULT_TACTICS, ...(state.tactics || {}) };
-  const set = (key, value) => setState((s) => ({ ...s, tactics: { ...DEFAULT_TACTICS, ...(s.tactics || {}), [key]: value } }));
-  const avg = (pos) => {
-    const list = starters.filter((c) => c?.pos === pos);
-    return list.length ? Math.round(list.reduce((a, c) => a + c.phy, 0) / list.length) : null;
-  };
-  const notes = [];
-  const fit = [state.coaches.coach?.passive, state.coaches.assistant?.passive].includes('fitnessGuru');
-  if (t.press === 'high') notes.push(fit ? `✓ ${COACH_PASSIVES.fitnessGuru.name} on the staff keeps the press going.` : '⚠ High press drains stamina: bring Second Wind, a fitness coach or a Fresh Legs skill.');
-  if (t.passing === 'direct') notes.push(avg('FWD') >= 78 ? `✓ Your forwards are strong (PHY ${avg('FWD')}): long balls stick.` : `⚠ Forwards PHY ${avg('FWD') ?? '—'}: direct play needs 78+.`);
-  if (t.line === 'high') notes.push(avg('DEF') < 70 ? `⚠ Defenders PHY ${avg('DEF')}: slow for a high line.` : `✓ Defenders PHY ${avg('DEF')}: quick enough for a high line.`);
-  return (
-    <section className="tactics">
-      <h3 className="sub-title">Tactics</h3>
-      {Object.entries(TACTICS).map(([key, def]) => (
-        <div key={key} className="tactics__row">
-          <span className="tactics__label">{def.label}</span>
-          <div className="segmented__opts">
-            {Object.entries(def.options).map(([id, o]) => (
-              <button key={id} type="button" className={t[key] === id ? 'is-on' : ''} onClick={() => set(key, id)}>{o.name}</button>
-            ))}
-          </div>
-          <p className="hint">{def.options[t[key]].text}</p>
-        </div>
-      ))}
-      {notes.map((n) => <p key={n} className={`hint ${n.startsWith('✓') ? 'hint--accent' : 'hint--warn'}`}>{n}</p>)}
-      <p className="hint">Counters: high press beats short passing, direct play beats the press and a high line, short passing picks apart a deep block. Check the rival's style before kick-off.</p>
-    </section>
   );
 }
 

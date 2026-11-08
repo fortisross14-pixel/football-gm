@@ -5,7 +5,7 @@ import { clubById, aiTeamFor } from './engine/season.js';
 import {
   newClubState, buildUserTeam, matchRewards, applyMatch,
   buyPack, buyBoostPack, openOwnedPack, keepPending, mergePending, discardPending, closeSeason, buyMarketCard,
-  startNextSeason, useOffseasonCard, POOL_BY_ID, nextUserGame, acceptOffer, discardCommons,
+  startNextSeason, useOffseasonCard, POOL_BY_ID, nextUserGame, acceptOffer, discardCommons, lookForOffers,
 } from './state/club.js';
 import { Crest } from './ui/Art.jsx';
 import Home from './ui/Home.jsx';
@@ -198,6 +198,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
           <Career
             state={state}
             onBack={() => setScreen('home')}
+            onLook={() => setState((s) => lookForOffers(s, randomSeed()))}
             onAccept={(clubId, keys) => {
               setState((s) => acceptOffer(s, clubId, keys, randomSeed()));
               setToast({ text: 'New club, new challenge. Your squad is ready.', tone: 'good' });

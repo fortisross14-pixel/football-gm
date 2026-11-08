@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { RARITIES } from '../engine/cards.js';
-import { carryOptions, jobSecurity, SACK_LINE } from '../state/club.js';
+import { carryOptions, jobSecurity, SACK_LINE, LOOK_COST } from '../state/club.js';
 import { standings } from '../engine/season.js';
 import { Crest } from './Art.jsx';
 import { ClubLink } from './nav.jsx';
@@ -8,7 +8,7 @@ import Sheet from './Sheet.jsx';
 
 const VERDICT = { met: 'Objective met', exceeded: 'Objective exceeded', missed: 'Objective missed' };
 
-export default function Career({ state, onAccept, onBack }) {
+export default function Career({ state, onAccept, onBack, onLook }) {
   const gm = state.gm;
   const [picking, setPicking] = useState(null); // offer being accepted
   const pos = standings(state.season, state.club.divisionId).findIndex((r) => r.id === state.club.id) + 1;
@@ -29,7 +29,7 @@ export default function Career({ state, onAccept, onBack }) {
       {gm.sacked && (
         <section className="panel sacked">
           <b>You've been sacked.</b>
-          <p className="hint">{gm.missedInRow >= 2 ? 'Two missed objectives in a row.' : `Job security ended the season at ${gm.securityEnd}, under ${SACK_LINE}.`} Three clubs still want you{state.club.level === 1 ? ', one level lower' : ''}. Pick one to carry on; you can take 2 cards with you.</p>
+          <p className="hint">{gm.securityEnd < SACK_LINE ? `Job security ended the season at ${gm.securityEnd}, under ${SACK_LINE}.` : 'Two missed objectives in a row with the owners already unhappy.'} Three clubs still want you{state.club.level === 1 ? ', one level lower' : ''}. Pick one to carry on; you can take 2 cards with you.</p>
         </section>
       )}
 
@@ -39,7 +39,7 @@ export default function Career({ state, onAccept, onBack }) {
         <section className="panel">
           <h2 className="section-title">Board objective</h2>
           <p className="objective"><b>{gm.objective.text}</b><span className={pos <= gm.objective.target ? 'is-up' : 'is-down'}>Currently {pos}{['th', 'st', 'nd', 'rd'][pos] || 'th'}</span></p>
-          <p className="hint">Miss it two seasons in a row, or end a season with job security under {SACK_LINE}, and you are sacked. Beat it, win trophies and get promoted to raise your reputation.</p>
+          <p className="hint">You're only sacked if job security ends a season under {SACK_LINE}, or you miss the objective twice in a row while security is low. Beat it, win trophies and get promoted to raise your reputation.</p>
         </section>
       )}
 
@@ -57,7 +57,17 @@ export default function Career({ state, onAccept, onBack }) {
       {state.phase === 'offseason' && (
         <section>
           <h2 className="section-title">Job offers</h2>
-          {gm.offers.length === 0 ? <p className="hint">No offers this summer. Keep winning.</p> : (
+          {!gm.sacked && (
+            gm.searched
+              ? <p className="hint">You've already sounded out other clubs this summer.</p>
+              : (
+                <div className="look-offers">
+                  <button type="button" className="btn btn--primary" onClick={onLook}>Look for offers</button>
+                  <p className="hint">Your agent calls around: 2–3 offers that match your reputation ({gm.reputation}). The owners notice: −{LOOK_COST} owners' confidence.</p>
+                </div>
+              )
+          )}
+          {gm.offers.length === 0 ? <p className="hint">{gm.searched ? 'Nobody bit this time. Keep winning.' : 'No club has called yet.'}</p> : (
             <div className="offers">
               {gm.offers.map((o) => {
                 const club = state.world.clubs[o.clubId];

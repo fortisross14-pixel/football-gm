@@ -112,7 +112,7 @@ export const PLAYERS = [
   p('p-abbosbek-fayzullaev', 'Abbosbek Fayzullaev', 'MID', 'rare', 82, 64, 74, null, 175, 'UZB', 'basaksehir'),
   p('p-mateusz-lis', 'Mateusz Lis', 'GK', 'rare', 22, 75, 68, 'shotStopper', 150, 'POL', 'goztepe'),
   p('p-romulo', 'Romulo', 'FWD', 'rare', 78, 36, 76, null, 165, 'BRA', 'goztepe'),
-  p('p-marius-mouandilmadji', 'Marius Mouandilmadji', 'FWD', 'rare', 77, 38, 83, 'poacher', 150, 'TCD', 'samsunspor'),
+  p('p-marius-mouandilmadji', 'Marius Mouandilmadji', 'FWD', 'rare', 77, 38, 83, 'poacher', 150, 'CHA', 'samsunspor'),
   p('p-carlo-holse', 'Carlo Holse', 'MID', 'rare', 78, 64, 72, null, 145, 'DEN', 'samsunspor'),
   p('p-ianis-hagi', 'Ianis Hagi', 'MID', 'rare', 82, 62, 70, 'playmaker', 150, 'ROU', 'alanyaspor'),
 

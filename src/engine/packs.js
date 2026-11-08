@@ -4,7 +4,7 @@ import { TIERS } from '../data/offseason.js';
 
 export const PACKS = {
   bronze: { name: 'Bronze Pack', price: 200, count: 3, kind: 'player', odds: [60, 30, 9, 1, 0], guarantee: null },
-  silver: { name: 'Silver Pack', price: 600, count: 3, kind: 'player', odds: [30, 40, 24, 5, 1], guarantee: 2 },
+  silver: { name: 'Silver Pack', price: 600, count: 3, kind: 'player', odds: [35, 40, 20, 4, 1], guarantee: 1 },
   gold: { name: 'Gold Pack', price: 2000, count: 3, kind: 'player', odds: [5, 30, 47, 15, 3], guarantee: 2 },
   elite: { name: 'Elite Pack', price: 5000, count: 3, kind: 'player', odds: [0, 15, 40, 33, 12], guarantee: 3, legendChance: 0.25 },
   coach: { name: 'Coach Pack', price: 700, count: 2, kind: 'coach', odds: [30, 35, 25, 8, 2], guarantee: 2 },

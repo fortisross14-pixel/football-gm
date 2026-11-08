@@ -7,6 +7,7 @@ import { overall, RARITIES } from '../engine/cards.js';
 import { skillOf } from '../data/skills.js';
 import { POOL_BY_ID } from '../state/club.js';
 import { Crest } from './Art.jsx';
+import { Flag } from './Card.jsx';
 import { LeagueLink } from './nav.jsx';
 
 const nameOf = (id) => POOL_BY_ID[id]?.name;
@@ -76,7 +77,7 @@ export default function Team({ state, clubId, onBack }) {
               <li key={c.id} className={`r-${c.rarity}${i >= squad.lineup.length ? ' is-bench' : ''}`}>
                 <span className="squad-list__pos">{c.pos}</span>
                 <span className="squad-list__ovr">{overall(c)}</span>
-                <span className="squad-list__name">{c.name}{c.generic ? '' : <em> · {RARITIES[c.rarity].label}</em>}</span>
+                <span className="squad-list__name"><Flag card={c} className="squad-list__flag" />{c.name}{c.generic ? '' : <em> · {RARITIES[c.rarity].label}</em>}</span>
                 {sk && <span className="squad-list__skill" title={sk.desc}>{sk.icon} {sk.name}</span>}
                 {i === squad.lineup.length && <span className="squad-list__tag">Bench</span>}
               </li>
