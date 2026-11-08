@@ -13,6 +13,7 @@ import { PACKS } from '../src/engine/packs.js';
 import { OFFSEASON_CARDS } from '../src/data/offseason.js';
 import { DIVISION_BY_ID, TOP_CLUBS } from '../src/data/world/structure.js';
 import { CONTINENTS } from '../src/engine/competitions.js';
+import { requiredReputation } from '../src/engine/career.js';
 import { PHILOSOPHIES, coachStyle, clubIdentity, styleDistance } from '../src/data/philosophies.js';
 import { suitability } from '../src/engine/tactics.js';
 import { teamAttrs } from '../src/engine/attributes.js';
@@ -156,7 +157,7 @@ function chooseOffer(state) {
   if (!offers.length) return state;
   // The most prestigious club that wants you (the giants first).
   const best = [...offers].sort((a, b) => b.required - a.required)[0];
-  const better = state.world.clubs[best.clubId].strength > userStrength(state) + 1 || DIVISION_BY_ID[state.world.clubs[best.clubId].divisionId].level < state.club.level;
+  const better = best.required >= requiredReputation(state.world, state.club.id) + 5 || DIVISION_BY_ID[state.world.clubs[best.clubId].divisionId].level < state.club.level;
   if (!better && !state.gm.sacked) return state;
   const players = carryOptions(state).filter((o) => o.kind === 'player').map((o) => ({ o, ovr: overall(state.squad.find((c) => `player:${c.id}` === o.key)) }));
   const carry = players.sort((a, b) => b.ovr - a.ovr).slice(0, 2).map((x) => x.o.key);
