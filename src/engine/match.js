@@ -10,10 +10,12 @@ import { COACH_PASSIVES } from '../data/coachPassives.js';
 import { BOOSTS } from '../data/boosts.js';
 import { SKILLS, MAX_SKILLS, skillOf } from '../data/skills.js';
 import { derbyName } from '../data/rivals.js';
-import { coachStyle, styleDistance, fitBonus } from '../data/philosophies.js';
+import { coachStyle, styleDistance } from '../data/philosophies.js';
 import {
   DEFAULT_TACTICS, normalizeTactics, sideAttrs, controlEdge, chanceMult, qualityEdge, setPieceChance, drainMult,
+  suitability, tacticsGrade, GRADE_BONUS,
 } from './tactics.js';
+import { teamAttrs } from './attributes.js';
 import { pickLine, short } from './commentary.js';
 
 export const SEGMENTS = 6;
@@ -40,9 +42,16 @@ export function teamFit(input) {
   const tactics = normalizeTactics(input.tactics);
   const style = coachStyle(input.coach);
   const distance = styleDistance(tactics, style);
-  return { style, distance, bonus: fitBonus(distance, input.coach?.rarity) };
+  const slots = FORMATIONS[input.formation] || [];
+  const byId = Object.fromEntries((input.players || []).map((c) => [c.id, c]));
+  const A = teamAttrs(slots.map((sl, i) => ({ card: byId[input.lineup?.[i]], pos: sl.pos, x: sl.x })).filter((e) => e.card));
+  const suit = suitability(tactics, A);
+  const grade = tacticsGrade(distance, suit);
+  // Better coaches get more out of a good plan.
+  const skill = { academy: 0.7, common: 0.8, uncommon: 0.9, rare: 1, epic: 1.1, legend: 1.2 }[input.coach?.rarity] ?? 0.8;
+  const bonus = grade === 'green' ? GRADE_BONUS.green * skill : GRADE_BONUS[grade];
+  return { style, distance, suit, grade, bonus };
 }
-
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const clone = (v) => structuredClone(v);
