@@ -4,7 +4,7 @@
 import { USER_CLUB, USER_COACHES, START_INVENTORY, LEVEL_MULTIPLIER } from '../data/demo.js';
 import { PLAYER_CARDS, COACH_CARDS, CARD_BY_ID, CLUBS_BY_DIVISION, CLUB_POOLS } from '../data/world/index.js';
 import { aiOffseason, userAcademyIntake, ACADEMY_COUNT, ACADEMY_MAX_TIER, namedCap } from '../engine/transfers.js';
-import { START_REPUTATION, boardObjective, judgeObjective, reputationChanges, applyReputation, jobOffers, CLUB_START, requiredReputation } from '../engine/career.js';
+import { START_REPUTATION, boardObjective, judgeObjective, reputationChanges, weighReputation, applyReputation, jobOffers, CLUB_START, requiredReputation } from '../engine/career.js';
 import { DIVISIONS, DIVISION_BY_ID } from '../data/world/structure.js';
 import { BOOST_IDS, BOOSTS } from '../data/boosts.js';
 import { OFFSEASON_CARDS, OFFSEASON_IDS, MARKET_WEIGHTS, TIERS, tierIndex, cardValue, cardPrice, SIGNING_TIERS } from '../data/offseason.js';
@@ -22,10 +22,10 @@ export const SAVE_VERSION = 3;
 export const POOLS = { player: PLAYER_CARDS, coach: COACH_CARDS };
 export const POOL_BY_ID = CARD_BY_ID;
 const PLAYER_POOL = PLAYER_CARDS;
-export const PRIZES = [1000, 600, 400, 300, 200, 150, 100, 50];
+export const PRIZES = [600, 350, 250, 180, 120, 90, 60, 30];
 export const START_DIVISION = 'esp-3';
 
-const STADIUM_INCOME = [40, 70, 110, 160, 230, 320];
+const STADIUM_INCOME = [30, 45, 60, 80, 100, 125];
 const MERCH_MULT = [0.5, 1, 1.5, 2, 2.5, 3];
 const COHESION_GAIN = [4, 6, 8, 10, 12, 14];
 const COHESION_MAX_BONUS = [0.04, 0.05, 0.06, 0.07, 0.08, 0.1];
@@ -272,7 +272,7 @@ export function squadPopularity(state) {
   return state.squad.reduce((sum, c) => sum + cardPopularity(c), 0);
 }
 
-const FAME_CAP = 30;
+const FAME_CAP = 10;
 const addFame = (card, v) => { card.fame = Math.min(FAME_CAP, Math.round(((card.fame || 0) + v) * 100) / 100); };
 
 // Money in and out this season, for the Club screen.
@@ -290,10 +290,10 @@ const INCOME_CATEGORY = (label) => (
 
 // Prize money per result in each competition (league and cup scale with the division).
 const RESULT_COINS = {
-  league: { win: 100, draw: 40, loss: 15, scaled: true },
-  cup: { win: 150, draw: 40, loss: 15, scaled: true },
-  continental: { win: 300, draw: 100, loss: 50, scaled: false },
-  cwc: { win: 500, draw: 150, loss: 100, scaled: false },
+  league: { win: 60, draw: 25, loss: 10, scaled: true },
+  cup: { win: 80, draw: 25, loss: 10, scaled: true },
+  continental: { win: 100, draw: 40, loss: 20, scaled: false },
+  cwc: { win: 150, draw: 60, loss: 30, scaled: false },
 };
 
 export function matchRewards(state, match, userSide, game = { competition: 'league' }) {
@@ -311,17 +311,17 @@ export function matchRewards(state, match, userSide, game = { competition: 'leag
   if (conceded === 0) items.push({ label: 'Clean sheet', coins: 20 * m });
   if (own >= 3) items.push({ label: '3+ goals', coins: 20 * m });
   if (match.teams[userSide].isHome) items.push({ label: `Home gate (stadium L${state.facilities.stadium})`, coins: STADIUM_INCOME[state.facilities.stadium] * m });
-  let merch = squadPopularity(state) * MERCH_MULT[state.facilities.merch] * 2;
+  let merch = squadPopularity(state) * MERCH_MULT[state.facilities.merch] * 0.3;
   if (state.activeEvent?.type === 'marketingTour') merch *= cardValue('marketingTour', state.activeEvent.rarity) / 100;
   if (merch > 0) items.push({ label: `Merchandise (L${state.facilities.merch})`, coins: Math.round(merch) });
   if (state.perks.shirtSponsor) items.push({ label: 'Shirt sponsor', coins: state.perks.shirtSponsor });
   const final = game.label?.endsWith('Final');
   if (game.competition === 'cup' && state.activeEvent?.type === 'cupRun') items[0].coins = Math.round(items[0].coins * 1.5);
   if (winner === userSide && final) {
-    const prize = { cup: { coins: 600 * m, pack: 'silver' }, continental: { coins: 3000, pack: 'elite' }, cwc: { coins: 5000, pack: 'elite' } }[game.competition];
+    const prize = { cup: { coins: 400 * m, pack: 'silver' }, continental: { coins: 1500, pack: 'elite' }, cwc: { coins: 2500, pack: 'elite' } }[game.competition];
     if (prize) items.push({ label: 'Trophy prize', coins: Math.round(prize.coins * (game.competition === 'cup' && state.activeEvent?.type === 'cupRun' ? 1.5 : 1)) });
-  } else if (final && game.competition === 'continental') items.push({ label: 'Finalist prize', coins: 1000 });
-  if (game.label?.endsWith('Qualifying') && winner === userSide) items.push({ label: 'Qualified for the group stage', coins: 300 });
+  } else if (final && game.competition === 'continental') items.push({ label: 'Finalist prize', coins: 500 });
+  if (game.label?.endsWith('Qualifying') && winner === userSide) items.push({ label: 'Qualified for the group stage', coins: 150 });
   return { items, total: items.reduce((s, i) => s + i.coins, 0) };
 }
 
@@ -656,7 +656,7 @@ export function closeSeason(state, seed) {
     const summary = seasonSummary(state);
     const objective = state.gm.objective || { target: 8, text: 'Finish the season' };
     const verdict = judgeObjective(objective, position);
-    const items = reputationChanges({ verdict, promoted: summary.promoted, leagueTitle: position === 1, trophies: state.season.userTrophies || [] });
+    const items = weighReputation(reputationChanges({ verdict, promoted: summary.promoted, leagueTitle: position === 1, trophies: state.season.userTrophies || [] }), state.club.level, next.gm.reputation);
     const before = next.gm.reputation;
     next.gm.missedInRow = verdict === 'missed' ? next.gm.missedInRow + 1 : 0;
     next.gm.sacked = next.gm.missedInRow >= 2;

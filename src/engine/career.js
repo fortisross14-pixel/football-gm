@@ -1,6 +1,7 @@
 // The GM career: board objectives, reputation, job offers and sackings.
 import { makeRng } from './rng.js';
 import { DIVISIONS, DIVISION_BY_ID, TOP_CLUBS } from '../data/world/structure.js';
+import { AI_SETTLED_BY_LEVEL } from './aiTeam.js';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
@@ -13,8 +14,11 @@ export const START_REPUTATION = 10;
 export function boardObjective(world, divisionId, userClubId, userStrength) {
   const div = DIVISION_BY_ID[divisionId];
   const ids = world.divisions[divisionId].filter((id) => id !== userClubId);
-  const stronger = ids.filter((id) => world.clubs[id].strength > userStrength + 0.5).length;
-  const level = ids.filter((id) => Math.abs(world.clubs[id].strength - userStrength) <= 0.5).length;
+  // Rivals play with a settled-squad edge (bigger in higher divisions); you have cohesion (about +5%).
+  const edge = (1 + (AI_SETTLED_BY_LEVEL[div.level] ?? 0.1)) / 1.05;
+  const rival = (id) => world.clubs[id].strength * edge;
+  const stronger = ids.filter((id) => rival(id) > userStrength + 0.5).length;
+  const level = ids.filter((id) => Math.abs(rival(id) - userStrength) <= 0.5).length;
   const rank = 1 + stronger + Math.ceil(level / 2); // where the squad "should" finish
   const hasLower = DIVISIONS.some((d) => d.code === div.code && d.tier === div.tier + 1);
   if (rank <= 2) return { target: 1, text: 'Win the league' };
@@ -34,7 +38,7 @@ export function judgeObjective(objective, position) {
 // Reputation
 
 export const REPUTATION = {
-  met: 10, exceeded: 15, missed: -10, promotion: 8, cup: 5, league: 10, continental: 15, cwc: 20, sacked: -15,
+  met: 8, exceeded: 12, missed: -10, promotion: 8, cup: 4, league: 8, continental: 12, cwc: 15, sacked: -15,
 };
 
 export function reputationChanges({ verdict, promoted, leagueTitle, trophies }) {
@@ -50,6 +54,11 @@ export function reputationChanges({ verdict, promoted, leagueTitle, trophies }) 
   return items;
 }
 
+// Gains count for less in smaller leagues and get harder as reputation rises; losses count in full.
+const LEVEL_WEIGHT = { 1: 1, 2: 0.8, 3: 0.6 };
+export function weighReputation(items, level, rep) {
+  return items.map((i) => (i.value > 0 ? { ...i, value: Math.max(1, Math.round(i.value * LEVEL_WEIGHT[level] * (1 - rep / 140))) } : i));
+}
 export const applyReputation = (rep, items) => clamp(rep + items.reduce((s, i) => s + i.value, 0), 0, 100);
 
 // ---------------------------------------------------------------------------

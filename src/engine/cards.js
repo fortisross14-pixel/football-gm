@@ -3,10 +3,10 @@
 export const RARITIES = {
   academy: { label: 'Academy', order: 0, popularity: 0, quickSell: 0 },
   common: { label: 'Common', order: 1, popularity: 1, quickSell: 10 },
-  uncommon: { label: 'Uncommon', order: 2, popularity: 2, quickSell: 25 },
-  rare: { label: 'Rare', order: 3, popularity: 4, quickSell: 50 },
-  epic: { label: 'Epic', order: 4, popularity: 8, quickSell: 120 },
-  legend: { label: 'Legend', order: 5, popularity: 20, quickSell: 400 },
+  uncommon: { label: 'Uncommon', order: 2, popularity: 2, quickSell: 20 },
+  rare: { label: 'Rare', order: 3, popularity: 4, quickSell: 40 },
+  epic: { label: 'Epic', order: 4, popularity: 8, quickSell: 90 },
+  legend: { label: 'Legend', order: 5, popularity: 16, quickSell: 250 },
 };
 
 export const POSITIONS = ['GK', 'DEF', 'MID', 'FWD'];

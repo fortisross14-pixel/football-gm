@@ -21,6 +21,8 @@ const STAT_SHAPE = {
 // Generic players are always Common (OVR 55–61); the division sets where in that range.
 export const FILLER_RATING = { 1: 60, 2: 58, 3: 56 };
 export const AI_SETTLED_BONUS = 0.1;
+// Higher divisions are tougher: their AI squads play with more of an edge.
+export const AI_SETTLED_BY_LEVEL = { 1: 0.18, 2: 0.14, 3: 0.1 };
 
 export function genericName(rng, used = new Set()) {
   let name = rng.pick(SURNAMES);
@@ -106,6 +108,6 @@ export function buildAiTeam(club, seed = 7) {
     loadout: [],
     isAI: true,
     // AI squads play together all season: the same edge your cohesion gives you.
-    mods: { all: club.settled ?? AI_SETTLED_BONUS },
+    mods: { all: club.settled ?? AI_SETTLED_BY_LEVEL[club.level] ?? AI_SETTLED_BONUS },
   };
 }

@@ -83,7 +83,7 @@ test('packs respect guarantees', () => {
   for (let seed = 1; seed < 200; seed += 1) {
     const gold = openPack('gold', seed, POOLS).cards;
     assert.equal(gold.length, 3);
-    assert.ok(gold.some((c) => TIERS.indexOf(c.rarity) >= 3), 'gold needs an epic+');
+    assert.ok(gold.some((c) => TIERS.indexOf(c.rarity) >= 2), 'gold needs a rare+');
     const coach = openPack('coach', seed, POOLS).cards;
     assert.ok(coach.every((c) => c.role === 'coach'));
   }

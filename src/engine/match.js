@@ -17,7 +17,7 @@ export const BASE_BOOST_SLOTS = 3;
 // Tuning knobs (checked by scripts/balance.mjs).
 const BASE_CHANCES = 1.0; // per team per segment at equal midfield control
 const BASE_CONVERSION = 0.3;
-const CONTROL_EXPONENT = 2;
+const CONTROL_EXPONENT = 1.1;
 const HOME_BONUS = 0.03;
 
 const ATTACK_WEIGHT = { GK: 0, DEF: 0.2, MID: 0.6, FWD: 1 };
@@ -330,7 +330,8 @@ export function playSegment(state) {
     lambda *= { attacking: 1.15, balanced: 1, defensive: 0.95 }[oppTeam.mentality];
     if (them.mods.active.some((e) => e.type === 'gameManagement')) lambda *= 0.6;
 
-    let quality = me.attack / (me.attack + them.defense);
+    // Strength gaps matter, but football stays unpredictable: differences are softened.
+    let quality = 0.5 + (me.attack / (me.attack + them.defense) - 0.5) * 0.6;
     quality += me.playmakers * 0.03;
     const trailing = scoreAtStart[side] < scoreAtStart[opp];
     if (trailing) quality *= 1 + teamPassive(team, 'counterMaster');
@@ -355,7 +356,7 @@ export function playSegment(state) {
       if (!shooter) shooter = rng.weighted(me.shooters, (s) => SHOOTER_WEIGHT[s.pos] * s.att);
       if (!shooter) continue;
       const gkDef = them.gk ? them.gk.def : 30;
-      const finish = clamp(2 / (1 + Math.exp(-(shooter.att - gkDef) / 12)), 0.45, 1.7);
+      const finish = clamp(2 / (1 + Math.exp(-(shooter.att - gkDef) / 20)), 0.55, 1.5);
       let p = BASE_CONVERSION * (0.45 + 1.1 * chance.quality) * finish;
       if (shooter.p.card.trait === 'poacher') p *= 1.15;
       p *= 1 + team.mods.finishing;

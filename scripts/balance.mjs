@@ -1,13 +1,23 @@
 // Headless balance check: simulates many matches and prints key rates.
 // Usage: node scripts/balance.mjs [matches]
 import { simulateMatch } from '../src/engine/match.js';
-import { buildAiTeam } from '../src/engine/aiTeam.js';
+import { buildAiTeam, makeGenericCard } from '../src/engine/aiTeam.js';
+import { makeRng } from '../src/engine/rng.js';
+import { FORMATIONS } from '../src/engine/cards.js';
 import { OPPONENTS } from '../src/data/demo.js';
 import { newClubState, buildUserTeam } from '../src/state/club.js';
 
 const N = Number(process.argv[2]) || 4000;
 
-const club = (id, rating, formation) => ({ id, name: id, short: id.slice(0, 3).toUpperCase(), colors: {}, rating, formation, keyPlayers: [] });
+// A team whose every player is rated `rating` (any rarity), so strength gaps are exact.
+const club = (id, rating, formation) => ({ id, name: id, short: id.slice(0, 3).toUpperCase(), colors: {}, rating, formation, keyPlayers: [], settled: 0 });
+function buildExact(c, seed) {
+  const rng = makeRng(seed);
+  const slots = FORMATIONS[c.formation];
+  const players = [...slots.map((s, i) => makeGenericCard(rng, { id: `${c.id}${i}`, pos: s.pos, rating: c.rating, rarity: 'rare' })),
+    ...['GK', 'DEF', 'MID'].map((pos, i) => makeGenericCard(rng, { id: `${c.id}b${i}`, pos, rating: c.rating - 5, rarity: 'rare' }))];
+  return { ...buildAiTeam(c, seed), players, lineup: players.slice(0, 7).map((p) => p.id), bench: players.slice(7).map((p) => p.id), mods: { all: 0 } };
+}
 
 const user = buildUserTeam(newClubState(1), [], true);
 
@@ -34,11 +44,11 @@ function run(label, makeHome, makeAway, knockout = false) {
 }
 
 for (const formation of ['2-3-1', '3-2-1', '2-2-2']) {
-  run(`Equal 70 v 70 (${formation})`, (i) => buildAiTeam(club('h', 70, formation), i), (i) => buildAiTeam(club('a', 70, '2-3-1'), i + 1));
+  run(`Equal 70 v 70 (${formation})`, (i) => buildExact(club('h', 70, formation), i), (i) => buildExact(club('a', 70, '2-3-1'), i + 1));
 }
-run('Strong 76 v weak 64', (i) => buildAiTeam(club('h', 76, '2-3-1'), i), (i) => buildAiTeam(club('a', 64, '2-3-1'), i + 1));
-run('Weak 64 v strong 76', (i) => buildAiTeam(club('h', 64, '2-3-1'), i), (i) => buildAiTeam(club('a', 76, '2-3-1'), i + 1));
-run('Equal 70 v 70 knockout', (i) => buildAiTeam(club('h', 70, '2-3-1'), i), (i) => buildAiTeam(club('a', 70, '2-3-1'), i + 1), true);
+run('Strong 76 v weak 64', (i) => buildExact(club('h', 76, '2-3-1'), i), (i) => buildExact(club('a', 64, '2-3-1'), i + 1));
+run('Weak 64 v strong 76', (i) => buildExact(club('h', 64, '2-3-1'), i), (i) => buildExact(club('a', 76, '2-3-1'), i + 1));
+run('Equal 70 v 70 knockout', (i) => buildExact(club('h', 70, '2-3-1'), i), (i) => buildExact(club('a', 70, '2-3-1'), i + 1), true);
 for (const opp of OPPONENTS) {
   run(`Racing start squad v ${opp.name}`, () => ({ ...user, isAI: true }), (i) => buildAiTeam(opp, i));
 }

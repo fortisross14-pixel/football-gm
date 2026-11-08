@@ -88,8 +88,8 @@ The top 8 clubs are picked by rating, so a country can have several clubs or non
 
 | Level | Divisions | AI team OVR | Reward multiplier |
 |---|---|---|---|
-| L1 | Big 4 Division 1 | 78–86 | ×3.0 |
-| L2 | Big 4 Division 2; Major Division 1; strongest single-division leagues (e.g. Turkey, Saudi Arabia, Mexico) | 70–78 | ×2.0 |
+| L1 | Big 4 Division 1 | 78–86 | ×1.75 |
+| L2 | Big 4 Division 2; Major Division 1; strongest single-division leagues (e.g. Turkey, Saudi Arabia, Mexico) | 70–78 | ×1.5 |
 | L3 | Big 4 Division 3; Major Division 2; other single-division leagues | 60–70 | ×1.0 |
 
 **Strategy hook:** a small single-division league is easy to win and its champion goes straight to the continental tournament, but it pays less. A Big 4 Division 3 club pays the same but has to climb two divisions before it can reach Europe's top table.
@@ -195,10 +195,10 @@ Clubs qualify through **last season's** league results. For season 1, the seeded
 |---|---|---|---|---|---|
 | Academy (generic) | Plain | 45–54 | Unlimited | 0 | 0 |
 | Common | Grey | 55–61 | 150–200 | 1 | 10 |
-| Uncommon | Teal | 62–67 | 140–190 | 2 | 25 |
-| Rare | Blue | 68–74 | 120–180 | 4 | 50 |
-| Epic | Purple | 75–82 | 110–160 | 8 | 120 |
-| Legend | Gold | 83–92 | 100–140 | 20 | 400 |
+| Uncommon | Teal | 62–67 | 140–190 | 2 | 20 |
+| Rare | Blue | 68–74 | 120–180 | 4 | 40 |
+| Epic | Purple | 75–82 | 110–160 | 8 | 90 |
+| Legend | Gold | 83–92 | 100–140 | 16 | 250 |
 
 Older stars tend toward the low end of the match range, young players toward the high end.
 
@@ -240,8 +240,8 @@ Facility levels (0–5) **belong to the club**, not to you. If you leave, the le
 
 | Facility | Effect at levels 0 / 1 / 2 / 3 / 4 / 5 |
 |---|---|
-| **Stadium** | Home-game income 40 / 70 / 110 / 160 / 230 / 320 × division multiplier |
-| **Merchandise** | Squad popularity × 0.5 / 1 / 1.5 / 2 / 2.5 / 3 × 2 coins per match |
+| **Stadium** | Home-game income 30 / 45 / 60 / 80 / 100 / 125 × division multiplier |
+| **Merchandise** | Squad popularity × 0.5 / 1 / 1.5 / 2 / 2.5 / 3 × 0.3 coins per match |
 | **Training ground** | Cohesion +4 / 6 / 8 / 10 / 12 / 14 per match, and a max bonus of 4 / 5 / 6 / 7 / 8 / 10% all stats |
 | **Youth academy** | Academy fill-ins rated 48 / 50 / 52 / 54 / 56 / 58, and better Youth Intake players |
 
@@ -380,26 +380,27 @@ Target: **3–4 goals per match on average** (7v7 is high-scoring). Comebacks sh
 
 | Source | Amount |
 |---|---|
-| League win / draw / loss | 100 / 40 / 15 × division multiplier |
+| League win / draw / loss | 60 / 25 / 10 × division multiplier |
+| Cup win / draw / loss | 80 / 25 / 10 × division multiplier |
+| Continental win / draw / loss | 100 / 40 / 20 |
+| Club World Cup win / draw / loss | 150 / 60 / 30 |
 | Bonuses | Clean sheet +20, 3+ goals +20 (× multiplier) |
 | Home game | Stadium income (§4.5) |
-| Merch (every matchday) | Sum of squad popularity × merch multiplier × 2 |
-| League prizes | Champion 1000, 2nd 600, promotion 500 (× multiplier) |
-| Domestic cup | Each win 150, winner +600 (× multiplier) |
-| Continental | Qualifying 300, each win 300, final 1000, champion 3000 |
-| Club World Cup | Each win 500, champion 5000 |
+| Merchandise (every match) | Squad popularity × merchandise multiplier × 0.3 |
+| League prizes (1st → 8th) | 600 / 350 / 250 / 180 / 120 / 90 / 60 / 30 × multiplier |
+| Trophy prizes | Cup 400 × multiplier, continental 1,500, Club World Cup 2,500; continental finalist 500; European qualifying 150 |
 
-Rough check: a Level 3 club earns **about 1,800–2,500 coins per season** at the start. That's around 4 Silver packs, or a mix of infrastructure and boosts. Exact numbers get tuned in a balancing pass.
+Measured (career simulator): about 1,000 coins in the first season, 2,000–4,500 in seasons 2–5, and 5,000–7,500 a season once established in a top division.
 
 ### 6.2 Packs
 
 | Pack | Price | Cards | Guarantee | Odds % (Common / Uncommon / Rare / Epic / Legend) |
 |---|---|---|---|---|
-| Bronze | 150 | 3 players | — | 60 / 30 / 9 / 1 / 0 |
-| Silver | 500 | 3 players | 1 Rare or better | 30 / 40 / 24 / 5 / 1 |
-| Gold | 1500 | 3 players | 1 Epic or better | 10 / 30 / 40 / 17 / 3 |
-| Elite | 4000 | 3 players | 1 Epic or better, 25% Legend | 0 / 15 / 40 / 33 / 12 |
-| Coach | 600 | 2 coaches | 1 Rare or better | 30 / 35 / 25 / 8 / 2 |
+| Bronze | 200 | 3 players | — | 60 / 30 / 9 / 1 / 0 |
+| Silver | 600 | 3 players | 1 Rare or better | 30 / 40 / 24 / 5 / 1 |
+| Gold | 2000 | 3 players | 1 Rare or better | 5 / 30 / 47 / 15 / 3 |
+| Elite | 5000 | 3 players | 1 Epic or better, 25% Legend | 0 / 15 / 40 / 33 / 12 |
+| Coach | 700 | 2 coaches | 1 Rare or better | 30 / 35 / 25 / 8 / 2 |
 
 Odds are per card. The guarantee upgrades one card if none of the three meets it.
 
@@ -576,8 +577,8 @@ Your 2 carried cards replace squad cards of your choice. Cards that move with yo
 | M5 Club systems | **Done:** Club screen (facilities with current and next-level effects, season finances, popularity, cohesion, season event, trophy cabinet), popularity that grows with goals, man-of-the-match awards and trophies, season events called out in match commentary, active bonuses shown before kick-off, Cup Run and Continental Nights events |
 | M6 GM career | **Done:** reputation 0–100, board objective each season (from your squad's strength vs the division), season review with reputation changes, job offers by required reputation, take-2-cards move (old club keeps your legends), sacking after 2 missed objectives, Career screen |
 | Polish (GUI/UX) | **Done:** main menu with 3 save slots, new-career flow (name + 3 small-club offers), back up / restore saves (file or text), settings (match speed normal/fast/instant, auto-play, reduced motion, tips), one-time tips per screen, skip-to-full-time, quick-sell Commons and tap-to-reveal in pack opening, varied player portraits, installable app (manifest, offline cache, icons) and a GitHub Pages deploy workflow |
-| Balance | Next |
-| History and stats | Later |
+| Balance | **Done:** see §14 |
+| History and stats | Next |
 
 **Measured economy (M2, 60 simulated seasons with the demo squad):** average finish 3.6th of 8, about 2,200 coins per season (around 4 Silver packs).
 
@@ -586,3 +587,26 @@ Your 2 carried cards replace squad cards of your choice. Cards that move with yo
 - Home team wins about 46%, draws about 27%.
 - All four formations are viable.
 - A team losing at 60' wins about 5% of the time and avoids defeat about 22% of the time. That's before boosts like Captain's Speech, which the player controls.
+
+---
+
+## 14. Balance
+
+Tuned with `npm run career-sim`, a bot that plays whole careers the way a sensible player would: it picks its best 7, buys Silver or Gold packs and keeps upgrades, uses the Transfer Market and academy, and takes better job offers.
+
+**Match engine:** strength gaps matter but don't decide everything. Equal teams: about 3.4 goals per game, home win 42%, draw 27%. A 12-point stronger side wins 73% at home and 62% away. In careers, a 4+ point favourite wins about 70%, and a 4+ point underdog about 25–30%. The fast AI-vs-AI simulation is calibrated to the same curve.
+
+**AI edge:** AI squads get a settled-squad bonus (+10% in level-3 divisions, +14% level 2, +18% level 1) to match your cohesion and coaching, and to keep higher divisions tough. The board objective takes this into account.
+
+**Reputation:** gains count ×0.6 in level-3 divisions, ×0.8 in level 2 and in full in level 1, and shrink as reputation rises (× (1 − reputation/140)). Losses count in full.
+
+| Target | Measured (8 careers × 12 seasons) |
+|---|---|
+| First season: mid-table without luck | Average finish 4.4 of 8 |
+| First promotion or move up within 2–5 seasons | Level-2 club by season 6 (median) for every career |
+| Division 1 within about 5–8 seasons | 7 of 8 careers, median season 7 |
+| A top club (reputation 85+) is a long-term goal | 2 of 8 careers by season 12 |
+| Sackings are rare but real | About 4% of seasons |
+| Packs: a few per season, not dozens | About 4–6 a season |
+| Cards matter for several seasons | Kept cards last about 4.8 seasons before retiring |
+| The world stays alive | Clubs keep about 3.6 named players each; continental titles spread across many clubs |
