@@ -3,12 +3,14 @@ import { Crest } from './Art.jsx';
 import Sheet from './Sheet.jsx';
 import { listSlots, deleteSlot, exportSlot, importSave } from '../state/storage.js';
 import { Segmented } from './Home.jsx';
+import ManagersSheet from './Managers.jsx';
 
 // Main menu: three save slots, settings, backups.
 export default function Menu({ onContinue, onNew, onImport, settings, setSettings }) {
   const [slots, setSlots] = useState(listSlots);
   const [backup, setBackup] = useState(null); // { n, mode: 'export' | 'import' }
   const [showSettings, setShowSettings] = useState(false);
+  const [showManagers, setShowManagers] = useState(false);
   const refresh = () => setSlots(listSlots());
 
   return (
@@ -55,6 +57,7 @@ export default function Menu({ onContinue, onNew, onImport, settings, setSetting
         ))}
       </div>
 
+      <button type="button" className="btn btn--ghost btn--block menu__managers" onClick={() => setShowManagers(true)}>Managers · all your careers</button>
       <button type="button" className="btn btn--ghost btn--block" onClick={() => setShowSettings(true)}>Settings</button>
 
       {backup && (
@@ -64,6 +67,7 @@ export default function Menu({ onContinue, onNew, onImport, settings, setSetting
           onImport={(state) => { onImport(backup.n, state); setBackup(null); }}
         />
       )}
+      {showManagers && <ManagersSheet onClose={() => setShowManagers(false)} />}
       {showSettings && <SettingsSheet settings={settings} setSettings={setSettings} onClose={() => setShowSettings(false)} />}
     </div>
   );

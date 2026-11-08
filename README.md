@@ -67,6 +67,8 @@ Progress is saved in the browser, automatically.
 | `src/data/pool.js` | Original card pool (112 players, 16 coaches) |
 | `src/data/world/` | World structure and the 4 region files (clubs + their named players) |
 | `scripts/check-world.mjs` | Validates the world data |
+| `scripts/check-nations.mjs` | Every named player/coach has a known nation (`src/data/nations.js`: code → name + flag) |
+| `src/state/managers.js` | Managers book: every career you have played, ranked (main menu → Managers) |
 | `src/data/offseason.js` | The 25 off-season card types |
 | `src/data/` | Demo club, league clubs, boosts, coach passives |
 | `src/ui/` | React screens and card components |

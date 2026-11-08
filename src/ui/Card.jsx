@@ -6,6 +6,30 @@ import { OFFSEASON_CARDS, GROUP_LABEL, cardText } from '../data/offseason.js';
 import { PACKS } from '../engine/packs.js';
 import { skillOf } from '../data/skills.js';
 import { Silhouette } from './Art.jsx';
+import { nationOf } from '../data/nations.js';
+import { CARD_BY_ID } from '../data/world/index.js';
+import { USER_COACHES } from '../data/demo.js';
+
+const START_COACH_BY_ID = Object.fromEntries(Object.values(USER_COACHES).map((c) => [c.id, c]));
+
+// A card's nation: its own field, or the pool card's for saves made before cards carried one.
+// Generic, youth and academy players have none, so they show no flag.
+export function cardNation(card) {
+  if (!card) return null;
+  return nationOf(card.nation || (card.generic ? null : (CARD_BY_ID[card.id] || START_COACH_BY_ID[card.id])?.nation));
+}
+
+// Flag emoji (title = country), optionally followed by the country name.
+export function Flag({ card, withName, className = '' }) {
+  const n = cardNation(card);
+  if (!n) return null;
+  return (
+    <span className={`flag${withName ? ' flag--named' : ''}${className ? ` ${className}` : ''}`} title={n.name}>
+      <span className="flag__emoji" role="img" aria-label={n.name}>{n.flag}</span>
+      {withName && <span className="flag__name">{n.name}</span>}
+    </span>
+  );
+}
 
 const MAX_MATCHES = 200;
 
@@ -28,6 +52,7 @@ export function PlayerCard({ card, colors, stats, size = 'full', onClick, select
             <span className="pos">{card.pos}</span>
           </div>
           <div className="pcard__tags">
+            {size !== 'full' && <Flag card={card} />}
             <span className="pcard__rarity">{rarity.label}</span>
             {card.stars > 0 && <span className="stars">{'★'.repeat(card.stars)}</span>}
             {card.youth && <span className="pcard__youth">Youth</span>}
@@ -38,6 +63,7 @@ export function PlayerCard({ card, colors, stats, size = 'full', onClick, select
           <Silhouette colors={colors} pos={card.pos} seed={card.id} />
         </div>
         <div className="pcard__name">{card.name}</div>
+        {size === 'full' && cardNation(card) && <Flag card={card} withName className="pcard__nation" />}
         <div className="pcard__stats">
           <Stat label="ATT" value={card.att} />
           <Stat label="DEF" value={card.def} />
@@ -102,7 +128,7 @@ export function MiniCard({ card, onClick, selected, warn, dim }) {
       onClick={onClick}
     >
       <span className="mini__ovr">{ovr}</span>
-      <span className="mini__pos">{card.pos}</span>
+      <span className="mini__pos">{card.pos}<Flag card={card} className="mini__flag" /></span>
       <span className="mini__name">{card.name.length <= 9 ? card.name : last}</span>
       {card.stars > 0 && <span className="mini__stars">{'★'.repeat(card.stars)}</span>}
       {skillOf(card) && <span className="mini__skill" title={skillOf(card).name} aria-hidden="true">{skillOf(card).icon}</span>}
@@ -118,6 +144,7 @@ export function CoachCard({ coach, role, onClick, selected }) {
     <button type="button" className={`ccard r-${coach.rarity}${selected ? ' is-selected' : ''}`} onClick={onClick} disabled={!onClick}>
       <div className="ccard__role">{role === 'assistant' ? 'Assistant' : role === 'new' ? 'Coach card' : 'Head coach'} · {RARITIES[coach.rarity]?.label}{coach.stars ? ` ${'★'.repeat(coach.stars)}` : ''}</div>
       <div className="ccard__name">{coach.name}</div>
+      {cardNation(coach) && <Flag card={coach} withName className="ccard__nation" />}
       <div className="ccard__row">
         {role !== 'assistant' && <span className="chip">{coach.formation}</span>}
         <span className="chip chip--soft" title={passive.text}>{passive.name}{strength}</span>

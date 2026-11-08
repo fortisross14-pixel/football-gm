@@ -10,8 +10,8 @@ export const USER_CLUB = {
 };
 
 export const USER_COACHES = {
-  coach: { id: 'k-delafuente', name: 'Luis de la Fuente', role: 'coach', rarity: 'rare', formation: '2-3-1', passive: 'motivator', matchesLeft: 184 },
-  assistant: { id: 'k-ferrer', name: 'Tomás Ferrer', role: 'assistant', rarity: 'common', formation: '2-2-2', passive: 'fitnessGuru', matchesLeft: 193 },
+  coach: { id: 'k-delafuente', name: 'Luis de la Fuente', role: 'coach', rarity: 'rare', formation: '2-3-1', passive: 'motivator', matchesLeft: 184, nation: 'ESP' },
+  assistant: { id: 'k-ferrer', name: 'Tomás Ferrer', role: 'assistant', rarity: 'common', formation: '2-2-2', passive: 'fitnessGuru', matchesLeft: 193, nation: 'ESP' },
 };
 
 export const START_INVENTORY = {
@@ -51,7 +51,7 @@ export const OPPONENTS = [
     colors: { primary: '#0f9a4a', secondary: '#ffffff', away: '#1d2a5c' },
     coach: { name: 'Head coach', passive: 'attackMinded' },
     keyPlayers: [
-      { id: 'betis-isco', name: 'Isco', pos: 'MID', rarity: 'rare', att: 79, def: 62, phy: 64, trait: 'playmaker' },
+      { id: 'betis-isco', name: 'Isco', pos: 'MID', rarity: 'rare', att: 79, def: 62, phy: 64, trait: 'playmaker', nation: 'ESP' },
     ],
   },
   {
@@ -66,9 +66,9 @@ export const OPPONENTS = [
     colors: { primary: '#f4f4f4', secondary: '#c9a227', away: '#2a2a72' },
     coach: { name: 'Head coach', passive: 'motivator' },
     keyPlayers: [
-      { id: 'rma-courtois', name: 'Thibaut Courtois', pos: 'GK', rarity: 'epic', att: 25, def: 84, phy: 70, trait: 'shotStopper' },
-      { id: 'rma-bellingham', name: 'Jude Bellingham', pos: 'MID', rarity: 'legend', att: 88, def: 76, phy: 85, trait: 'bigGame' },
-      { id: 'rma-mbappe', name: 'Kylian Mbappé', pos: 'FWD', rarity: 'legend', att: 93, def: 38, phy: 84, trait: 'poacher' },
+      { id: 'rma-courtois', name: 'Thibaut Courtois', pos: 'GK', rarity: 'epic', att: 25, def: 84, phy: 70, trait: 'shotStopper', nation: 'BEL' },
+      { id: 'rma-bellingham', name: 'Jude Bellingham', pos: 'MID', rarity: 'legend', att: 88, def: 76, phy: 85, trait: 'bigGame', nation: 'ENG' },
+      { id: 'rma-mbappe', name: 'Kylian Mbappé', pos: 'FWD', rarity: 'legend', att: 93, def: 38, phy: 84, trait: 'poacher', nation: 'FRA' },
     ],
   },
 ];

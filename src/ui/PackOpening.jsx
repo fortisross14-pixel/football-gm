@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { PlayerCard, CoachCard, MiniCard, PackArt } from './Card.jsx';
+import { PlayerCard, CoachCard, MiniCard, PackArt, Flag } from './Card.jsx';
 import { Silhouette } from './Art.jsx';
 import { sfx, haptic } from './motion.js';
 import { overall, RARITIES } from '../engine/cards.js';
@@ -185,7 +185,7 @@ function FanCard({ card, index, colors, flipped, isNew, isDup, onFlip }) {
         <span className="flip__back"><span>FC</span></span>
         <span className="flip__front">
           <span className="flip__ovr">{coach ? card.formation : overall(card)}</span>
-          <span className="flip__pos">{coach ? 'COACH' : card.pos}</span>
+          <span className="flip__pos">{coach ? 'COACH' : card.pos}<Flag card={card} className="flip__flag" /></span>
           {!coach && <span className="flip__art"><Silhouette colors={colors} pos={card.pos} seed={card.id} /></span>}
           <span className="flip__name">{card.name}</span>
           <span className="flip__rarity">{RARITIES[card.rarity]?.label}</span>

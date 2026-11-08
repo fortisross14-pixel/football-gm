@@ -31,7 +31,8 @@ export function genericName(rng, used = new Set()) {
   return name;
 }
 
-export function makeGenericCard(rng, { id, pos, rating, rarity = 'common', used }) {
+// nation is optional: generic cards carry none unless the caller passes one (no flag shown).
+export function makeGenericCard(rng, { id, pos, rating, rarity = 'common', used, nation }) {
   const shape = STAT_SHAPE[pos];
   let card;
   for (let tries = 0; tries < 12; tries += 1) {
@@ -47,6 +48,7 @@ export function makeGenericCard(rng, { id, pos, rating, rarity = 'common', used 
       trait: null,
       matchesLeft: rarity === 'academy' ? null : 150 + rng.int(0, 50),
       generic: true,
+      ...(nation ? { nation } : {}),
     };
     const ovr = overall(card);
     if (rarity !== 'common' || (ovr >= 55 && ovr <= 61)) break;

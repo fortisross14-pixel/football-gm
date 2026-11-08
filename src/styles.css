@@ -1525,3 +1525,25 @@ html.reduce-motion .sealed, html.reduce-motion .flip, html.reduce-motion .pack__
   .screen--home { gap: 36px; }
   .card-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
 }
+
+/* ---------- Flags (country of origin) ---------- */
+.flag { display: inline-flex; align-items: center; gap: 5px; line-height: 1; white-space: nowrap; }
+.flag__emoji { font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif; font-size: 1.05em; line-height: 1; }
+.flag__name { font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.pcard__tags .flag { font-size: 13px; }
+.pcard__nation { margin: 0 12px 2px; }
+.pcard__nation .flag__emoji { font-size: 15px; }
+.mini__flag { margin-left: 4px; font-size: 11px; vertical-align: -1px; }
+.ccard__nation .flag__emoji { font-size: 15px; }
+.squad-list__flag { margin-right: 6px; font-size: 14px; vertical-align: -1px; }
+.flip__flag { margin-left: 4px; font-size: 12px; vertical-align: -1px; }
+
+/* ---------- Managers book (main menu) ---------- */
+.managers { display: flex; flex-direction: column; gap: 12px; }
+.table--managers { min-width: 600px; }
+.table--managers tr.is-tap { cursor: pointer; }
+.table--managers tr.is-tap:active td { background: var(--blue-soft); }
+.mgr-link { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 0; color: inherit; font: inherit; text-align: left; min-height: 32px; }
+.mgr-link svg { flex: none; }
+.mgr-link em { font-style: normal; font-size: 11px; font-weight: 800; color: var(--muted); letter-spacing: .06em; }
+.table--managers tr.is-user .mgr-link em { color: var(--ink); }
