@@ -4,13 +4,14 @@
 import { USER_CLUB, USER_COACHES, START_INVENTORY, LEVEL_MULTIPLIER } from '../data/demo.js';
 import { PLAYER_CARDS, COACH_CARDS, CARD_BY_ID, CLUBS_BY_DIVISION, CLUB_POOLS } from '../data/world/index.js';
 import { aiOffseason, userAcademyIntake, ACADEMY_COUNT, ACADEMY_MAX_TIER, namedCap } from '../engine/transfers.js';
-import { START_REPUTATION, boardObjective, judgeObjective, reputationChanges, weighReputation, applyReputation, jobOffers, CLUB_START, requiredReputation } from '../engine/career.js';
+import { START_REPUTATION, START_CONFIDENCE, SACK_LINE, security, matchConfidence, seasonConfidence, carryConfidence, boardObjective, judgeObjective, reputationChanges, weighReputation, applyReputation, jobOffers, CLUB_START, requiredReputation } from '../engine/career.js';
 import { DIVISIONS, DIVISION_BY_ID } from '../data/world/structure.js';
 import { BOOST_IDS, BOOSTS, BOOST_PACKS, openBoostPack, drawBoost } from '../data/boosts.js';
 import { OFFSEASON_CARDS, OFFSEASON_IDS, MARKET_WEIGHTS, TIERS, tierIndex, cardValue, cardPrice, SIGNING_TIERS } from '../data/offseason.js';
 import { makeGenericCard, FILLER_RATING, squadStrength } from '../engine/aiTeam.js';
 import { makeRng } from '../engine/rng.js';
 import { archiveSeason, foldRecords, compactEntry } from '../engine/history.js';
+import { ensureGms, updateGms } from '../engine/gms.js';
 import { RARITIES, TRAITS, POSITIONS, overall, rarityForOverall, autoArrange } from '../engine/cards.js';
 import { PACKS, openPack, mergeDuplicate, drawFromPool, MAX_STARS } from '../engine/packs.js';
 import { buildWorld, createSeason, playMatchday, goalsFromMatch, standings, removeKeyPlayer, endOfSeason, divisionName, refreshStrengths, userFixture, quickResult } from '../engine/season.js';
@@ -136,7 +137,8 @@ export function newClubState(seed = 12345, { clubId = USER_CLUB.id, gmName = 'Yo
   };
   state.world = buildWorld(CLUBS_BY_DIVISION, CLUB_POOLS, POOL_BY_ID, ownedIds(state), seed + 3);
   state.world.clubs[state.club.id].keyPlayers = [];
-  state.gm = { reputation: START_REPUTATION, objective: null, missedInRow: 0, sacked: false, offers: [], review: null, career: [{ clubId: state.club.id, name: state.club.name, from: 1, to: null }] };
+  ensureGms(state.world, seed + 5, 1, state.club.id);
+  state.gm = { reputation: START_REPUTATION, confidence: { ...START_CONFIDENCE }, objective: null, missedInRow: 0, sacked: false, offers: [], review: null, career: [{ clubId: state.club.id, name: state.club.name, from: 1, to: null }] };
   state.qualification = qualifiers(tablesByStrength(state.world));
   state.season = newSeason(state, 1, seed);
   setObjective(state);
@@ -452,6 +454,15 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
     if (next.season.slot >= CALENDAR.length) next.phase = 'seasonEnd';
   }
   if (boostReward) next.inventory.boosts[boostReward] = (next.inventory.boosts[boostReward] || 0) + 1;
+  if (next.gm && next.season) {
+    const competition = game?.competition || 'league';
+    const pos = standings(next.season, next.club.divisionId).findIndex((r) => r.id === next.club.id) + 1;
+    const trophyNow = (next.season.userTrophies || []).length > (state.season?.userTrophies || []).length;
+    next.gm.confidence = matchConfidence(next.gm.confidence, {
+      outcome: winner === userSide ? 'W' : winner === null ? 'D' : 'L', gf: own, ga: conceded, competition, pos,
+      target: next.gm.objective?.target, eliminated: !!game?.knockout && winner !== userSide && !trophyNow, trophy: trophyNow, level: next.club.level,
+    });
+  }
   return { state: next, retired: [...retired, ...retiredCoaches], boostReward };
 }
 
@@ -650,6 +661,9 @@ function keeperOf(state, clubId) {
 }
 
 // Your club's season leaders by category.
+export const jobSecurity = (state) => security(state.gm?.confidence);
+export { SACK_LINE };
+
 export function seasonLeaders(stats) {
   const list = Object.entries(stats).map(([id, s]) => ({ id, ...s }));
   const top = (key) => {
@@ -680,6 +694,8 @@ export function closeSeason(state, seed) {
   const entry = archiveSeason(state.season, { gkOf: (clubId) => keeperOf(state, clubId), known: (id) => !!CARD_BY_ID[id] });
   next.records = foldRecords(next.records, entry, (id) => !!CARD_BY_ID[id]);
   next.archive = [...(next.archive || []), compactEntry(entry)];
+  ensureGms(next.world, seed + 5, state.season.year, state.club.id);
+  updateGms(next.world, { archiveEntry: entry, seed: seed + 6, userClubId: state.club.id, year: state.season.year });
   next.careerLog = [...(next.careerLog || []), {
     year: state.season.year, clubId: state.club.id, divId: state.club.divisionId, position,
     record: { ...state.record }, trophies: [...(state.season.userTrophies || []), ...(position === 1 ? [state.club.division] : [])],
@@ -716,7 +732,9 @@ export function closeSeason(state, seed) {
     const items = weighReputation(reputationChanges({ verdict, promoted: summary.promoted, leagueTitle: position === 1, trophies: state.season.userTrophies || [] }), state.club.level, next.gm.reputation);
     const before = next.gm.reputation;
     next.gm.missedInRow = verdict === 'missed' ? next.gm.missedInRow + 1 : 0;
-    next.gm.sacked = next.gm.missedInRow >= 2;
+    next.gm.confidence = seasonConfidence(next.gm.confidence, verdict, summary.promoted);
+    next.gm.securityEnd = security(next.gm.confidence);
+    next.gm.sacked = next.gm.missedInRow >= 2 || next.gm.securityEnd < SACK_LINE;
     if (next.gm.sacked) items.push({ label: 'Sacked by the board', value: -15 });
     next.gm.reputation = applyReputation(before, items);
     next.gm.review = { season: state.season.year, objective, position, verdict, items, before, after: next.gm.reputation, sacked: next.gm.sacked };
@@ -784,7 +802,11 @@ export function startNextSeason(state, seed) {
   next.season = newSeason(next, state.season.year + 1, seed);
   next.lastFinance = next.finance || null;
   next.finance = { income: {}, spent: {} };
-  if (next.gm) next.gm.offers = [];
+  if (next.gm) {
+    next.gm.offers = [];
+    if (!next.gm.newJob) next.gm.confidence = carryConfidence(next.gm.confidence);
+    next.gm.newJob = false;
+  }
   setObjective(next);
   next.phase = 'season';
   next.market = null;
@@ -887,6 +909,8 @@ export function acceptOffer(state, clubId, carryKeys = [], seed = 1) {
   next.gm.sacked = false;
   next.gm.missedInRow = 0;
   next.gm.offers = [];
+  next.gm.confidence = { ...START_CONFIDENCE };
+  next.gm.newJob = true;
   return next;
 }
 

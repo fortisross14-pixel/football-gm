@@ -26,7 +26,6 @@ export default function Collection({ state, onOpenPack, onUseCard }) {
           { id: 'squad', label: 'Squad' },
           { id: 'inventory', label: `Items${invCount ? ` (${invCount})` : ''}` },
           { id: 'album', label: 'Album' },
-          { id: 'hof', label: 'Hall of Fame' },
         ]}
         onChange={setTab}
       />
@@ -86,20 +85,6 @@ export default function Collection({ state, onOpenPack, onUseCard }) {
       )}
 
       {tab === 'album' && <Album state={state} />}
-
-      {tab === 'hof' && (
-        state.hallOfFame.length === 0 ? <p className="hint">Players and coaches who retire with your club are honoured here.</p> : (
-          <ul className="hof">
-            {state.hallOfFame.map((h, i) => (
-              <li key={i} className={`r-${h.card.rarity}`}>
-                <b>{h.card.name}</b>
-                <span>{RARITIES[h.card.rarity]?.label} · {h.card.pos || 'Coach'} · retired in season {h.season ?? 1}</span>
-                {h.stats && <span>{h.stats.apps} apps · {h.stats.goals} goals · {h.stats.assists} assists · {h.stats.motm} MOTM</span>}
-              </li>
-            ))}
-          </ul>
-        )
-      )}
 
       {viewing && (
         <Sheet title="Player card" onClose={() => setViewing(null)}>
@@ -265,5 +250,21 @@ function UseCardSheet({ state, item, onClose, onUse }) {
         </button>
       </div>
     </Sheet>
+  );
+}
+
+// Players and coaches who retired at your clubs.
+export function HallOfFame({ state }) {
+  if (!state.hallOfFame.length) return <p className="hint">Players and coaches who retire with your club are honoured here.</p>;
+  return (
+    <ul className="hof">
+      {[...state.hallOfFame].reverse().map((h, i) => (
+        <li key={i} className={`r-${h.card.rarity}`}>
+          <b>{h.card.name}</b>
+          <span>{RARITIES[h.card.rarity]?.label} · {h.card.pos || 'Coach'} · retired in season {h.season ?? 1}</span>
+          {h.stats && <span>{h.stats.apps} apps · {h.stats.goals} goals · {h.stats.assists} assists · {h.stats.motm} MOTM{h.stats.cs ? ` · ${h.stats.cs} clean sheets` : ''}</span>}
+        </li>
+      ))}
+    </ul>
   );
 }

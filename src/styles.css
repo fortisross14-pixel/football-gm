@@ -1047,3 +1047,23 @@ html.reduce-motion .sealed, html.reduce-motion .flip, html.reduce-motion .btn--p
 .scouting__row { margin: 0 0 4px; font-size: 13px; display: flex; flex-direction: column; }
 .scouting__row b { color: var(--gold); font-size: 12px; }
 .dot-r { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--rc); }
+
+/* ---- Confidence, tactics, hub ---- */
+.confidence__bars { display: grid; gap: 6px; }
+.confidence--compact .confidence__bars { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.meter { display: grid; grid-template-columns: 90px 1fr 30px; align-items: center; gap: 8px; font-size: 12px; }
+.confidence--compact .meter { grid-template-columns: 1fr auto; grid-template-rows: auto auto; gap: 2px 6px; font-size: 11px; }
+.confidence--compact .meter .bar { grid-column: 1 / -1; grid-row: 2; }
+.meter .bar { position: relative; height: 6px; border-radius: 3px; background: var(--line-2); overflow: visible; }
+.meter .bar i { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+.meter .bar em { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--danger); opacity: .7; }
+.meter.is-warn .bar i { background: var(--warn); }
+.meter.is-bad .bar i { background: var(--danger); }
+.meter b { text-align: right; font-family: var(--font-display); }
+.tactics { display: flex; flex-direction: column; gap: 10px; }
+.tactics__row { display: flex; flex-direction: column; gap: 4px; }
+.tactics__label { font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.tactics__row .hint { margin: 0; }
+.hint--warn { color: var(--warn); }
+.hub { display: flex; flex-direction: column; }
+.hub__switch { padding: 0 16px; }

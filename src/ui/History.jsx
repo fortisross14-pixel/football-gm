@@ -87,9 +87,9 @@ const PLAYER_BOARDS = [
   { key: 'gloves', label: 'Most Golden Gloves', unit: '×' },
 ];
 
-function Records({ state, archive, divId }) {
+export function Records({ state, archive, divId, initialScope = 'league' }) {
   const div = DIVISION_BY_ID[divId];
-  const [scope, setScope] = useState('league');
+  const [scope, setScope] = useState(initialScope);
   const [board, setBoard] = useState('goals');
   const divIds = scope === 'league' ? [divId] : scope === 'country' ? DIVISIONS.filter((d) => d.code === div.code).map((d) => d.id) : null;
   const titles = useMemo(() => titleTable(archive, divIds).slice(0, 10), [archive, scope, divId]);

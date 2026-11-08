@@ -7,6 +7,7 @@ import { OFFSEASON_CARDS, cardText } from '../data/offseason.js';
 import { effectiveCohesion, seasonSummary, FACILITY_LABEL, academyInfo, nextUserGame } from '../state/club.js';
 import { PACKS } from '../engine/packs.js';
 import { ClubLink, LeagueLink } from './nav.jsx';
+import { Confidence } from './Career.jsx';
 
 export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo }) {
   const { season, phase } = state;
@@ -75,6 +76,7 @@ function NextMatch({ state, onPlay }) {
           <span>Rep {state.gm.reputation}</span>
         </div>
       )}
+      <Confidence state={state} compact />
       <div className="matchup matchup--hero">
         <Side team={left} />
         <div className="matchup__vs"><span>VS</span><small>{venue}{game.knockout ? ' · KO' : ''}</small></div>

@@ -13,8 +13,6 @@ import Squad from './ui/Squad.jsx';
 import PreMatch from './ui/PreMatch.jsx';
 import Match from './ui/Match.jsx';
 import Result from './ui/Result.jsx';
-import Shop from './ui/Shop.jsx';
-import Collection from './ui/Collection.jsx';
 import League from './ui/League.jsx';
 import PackOpening from './ui/PackOpening.jsx';
 import ClubInfo from './ui/ClubInfo.jsx';
@@ -23,6 +21,8 @@ import Menu, { SettingsSheet } from './ui/Menu.jsx';
 import NewCareer from './ui/NewCareer.jsx';
 import Tip from './ui/Tip.jsx';
 import Team from './ui/Team.jsx';
+import World from './ui/World.jsx';
+import CardsHub from './ui/CardsHub.jsx';
 import { NavContext, LeagueLink } from './ui/nav.jsx';
 import Sheet from './ui/Sheet.jsx';
 import { loadSlot, saveSlot, loadSettings, saveSettings } from './state/storage.js';
@@ -30,12 +30,12 @@ import { loadSlot, saveSlot, loadSettings, saveSettings } from './state/storage.
 // One-time hints, shown the first time each screen opens.
 const TIPS = {
   home: 'This is your club. Play your next match from here. Your board objective sits under the fixture, so keep an eye on it.',
-  squad: 'Tap a card, then another, to swap them. The head coach sets the formation. Cohesion grows when you keep the same starting 7.',
-  cards: 'Your players, items (packs, off-season cards, boosts), the album of every card in the game, and retired legends.',
-  shop: 'Packs give random players: keep or discard each one. Boosts help during a match. The Transfer Market opens after the season.',
-  league: 'Every league in the world plays each matchday. Browse any country, the cups, and last season\'s champions.',
+  squad: 'Tap a card, then another, to swap them. The head coach sets the formation. Set your tactics below: pressing, passing and the defensive line.',
+  cards: 'Owned: your players, items and the album. Shop: player packs, boost packs and, after the season, the Transfer Market.',
+  league: 'Every league in the world plays each matchday. Tap any club to see its page, and open History for champions, top scorers, MVPs and Golden Gloves by season.',
+  world: 'The wider world: manager rankings, the strongest clubs, all-time records and the Hall of Fame.',
   club: 'Facilities, money in and out, and your trophy cabinet. Facilities are upgraded with off-season Club cards.',
-  career: 'Your reputation decides which clubs will hire you. Meet the board objective; miss it twice in a row and you\'re out.',
+  career: 'Your reputation decides which clubs will hire you. Keep the owners and fans happy: if job security ends a season under 30, or you miss the objective twice, you are sacked.',
   opening: 'New card! Keep it (pick who it replaces), merge a duplicate for +1★, or discard it for coins.',
 };
 
@@ -43,8 +43,8 @@ const TABS = [
   { id: 'home', label: 'Club', icon: '⌂' },
   { id: 'squad', label: 'Squad', icon: '◫' },
   { id: 'cards', label: 'Cards', icon: '▤' },
-  { id: 'shop', label: 'Shop', icon: '◎' },
   { id: 'league', label: 'League', icon: '≡' },
+  { id: 'world', label: 'World', icon: '◍' },
 ];
 
 // Root: main menu, new career, or a game in a save slot.
@@ -147,7 +147,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
     setToast({ text: r.message, tone: r.success === false ? 'bad' : 'good' });
   };
 
-  const isTab = TABS.some((t) => t.id === screen) || screen === 'club' || screen === 'career' || screen === 'team';
+  const isTab = TABS.some((t) => t.id === screen) || ['club', 'career', 'team', 'shop'].includes(screen);
 
   return (
     <NavContext.Provider value={nav}>
@@ -177,17 +177,20 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
           />
         )}
         {screen === 'squad' && <Squad state={state} setState={setState} />}
-        {screen === 'cards' && (
-          <Collection state={state} onOpenPack={(i) => setState((s) => openOwnedPack(s, i, randomSeed()))} onUseCard={useCard} />
-        )}
-        {screen === 'shop' && (
-          <Shop
+        {(screen === 'cards' || screen === 'shop') && (
+          <CardsHub
+            key={screen}
             state={state}
-            onBuyPack={(id) => setState((s) => buyPack(s, id, randomSeed()))}
-            onBuyBoostPack={(id) => { const r = buyBoostPack(state, id, randomSeed()); setState(r.state); return r.got; }}
-            onBuyOffer={(uid) => setState((s) => buyMarketCard(s, uid))}
+            initial={screen === 'shop' ? 'shop' : 'owned'}
+            collectionProps={{ onOpenPack: (i) => setState((s) => openOwnedPack(s, i, randomSeed())), onUseCard: useCard }}
+            shopProps={{
+              onBuyPack: (id) => setState((s) => buyPack(s, id, randomSeed())),
+              onBuyBoostPack: (id) => { const r = buyBoostPack(state, id, randomSeed()); setState(r.state); return r.got; },
+              onBuyOffer: (uid) => setState((s) => buyMarketCard(s, uid)),
+            }}
           />
         )}
+        {screen === 'world' && <World state={state} />}
         {screen === 'league' && <League key={leagueNav?.k || 'league'} state={state} nav={leagueNav} />}
         {screen === 'team' && teamId && state.world.clubs[teamId] && <Team key={teamId} state={state} clubId={teamId} onBack={() => setScreen(backTo.current)} />}
         {screen === 'club' && <ClubInfo state={state} onBack={() => setScreen('home')} />}
@@ -220,11 +223,10 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
       {isTab && (
         <nav className="tabbar" aria-label="Main">
           {TABS.map((t) => (
-            <button key={t.id} type="button" className={screen === t.id ? 'is-on' : ''} onClick={() => { if (t.id === 'league') setLeagueNav(null); setScreen(t.id); }}>
+            <button key={t.id} type="button" className={screen === t.id || (t.id === 'cards' && screen === 'shop') ? 'is-on' : ''} onClick={() => { if (t.id === 'league') setLeagueNav(null); setScreen(t.id); }}>
               <span className="tabbar__icon" aria-hidden="true">{t.icon}</span>
               <span>{t.label}</span>
-              {t.id === 'shop' && state.phase === 'offseason' && <i className="tabbar__dot" />}
-              {t.id === 'cards' && state.inventory.packs.length > 0 && <i className="tabbar__dot" />}
+              {t.id === 'cards' && (state.inventory.packs.length > 0 || state.phase === 'offseason') && <i className="tabbar__dot" />}
             </button>
           ))}
         </nav>

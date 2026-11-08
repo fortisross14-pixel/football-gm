@@ -2,7 +2,7 @@
 import { makeRng } from './rng.js';
 import { overall, slotFit, FORMATIONS } from './cards.js';
 
-const SURNAMES = [
+export const SURNAMES = [
   'Moreno', 'Silva', 'Keller', 'Rossi', 'Novak', 'Duarte', 'Brandt', 'Lindqvist', 'Costa', 'Varga', 'Marín', 'Okafor',
   'Petit', 'Haas', 'Blanco', 'Ferri', 'Santos', 'Weber', 'Cruz', 'Navarro', 'Lopes', 'Mendes', 'Herrera', 'Kovač',
   'Jansen', 'Larsen', 'Moretti', 'Dubois', 'Schulz', 'Pereira', 'Alonso', 'Romero', 'Ivanov', 'Yilmaz', 'Nakamura',
