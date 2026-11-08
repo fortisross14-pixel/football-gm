@@ -43,6 +43,7 @@ function bestLineup(state) {
 //   poor:    default tactics, cheap packs, little market use, looks for jobs every other summer
 //   bad:     random style each season, wastes coins on bronze packs, never uses the market
 const BOT = process.env.BOT || 'average';
+globalThis.FOOTBALL_NO_STATS = process.env.STATS !== 'on';
 
 function smartTactics(state) {
   if (process.env.TACTICS === 'default' || BOT === 'poor') return state;

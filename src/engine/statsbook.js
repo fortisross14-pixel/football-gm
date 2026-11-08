@@ -40,8 +40,9 @@ export const coachKey = (world, clubId, userClubId) => (clubId === userClubId ? 
 
 // A quick-simmed game. goals: [{ side, playerId, name }] as season.quickResult returns them.
 // detail: optional real player lines for one side ({ side, lines: [{ id, name, pos, goals, rating, cs }] }).
+// Balancing sims switch the book off (globalThis.FOOTBALL_NO_STATS): it never changes results.
 export function recordGame(stats, { world, poolById, comp, homeId, awayId, score, goals = [], detail = null, userClubId = null, userName = 'You' }) {
-  if (!stats) return;
+  if (!stats || globalThis.FOOTBALL_NO_STATS) return;
   const entries = [];
   [homeId, awayId].forEach((clubId, side) => {
     const own = score[side];
