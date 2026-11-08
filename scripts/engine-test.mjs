@@ -11,6 +11,12 @@ import { standings, userFixture, aiTeamFor, clubById } from '../src/engine/seaso
 import { OFFSEASON_IDS, OFFSEASON_CARDS, cardText, TIERS, SIGNING_TIERS } from '../src/data/offseason.js';
 import { PLAYER_POOL, COACH_POOL } from '../src/data/pool.js';
 import { skillOf, MAX_SKILLS } from '../src/data/skills.js';
+import { BOOSTS, BOOST_IDS, openBoostPack } from '../src/data/boosts.js';
+import { makeRng } from '../src/engine/rng.js';
+import { matchConfidence, seasonConfidence, security, jobOffers } from '../src/engine/career.js';
+import { archiveSeason, foldRecords, compactEntry, clubHistory, titleTable } from '../src/engine/history.js';
+import { ensureGms, updateGms, gmRanking } from '../src/engine/gms.js';
+import { aiTactics } from '../src/engine/aiTeam.js';
 import { OPPONENTS } from '../src/data/demo.js';
 import { DIVISION_BY_ID } from '../src/data/world/structure.js';
 import { startingDraw, aiOffseason } from '../src/engine/transfers.js';
@@ -27,6 +33,22 @@ const fresh = () => newClubState(99);
 const resolve = (s) => { let x = s; while (x.pendingOpen) x = discardPending(x); return x; };
 const opp = OPPONENTS[1];
 const user = (club, loadout = []) => buildUserTeam(club, loadout, true);
+
+// Plays a whole season (every user game, AI on both sides) until the season ends.
+function playFull(state) {
+  let s = state;
+  for (let guard = 0; s.phase === 'season' && guard < 80; guard += 1) {
+    const fx = nextUserGame(s);
+    if (!fx) break;
+    const ai = aiTeamFor(s.world, fx.opponentId, POOL_BY_ID, guard + 1);
+    const home = fx.homeId === s.club.id;
+    const me = buildUserTeam(s, [], home && !fx.neutral);
+    const m = simulateMatch({ home: home ? me : ai, away: home ? ai : me, seed: 300 + guard, context: { competition: fx.competition, knockout: fx.knockout, neutral: fx.neutral } });
+    s = applyMatch(s, m, home ? 0 : 1, clubById(s.world, fx.opponentId), matchRewards(s, m, home ? 0 : 1, fx), 500 + guard, fx).state;
+    s = resolve(s);
+  }
+  return s;
+}
 
 // Plays the user's league match for the current matchday (AI controls both sides).
 function playMatchday(state, seed) {
@@ -415,6 +437,76 @@ test('skills: elite cards carry one, max 2 per match, conditions hold', () => {
   // Clutch only from 75'
   const clutch = { ...legends[0], skill: 'clutch' };
   assert.equal(skillOf(clutch).id, 'clutch');
+});
+
+test('boosts: every boost has a rarity, premium packs guarantee a Rare', () => {
+  for (const id of BOOST_IDS) assert.ok(['common', 'uncommon', 'rare', 'epic', 'legend'].includes(BOOSTS[id].rarity), id);
+  for (let i = 0; i < 50; i += 1) {
+    const got = openBoostPack(makeRng(i + 1), 'boostPremium');
+    assert.equal(got.length, 4);
+    assert.ok(got.some((id) => ['rare', 'epic', 'legend'].includes(BOOSTS[id].rarity)));
+  }
+});
+
+test('a free boost card after a match where a boost was played, none otherwise', () => {
+  const s = fresh();
+  const fx = userFixture(s.season, s.club.divisionId, s.club.id);
+  const ai = aiTeamFor(s.world, fx.opponentId, POOL_BY_ID, 3);
+  const id = Object.keys(s.inventory.boosts).find((b) => s.inventory.boosts[b] > 0 && !BOOSTS[b].when && BOOSTS[b].target !== 'player');
+  const me = buildUserTeam(s, [id], fx.isHome);
+  const side = fx.isHome ? 0 : 1;
+  let m = createMatch({ home: fx.isHome ? me : ai, away: fx.isHome ? ai : me, seed: 4 });
+  m = playBoost(m, side, id);
+  while (m.phase === 'live') m = playSegment(m);
+  const r = applyMatch(s, m, side, clubById(s.world, fx.opponentId), matchRewards(s, m, side), 9);
+  assert.ok(r.boostReward && BOOSTS[r.boostReward]);
+  const plain = simulateMatch({ home: buildUserTeam(s, [], true), away: ai, seed: 4 });
+  assert.equal(applyMatch(s, plain, 0, clubById(s.world, fx.opponentId), matchRewards(s, plain, 0), 9).boostReward, null);
+});
+
+test('tactics change the game and AI clubs have a style', () => {
+  const t = aiTactics({ id: 'real-madrid', level: 1 });
+  assert.ok(['mid', 'high'].includes(t.press));
+  const base = { home: user(fresh()), away: buildAiTeam(opp, 3), seed: 21 };
+  const a = createMatch(base);
+  assert.deepEqual(a.teams[0].tactics, { press: 'mid', passing: 'mixed', line: 'normal' });
+  const press = createMatch({ ...base, home: { ...user(fresh()), tactics: { press: 'high' } } });
+  let x = a; let y = press;
+  for (let i = 0; i < 3; i += 1) { x = playSegment(x); y = playSegment(y); }
+  const stamina = (m) => Object.values(m.teams[0].players).filter((p) => p.onPitch && p.card.pos !== 'GK').reduce((s, p) => s + p.stamina, 0);
+  assert.ok(stamina(y) < stamina(x), 'high press burns more stamina');
+});
+
+test('confidence: wins lift it, a bad season sacks, sacked top-flight GMs get 3 offers a level lower', () => {
+  let c = { board: 50, fans: 50 };
+  c = matchConfidence(c, { outcome: 'W', gf: 3, ga: 0, competition: 'league', pos: 1, target: 3, level: 2 });
+  assert.ok(c.board > 50 && c.fans > 50);
+  let bad = { board: 40, fans: 40 };
+  for (let i = 0; i < 6; i += 1) bad = matchConfidence(bad, { outcome: 'L', gf: 0, ga: 2, competition: 'league', pos: 8, target: 3, level: 1 });
+  bad = seasonConfidence(bad, 'missed', false);
+  assert.ok(security(bad) < 30);
+  const s = fresh();
+  const top = Object.keys(s.world.clubs).find((id) => s.world.clubs[id].level === 1);
+  const offers = jobOffers(s.world, { reputation: 70, currentClubId: top, sacked: true, seed: 3 });
+  assert.equal(offers.length, 3);
+  assert.ok(offers.every((o) => o.level === 2));
+});
+
+test('history: a season is archived with champions, awards and cup finals; records fold', () => {
+  let s = fresh();
+  const played = closeSeason(playFull(s), 77);
+  assert.equal(played.archive.length, 1);
+  const entry = played.archive[0];
+  const lg = entry.leagues[played.careerLog[0].divId];
+  assert.equal(lg.table.length, 8);
+  assert.ok(lg.glove && lg.glove[1]);
+  assert.ok(Object.keys(entry.leagues).length >= 38);
+  assert.ok(played.records && Object.keys(played.records.players).length > 50);
+  const champ = lg.table[0][0];
+  assert.equal(clubHistory(played.archive, champ).honours.league, 1);
+  assert.ok(titleTable(played.archive).length >= 38);
+  assert.ok(Object.keys(played.world.gms).length > 290);
+  assert.ok(gmRanking(played.world).length > 290);
 });
 
 console.log(`\n${passed} tests passed`);
