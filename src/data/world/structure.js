@@ -9,6 +9,10 @@ const big4 = (code, country) => [1, 2, 3].map((tier) => ({
 const major = (code, country, continent) => [1, 2].map((tier) => ({
   id: `${code}-${tier}`, country, code: code.toUpperCase(), tier, level: tier + 1, continent,
 }));
+// The other big footballing nations: top flight is tier 1, the second division tier 3.
+const top5 = (code, country, continent) => [1, 2].map((tier) => ({
+  id: `${code}-${tier}`, country, code: code.toUpperCase(), tier, level: tier === 1 ? 1 : 3, continent,
+}));
 const single = (code, country, level, continent) => [{
   id: `${code}-1`, country, code: code.toUpperCase(), tier: 1, level, continent,
 }];
@@ -37,11 +41,11 @@ export const DIVISIONS = [
   ...big4('eng', 'England'),
   ...big4('ita', 'Italy'),
   ...big4('ger', 'Germany'),
-  ...major('fra', 'France', 'europe'),
-  ...major('por', 'Portugal', 'europe'),
-  ...major('ned', 'Netherlands', 'europe'),
-  ...major('arg', 'Argentina', 'americas'),
-  ...major('bra', 'Brazil', 'americas'),
+  ...top5('fra', 'France', 'europe'),
+  ...top5('por', 'Portugal', 'europe'),
+  ...top5('ned', 'Netherlands', 'europe'),
+  ...top5('arg', 'Argentina', 'americas'),
+  ...top5('bra', 'Brazil', 'americas'),
   ...single('tur', 'Turkey', 2, 'europe'),
   ...single('bel', 'Belgium', 2, 'europe'),
   ...single('sui', 'Switzerland', 3, 'europe'),
@@ -101,7 +105,8 @@ export const THIN_POOLS = ['everton-chi'];
 // The starting squad draws only part of it (see startingDraw in engine/transfers.js).
 export function poolTarget(clubId, div) {
   if (TOP_CLUBS.includes(clubId)) return [14, 20];
-  if (div.tier === 1 && div.level === 1) return [7, 10];
+  if (div.tier === 1 && div.level === 1 && ['ESP', 'ENG', 'ITA', 'GER'].includes(div.code)) return [7, 10];
+  if (div.tier === 1 && div.level === 1) return [5, 8];
   // Clubs whose history is thinly documented (added in v1.9): smaller pools; the academy fills the rest.
   if (THIN_POOLS.includes(clubId)) return [2, 8];
   if (div.tier === 1 && div.level === 3) return [3, 8];

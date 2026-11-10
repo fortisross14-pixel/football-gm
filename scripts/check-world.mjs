@@ -36,7 +36,8 @@ for (const file of files) {
     if (!div) { err(`${name}: unknown division id ${divId}`); continue; }
     if (clubs.length !== DIVISION_SIZE) err(`${name}: ${divId} has ${clubs.length} clubs (need ${DIVISION_SIZE})`);
     const shorts = new Set();
-    const [lo, hi] = LEVEL_RATING[div.level];
+    // Tier 1 outside the big four (France, Portugal, Netherlands, Argentina, Brazil) is a little weaker.
+    const [lo, hi] = div.level === 1 && !['ESP', 'ENG', 'ITA', 'GER'].includes(div.code) ? [70, 88] : LEVEL_RATING[div.level];
     for (const c of clubs) {
       clubCount += 1;
       const where = `${name} ${divId} ${c.id}`;
