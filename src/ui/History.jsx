@@ -22,7 +22,7 @@ export default function History({ state, divId }) {
         small
         label="History"
         value={view}
-        options={[{ id: 'seasons', label: 'By season' }, { id: 'stats', label: 'Stats' }, { id: 'records', label: 'Records' }, { id: 'career', label: 'My career' }, { id: 'summer', label: 'Last summer' }]}
+        options={[{ id: 'seasons', label: 'By season' }, { id: 'career', label: 'My career' }, { id: 'summer', label: 'Last summer' }]}
         onChange={setView}
       />
       {view === 'seasons' && <Seasons state={state} archive={archive} divId={divId} />}
@@ -168,7 +168,7 @@ const STAT_BOARDS = [
   { key: 'motm', label: 'MOTM' }, { key: 'cs', label: 'Clean sheets' }, { key: 'avg', label: 'Avg rating' },
 ];
 
-function MyCareer({ state }) {
+export function MyCareer({ state }) {
   const [period, setPeriod] = useState('all');
   const [stat, setStat] = useState('goals');
   const log = state.careerLog || [];

@@ -113,7 +113,7 @@ export default function Stats({ state, initialScope = 'all', memoKey = 'stats' }
                   {crows.map((c, i) => (
                     <tr key={c.key} className={c.isUser ? 'is-user' : ''}>
                       <td>{i + 1}</td>
-                      <td className="table__club"><b><ManagerLink mkey={c.key}>{c.name}{c.isUser ? ' (you)' : ''}</ManagerLink></b></td>
+                      <td className="table__club"><b><ManagerLink mkey={c.key}>{c.name}{c.isUser ? ' (your coach)' : ''}</ManagerLink></b></td>
                       <td className="table__club">{club(c.clubId) ? <ClubLink id={c.clubId}>{club(c.clubId).short}</ClubLink> : '—'}</td>
                       <td>{c.played}</td>
                       <td className={ckey === 'wins' ? 'is-key' : ''}>{c.wins}</td><td>{c.draws}</td><td>{c.losses}</td>

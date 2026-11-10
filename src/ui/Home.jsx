@@ -5,11 +5,12 @@ import { Table } from './League.jsx';
 import { teamOverall, RARITIES } from '../engine/cards.js';
 import { clubById, standings } from '../engine/season.js';
 import { OFFSEASON_CARDS, cardText } from '../data/offseason.js';
-import { effectiveCohesion, cohesionBonus, teamShape, shapeLabel, seasonSummary, FACILITY_LABEL, academyInfo, nextUserGame } from '../state/club.js';
+import { effectiveCohesion, cohesionBonus, teamShape, shapeLabel, seasonSummary, academyInfo, nextUserGame, cardPlays } from '../state/club.js';
 import { PACKS } from '../engine/packs.js';
 import { ClubLink, LeagueLink, CompLink } from './nav.jsx';
 import { compOfGame } from './Competitions.jsx';
 import { Confidence } from './Career.jsx';
+import { opinions, ownerLine, fanLine, unreadCount } from '../state/chronicle.js';
 import { isDerby, derbyName } from '../data/rivals.js';
 
 export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo }) {
@@ -19,13 +20,15 @@ export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo
       <div className="home__main">
       {phase === 'season' && <DerbyAlert state={state} />}
       {phase === 'season' && <NextMatch state={state} onPlay={onPlay} />}
+      {phase === 'season' && <MarketNote state={state} goTo={goTo} />}
       {phase === 'seasonEnd' && <SeasonEnd state={state} onClose={onCloseSeason} />}
       {phase === 'offseason' && <Offseason state={state} goTo={goTo} onStart={onStartSeason} />}
 
+      <Opinions state={state} goTo={goTo} />
       <StatusRow state={state} goTo={goTo} />
       <div className="cta-row cta-row--tight">
-        <button type="button" className="btn btn--ghost" onClick={() => goTo('club')}>Finances &amp; trophies ›</button>
-        <button type="button" className="btn btn--ghost" onClick={() => goTo('career')}>Career ›</button>
+        <button type="button" className="btn btn--ghost" onClick={() => goTo('club')}>Club management ›</button>
+        <button type="button" className={`btn btn--ghost${unreadCount(state) ? ' has-badge' : ''}`} onClick={() => goTo('career')}>Career{unreadCount(state) ? ` · ✉ ${unreadCount(state)}` : ''} ›</button>
       </div>
       </div>
 
@@ -151,25 +154,34 @@ function Offseason({ state, goTo, onStart }) {
           </button>
         );
       })()}
-      <b className="offseason__title">Transfer Market is open</b>
-      <p className="hint">Buy off-season cards, then play them from Cards → Items: sign players, extend careers, upgrade the club and pick a season event.</p>
-      <div className="offseason__facilities">
-        {Object.entries(state.facilities).map(([k, lvl]) => (
-          <span key={k}><b>L{lvl}</b>{FACILITY_LABEL[k]}</span>
-        ))}
-      </div>
-      <p className="hint">Youth academy L{state.facilities.academy}: {academyInfo(state.facilities.academy).count} player(s) a year, up to {RARITIES[academyInfo(state.facilities.academy).best].label}. Club legends come first.</p>
+      <b className="offseason__title">Summer Transfer Market</b>
+      <p className="hint">9 fresh cards. Buy them, then play them from Cards → Items: sign players, upgrade the club's areas and pick a season event. Summer plays count towards next season ({cardPlays(state).used} / {cardPlays(state).limit} used).</p>
+      <p className="hint">Youth academy L{state.facilities.academy || 0}: {academyInfo(state.facilities.academy || 0).count} player(s) a year, up to {RARITIES[academyInfo(state.facilities.academy || 0).best].label}. Club legends come first.</p>
       {ev ? (
         <p className="hint hint--accent">Next season's event: {OFFSEASON_CARDS[ev.type].name} ({RARITIES[ev.rarity].label}): {cardText(ev.type, ev.rarity)}</p>
       ) : <p className="hint">No season event picked yet.</p>}
       <div className="cta-row">
         <button type="button" className="btn btn--ghost" onClick={() => goTo('shop')}>Market</button>
         <button type="button" className="btn btn--ghost" onClick={() => goTo('cards')}>My cards</button>
+        <button type="button" className="btn btn--ghost" onClick={() => goTo('club')}>Club</button>
       </div>
       <button type="button" className="btn btn--primary btn--block" onClick={onStart} disabled={!!state.pendingOpen || state.gm?.sacked}>
         {state.gm?.sacked ? 'Take a new job first' : `Start season ${state.season.year + 1}`}
       </button>
     </section>
+  );
+}
+
+// A short line when the Transfer Market has new offers (it refreshes every few matchdays).
+function MarketNote({ state, goTo }) {
+  if (!state.market?.fresh) return null;
+  const { used, limit } = cardPlays(state);
+  const left = Math.max(0, limit - used);
+  return (
+    <button type="button" className="career-link market-note" onClick={() => goTo('shop')}>
+      <span>🛒 New cards in the Transfer Market · {left} card play{left === 1 ? '' : 's'} left this season</span>
+      <b>Market ›</b>
+    </button>
   );
 }
 
@@ -257,5 +269,17 @@ export function DerbyAlert({ state, compact }) {
       {!compact && <span className="derby-alert__name">{derbyName(state.club.id, opp.id)} · {state.club.short} vs {opp.short}</span>}
       <span className="derby-alert__meta">Double gate and prize money · fans feel it twice as much{past.length ? ` · your record: ${rec.W}W ${rec.D}D ${rec.L}L` : ''}</span>
     </section>
+  );
+}
+
+// What the owners and fans think, in a sentence each.
+function Opinions({ state, goTo }) {
+  if (!state.gm) return null;
+  const op = opinions(state);
+  return (
+    <button type="button" className="opinions opinions--home" onClick={() => goTo('career')}>
+      <span className="opinion"><span className="opinion__who">Owners · {op.owners.value}</span><span>{ownerLine(op.owners)}</span></span>
+      <span className="opinion"><span className="opinion__who">Fans · {op.fans.value}</span><span>{fanLine(op.fans)}</span></span>
+    </button>
   );
 }

@@ -5,7 +5,7 @@ import { clubById, aiTeamFor } from './engine/season.js';
 import {
   newClubState, buildUserTeam, matchRewards, applyMatch,
   buyPack, buyBoostPack, openOwnedPack, keepPending, mergePending, discardPending, closeSeason, buyMarketCard,
-  startNextSeason, useOffseasonCard, POOL_BY_ID, nextUserGame, acceptOffer, discardCommons, lookForOffers, toggleCurse,
+  startNextSeason, useOffseasonCard, seeMarket, POOL_BY_ID, nextUserGame, acceptOffer, discardCommons, lookForOffers, toggleCurse,
 } from './state/club.js';
 import { Crest, BadgesContext } from './ui/Art.jsx';
 import { clubVars } from './ui/clubTheme.js';
@@ -21,6 +21,7 @@ import Career from './ui/Career.jsx';
 import Menu, { SettingsSheet } from './ui/Menu.jsx';
 import NewCareer from './ui/NewCareer.jsx';
 import Tip from './ui/Tip.jsx';
+import { markRead, pushInbox } from './state/chronicle.js';
 import Team, { HouseRules } from './ui/Team.jsx';
 import World from './ui/World.jsx';
 import Player from './ui/Player.jsx';
@@ -173,6 +174,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
 
   const useCard = (itemUid, target) => {
     const r = useOffseasonCard(state, itemUid, target, randomSeed());
+    if (r.success !== false && r.message && r.state !== state) pushInbox(r.state, 'club', r.message.split(':')[0], r.message);
     setState(r.state);
     setToast({ text: r.message, tone: r.success === false ? 'bad' : 'good' });
   };
@@ -218,6 +220,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
               onBuyPack: (id) => setState((s) => buyPack(s, id, randomSeed())),
               onBuyBoostPack: (id) => { const r = buyBoostPack(state, id, randomSeed()); setState(r.state); return r.got; },
               onBuyOffer: (uid) => setState((s) => buyMarketCard(s, uid)),
+              onSeeMarket: () => setState((s) => seeMarket(s)),
             }}
           />
         )}
@@ -227,12 +230,13 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
         {screen === 'team' && teamId && state.world.clubs[teamId] && <Team key={teamId} state={state} clubId={teamId} tab={detail.tab} onTab={setTab} onBack={goBack} onCurse={(id) => setState((s) => toggleCurse(s, id))} />}
         {screen === 'player' && detail.playerId && <Player key={detail.playerId} state={state} playerId={detail.playerId} fallbackName={detail.name} tab={detail.tab} onTab={setTab} onBack={goBack} />}
         {screen === 'manager' && detail.mkey && <Manager key={detail.mkey} state={state} mkey={detail.mkey} tab={detail.tab} onTab={setTab} onBack={goBack} />}
-        {screen === 'club' && <ClubInfo state={state} onBack={() => setScreen('home')} />}
+        {screen === 'club' && <ClubInfo state={state} onBack={() => setScreen('home')} onMarket={() => setScreen('shop')} />}
         {screen === 'career' && (
           <Career
             state={state}
             onBack={() => setScreen('home')}
             onLook={() => setState((s) => lookForOffers(s, randomSeed()))}
+            onRead={(id) => setState((s) => markRead(s, id))}
             onAccept={(clubId, keys) => {
               setState((s) => acceptOffer(s, clubId, keys, randomSeed()));
               setToast({ text: 'New club, new challenge. Your squad is ready.', tone: 'good' });
@@ -288,7 +292,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
           <div className="menu-sheet">
             <p className="hint">{state.gmName} · {state.club.name} · saved automatically in slot {slot}.</p>
             <button type="button" className="btn btn--ghost btn--block" onClick={() => { setMenuOpen(false); setScreen('career'); }}>Career</button>
-            <button type="button" className="btn btn--ghost btn--block" onClick={() => { setMenuOpen(false); setScreen('club'); }}>Club, finances & trophies</button>
+            <button type="button" className="btn btn--ghost btn--block" onClick={() => { setMenuOpen(false); setScreen('club'); }}>Club management &amp; trophies</button>
             <button type="button" className="btn btn--ghost btn--block" onClick={() => { setMenuOpen(false); setSettingsOpen(true); }}>Settings</button>
             <button type="button" className="btn btn--ghost btn--block" onClick={() => { setMenuOpen(false); setRulesOpen(true); }}>House rules</button>
             <button type="button" className="btn btn--ghost btn--block" onClick={() => setState((s) => ({ ...s, seenTips: [] }))}>Show tips again</button>

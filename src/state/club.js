@@ -7,11 +7,16 @@ import { aiOffseason, userAcademyIntake, ACADEMY_COUNT, ACADEMY_MAX_TIER, namedC
 import { clubStart, START_REPUTATION, START_CONFIDENCE, SACK_LINE, WARNING_LINE, security, matchConfidence, seasonConfidence, carryConfidence, boardObjective, judgeObjective, reputationChanges, weighReputation, applyReputation, jobOffers, CLUB_START, requiredReputation } from '../engine/career.js';
 import { DIVISIONS, DIVISION_BY_ID } from '../data/world/structure.js';
 import { BOOST_IDS, BOOSTS, BOOST_PACKS, openBoostPack, drawBoost } from '../data/boosts.js';
-import { OFFSEASON_CARDS, OFFSEASON_IDS, MARKET_WEIGHTS, TIERS, tierIndex, cardValue, cardPrice, SIGNING_TIERS } from '../data/offseason.js';
+import { OFFSEASON_CARDS, OFFSEASON_IDS, MARKET_WEIGHTS, TIERS, tierIndex, cardValue, cardPrice, SIGNING_TIERS, RENAMED_CARDS } from '../data/offseason.js';
+import {
+  STADIUM_INCOME, HOSPITALITY_INCOME, STORE_INCOME, MERCH_MULT, SPONSOR_INCOME, SPONSOR_NAMES, COHESION_GAIN, COHESION_MAX_BONUS,
+  GYM_DRAIN, SPA_SHAPE, ANALYTICS_ODDS, FACILITY_LABEL, fullFacilities, cardPlayLimit,
+} from '../data/facilities.js';
 import { makeGenericCard, FILLER_RATING, squadStrength } from '../engine/aiTeam.js';
 import { makeRng } from '../engine/rng.js';
 import { archiveSeason, foldRecords, compactEntry } from '../engine/history.js';
 import { ensureGms, updateGms } from '../engine/gms.js';
+import { pushInbox, moodNews, newContract } from './chronicle.js';
 import { decideAwards } from '../engine/awards.js';
 import { foldSeason, recordMove, holders, diffMoves } from '../engine/careers.js';
 import { newStats, emptyBook, recordGame as recordStats, recordTitle, coachKey } from '../engine/statsbook.js';
@@ -33,11 +38,9 @@ const PLAYER_POOL = PLAYER_CARDS;
 export const PRIZES = [600, 350, 250, 180, 120, 90, 60, 30];
 export const START_DIVISION = 'esp-3';
 
-const STADIUM_INCOME = [30, 45, 60, 80, 100, 125];
-const MERCH_MULT = [0.5, 1, 1.5, 2, 2.5, 3];
-const COHESION_GAIN = [4, 6, 8, 10, 12, 14];
-const COHESION_MAX_BONUS = [0.04, 0.05, 0.06, 0.07, 0.08, 0.1];
-export const FACILITY_LABEL = { stadium: 'Stadium', merch: 'Merchandise', training: 'Training ground', academy: 'Youth academy' };
+export { FACILITY_LABEL };
+// An area's level, 0 when an older save doesn't have it yet.
+const lvl = (state, key) => Math.max(0, Math.min(5, state.facilities?.[key] || 0));
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const mult = (state) => LEVEL_MULTIPLIER[DIVISION_BY_ID[state.club.divisionId]?.level] || 1;
@@ -127,11 +130,12 @@ export function newClubState(seed = 12345, { clubId = USER_CLUB.id, gmName = 'Yo
     bench,
     coaches,
     inventory: { boosts: { ...START_INVENTORY }, packs: ['bronze'], offseason: [] },
-    facilities: { stadium: 1, merch: 0, training: 1, academy: 0 },
+    facilities: fullFacilities({ stadium: 1, merch: 0, training: 1, academy: 0 }),
     cohesion: 50,
     lastLineup: [...lineup],
     activeEvent: null,
-    perks: { shirtSponsor: 0, shape: 0 },
+    perks: { shape: 0 },
+    cardPlays: 0, // management cards played this season (see cardPlayLimit)
     loads: {}, // time on the field per player (see teamShape)
     record: { w: 0, d: 0, l: 0, gf: 0, ga: 0 },
     history: [],
@@ -145,7 +149,7 @@ export function newClubState(seed = 12345, { clubId = USER_CLUB.id, gmName = 'Yo
     album: squad.filter((c) => POOL_BY_ID[c.id]).map((c) => c.id),
     trophies: [],
     phase: 'season', // season → seasonEnd → offseason → season
-    market: null,
+    market: null, // the Transfer Market, open all year: { offers, round, fresh, kind }
     pendingOpen: null,
     nextUid: 1,
     world: null,
@@ -155,9 +159,11 @@ export function newClubState(seed = 12345, { clubId = USER_CLUB.id, gmName = 'Yo
   state.world = buildWorld(CLUBS_BY_DIVISION, CLUB_POOLS, POOL_BY_ID, ownedIds(state), seed + 3);
   state.world.clubs[state.club.id].keyPlayers = [];
   ensureGms(state.world, seed + 5, 1, state.club.id);
-  state.gm = { reputation: START_REPUTATION, confidence: { ...START_CONFIDENCE }, objective: null, missedInRow: 0, sacked: false, offers: [], review: null, career: [{ clubId: state.club.id, name: state.club.name, from: 1, to: null }] };
+  state.gm = { reputation: START_REPUTATION, confidence: { ...START_CONFIDENCE }, objective: null, missedInRow: 0, sacked: false, offers: [], review: null, career: [{ clubId: state.club.id, name: state.club.name, from: 1, to: null }], contract: newContract(1, state.club.level) };
+  pushInbox(state, 'career', `Welcome to ${state.club.name}`, `The owners hand you the keys: a ${state.gm.contract.until - state.gm.contract.from + 1}-season contract. Your coach is ${state.coaches.coach.name}. Good luck.`);
   state.qualification = qualifiers(tablesByStrength(state.world));
   state.season = newSeason(state, 1, seed);
+  state.market = makeMarket(state, makeRng(seed + 77), 'season');
   setObjective(state);
   return state;
 }
@@ -254,7 +260,7 @@ export const loadOf = (state, id) => state.loads?.[id] ?? 0.5;
 export function teamShape(state) {
   let over = 0;
   for (const c of state.squad) over += Math.max(0, loadOf(state, c.id) - LOAD_FREE) * (c.pos === 'GK' ? 0.3 : 1);
-  return Math.round(clamp(100 - over * LOAD_COST + (state.perks?.shape || 0), 30, 100));
+  return Math.round(clamp(100 - over * LOAD_COST + (state.perks?.shape || 0) + SPA_SHAPE[lvl(state, 'spa')], 30, 100));
 }
 export const shapeLabel = (v) => SHAPE_LABELS.find(([min]) => v >= min)[1];
 // Shape in the match: starting stamina, and a small penalty when Tired or Exhausted.
@@ -262,11 +268,11 @@ export const shapeStamina = (v) => Math.round(75 + 0.25 * v);
 export const shapePenalty = (v) => (v < 65 ? -(65 - v) * 0.002 : 0);
 
 export function cohesionBonus(state) {
-  return (effectiveCohesion(state) / 100) * COHESION_MAX_BONUS[state.facilities.training];
+  return (effectiveCohesion(state) / 100) * COHESION_MAX_BONUS[lvl(state, 'training')];
 }
 
 export function seasonMods(state) {
-  const mods = { all: cohesionBonus(state) + shapePenalty(teamShape(state)), home: 0, comeback: 0, drain: 0, finishing: 0, underdog: 0, cup: 0, continental: 0 };
+  const mods = { all: cohesionBonus(state) + shapePenalty(teamShape(state)), home: 0, comeback: 0, drain: GYM_DRAIN[lvl(state, 'gym')] / 100, finishing: 0, underdog: 0, cup: 0, continental: 0 };
   const ev = state.activeEvent;
   if (!ev) return mods;
   const v = cardValue(ev.type, ev.rarity);
@@ -275,7 +281,7 @@ export function seasonMods(state) {
     case 'indomitableSpirit': mods.comeback = v / 100; break;
     case 'underdogMentality': mods.underdog = v / 100; break;
     case 'shootingDrills': mods.finishing = v / 100; break;
-    case 'fitnessProgram': mods.drain = v / 100; break;
+    case 'fitnessProgram': mods.drain += v / 100; break;
     case 'cupRun': mods.cup = v / 100; break;
     case 'continentalNights': mods.continental = v / 100; break;
     case 'preseasonCamp':
@@ -330,7 +336,8 @@ function track(state, kind, category, coins) {
 }
 
 const INCOME_CATEGORY = (label) => (
-  label.startsWith('Home gate') ? 'Gate' : label.startsWith('Merchandise') ? 'Merchandise' : label === 'Shirt sponsor' ? 'Sponsor'
+  label.startsWith('Home gate') ? 'Gate' : label.startsWith('Merchandise') ? 'Merchandise' : label.startsWith('Sponsor') || label === 'Shirt sponsor' ? 'Sponsor'
+    : label.startsWith('Hospitality') ? 'Hospitality' : label.startsWith('Club store') ? 'Store'
     : ['Trophy prize', 'Finalist prize', 'Qualified for the group stage'].includes(label) ? 'Prizes' : 'Results'
 );
 
@@ -341,6 +348,24 @@ const RESULT_COINS = {
   continental: { win: 100, draw: 40, loss: 20, scaled: false },
   cwc: { win: 150, draw: 60, loss: 30, scaled: false },
 };
+
+// Income from the business areas (data/facilities.js), per match at today's levels.
+// homeOnly items are paid at home games only. Labels match the season finance categories.
+export function businessIncome(state) {
+  const m = mult(state);
+  const f = (k) => lvl(state, k);
+  let merch = squadPopularity(state) * MERCH_MULT[f('merch')] * 0.3;
+  if (state.activeEvent?.type === 'marketingTour') merch *= cardValue('marketingTour', state.activeEvent.rarity) / 100;
+  const items = [
+    { area: 'stadium', label: `Home gate (stadium L${f('stadium')})`, coins: Math.round(STADIUM_INCOME[f('stadium')] * m), homeOnly: true },
+    { area: 'hospitality', label: `Hospitality (L${f('hospitality')})`, coins: Math.round(HOSPITALITY_INCOME[f('hospitality')] * m), homeOnly: true },
+    { area: 'store', label: `Club store (L${f('store')})`, coins: Math.round(STORE_INCOME[f('store')] * m) },
+    { area: 'merch', label: `Merchandise (L${f('merch')})`, coins: Math.round(merch) },
+    { area: 'sponsor', label: `Sponsor · ${SPONSOR_NAMES[f('sponsor')]}`, coins: Math.round(SPONSOR_INCOME[f('sponsor')] * m) },
+  ];
+  if (state.perks?.shirtSponsor) items.push({ area: null, label: 'Shirt sponsor', coins: state.perks.shirtSponsor }); // older saves
+  return items;
+}
 
 export function matchRewards(state, match, userSide, game = { competition: 'league' }) {
   const m = mult(state);
@@ -356,11 +381,7 @@ export function matchRewards(state, match, userSide, game = { competition: 'leag
   else items.push({ label: lostOnPens ? 'Lost on penalties' : 'Defeat', coins: pay.loss * k });
   if (conceded === 0) items.push({ label: 'Clean sheet', coins: 20 * m });
   if (own >= 3) items.push({ label: '3+ goals', coins: 20 * m });
-  if (match.teams[userSide].isHome) items.push({ label: `Home gate (stadium L${state.facilities.stadium})`, coins: STADIUM_INCOME[state.facilities.stadium] * m });
-  let merch = squadPopularity(state) * MERCH_MULT[state.facilities.merch] * 0.3;
-  if (state.activeEvent?.type === 'marketingTour') merch *= cardValue('marketingTour', state.activeEvent.rarity) / 100;
-  if (merch > 0) items.push({ label: `Merchandise (L${state.facilities.merch})`, coins: Math.round(merch) });
-  if (state.perks.shirtSponsor) items.push({ label: 'Shirt sponsor', coins: state.perks.shirtSponsor });
+  for (const it of businessIncome(state)) if (it.coins > 0 && (!it.homeOnly || match.teams[userSide].isHome)) items.push({ label: it.label, coins: it.coins });
   const final = game.label?.endsWith('Final');
   if (game.competition === 'cup' && state.activeEvent?.type === 'cupRun') items[0].coins = Math.round(items[0].coins * 1.5);
   if (winner === userSide && final) {
@@ -403,7 +424,7 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
   }
 
   // Cohesion
-  const gain = COHESION_GAIN[next.facilities.training];
+  const gain = COHESION_GAIN[lvl(next, 'training')];
   next.cohesion = clamp(effectiveCohesion(state) + gain, cohesionFloor(state), 100);
   next.lastLineup = [...state.lineup];
   // Time on the field: share of this match's minutes for every squad player.
@@ -493,7 +514,7 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
       const p = team.players[id];
       return { id, name: p.card.name, pos: p.card.pos, goals: p.goals, rating: p.rating || 6, cs: p.card.pos === 'GK' && conceded === 0 && (p.minutes ?? 90) >= 45, motm: id === motmId };
     });
-    const statsArgs = { world: next.world, poolById: POOL_BY_ID, homeId, awayId, score: match.score, goals: goalsFromMatch(match), detail: { side: userSide, lines }, userClubId: next.club.id, userName: next.gmName || 'You' };
+    const statsArgs = { world: next.world, poolById: POOL_BY_ID, homeId, awayId, score: match.score, goals: goalsFromMatch(match), detail: { side: userSide, lines }, userClubId: next.club.id, userName: next.coaches.coach?.name || next.gmName || 'You' };
     if (slot === 'L') {
       recordStats(next.stats, { ...statsArgs, comp: `L:${next.club.divisionId}` });
       const userGame = { divisionId: next.club.divisionId, homeId, awayId, score: match.score, goals: goalsFromMatch(match) };
@@ -520,17 +541,26 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
     if (next.season.slot >= CALENDAR.length) next.phase = 'seasonEnd';
   }
   if (boostReward) next.inventory.boosts[boostReward] = (next.inventory.boosts[boostReward] || 0) + 1;
+  refreshMarket(next, seed + 17);
   if (next.gm && next.season) {
     const competition = game?.competition || 'league';
     const pos = standings(next.season, next.club.divisionId).findIndex((r) => r.id === next.club.id) + 1;
     const trophyNow = (next.season.userTrophies || []).length > (state.season?.userTrophies || []).length;
+    const moodBefore = { ...(next.gm.confidence || {}) };
     next.gm.confidence = matchConfidence(next.gm.confidence, {
       outcome: winner === userSide ? 'W' : winner === null ? 'D' : 'L', gf: own, ga: conceded, competition, pos,
       derby: isDerby(next.club.id, opponent.id),
       styleDist: styleDistance(normalizeTactics(state.tactics), clubIdentity(next.world.clubs[next.club.id])),
       target: next.gm.objective?.target, eliminated: !!game?.knockout && winner !== userSide && !trophyNow, trophy: trophyNow, level: next.club.level,
     });
+    moodNews(moodBefore, next.gm.confidence, next);
+    if (isDerby(next.club.id, opponent.id)) {
+      const w = winner === userSide; const d = winner === null;
+      pushInbox(next, 'match', w ? `Derby won: ${own}–${conceded} against ${opponent.name}` : d ? `Derby draw with ${opponent.name}` : `Derby lost to ${opponent.name}`,
+        w ? 'The city is yours this week. The fans will remember this one.' : d ? 'Honours even. Nobody is happy, nobody is sad.' : 'A painful afternoon. The fans expect a reaction next time.');
+    }
   }
+  for (const c of [...retired, ...retiredCoaches]) pushInbox(next, 'squad', `${c.name} retires`, `${c.name} has played his last match and joins your Hall of Fame.`);
   return { state: next, retired: [...retired, ...retiredCoaches], boostReward };
 }
 
@@ -547,10 +577,11 @@ function awardTrophy(next, entry) {
   next.inventory.packs.push(...trophy.packs);
   for (const c of next.squad) addFame(c, 1.5);
   next.season.userTrophies = [...(next.season.userTrophies || []), trophy.competition];
+  pushInbox(next, 'title', `🏆 You won the ${trophy.competition}!`, `A night to remember for ${next.club.name}. Reward: ${trophy.packs.length} ${trophy.packs.join(' and ')} pack${trophy.packs.length > 1 ? 's' : ''} and a fame boost for the whole squad.`);
 }
 
 function academyPlayer(state, rng, pos) {
-  const card = makeGenericCard(rng, { id: `academy-${uid(state)}`, pos, rating: 48 + 2 * state.facilities.academy, rarity: 'academy' });
+  const card = makeGenericCard(rng, { id: `academy-${uid(state)}`, pos, rating: 48 + 2 * lvl(state, 'academy'), rarity: 'academy' });
   card.matchesLeft = null;
   return card;
 }
@@ -585,10 +616,15 @@ export function openOwnedPack(state, index, seed) {
 }
 
 function startOpening(next, packId, seed) {
-  const shift = next.activeEvent?.type === 'scoutingNetwork' ? cardValue('scoutingNetwork', next.activeEvent.rarity) : 0;
-  const { cards } = openPack(packId, seed, POOLS, shift);
+  const { cards } = openPack(packId, seed, POOLS, packShift(next));
   next.pendingOpen = { source: PACKS[packId].name, packId, cards, index: 0 };
   return next;
+}
+
+// Pack odds points moved from Common to higher rarities: Scouting Network plus Analytics.
+export function packShift(state) {
+  const ev = state.activeEvent?.type === 'scoutingNetwork' ? cardValue('scoutingNetwork', state.activeEvent.rarity) : 0;
+  return ev + ANALYTICS_ODDS[lvl(state, 'analytics')];
 }
 
 // Boosts come in sealed packs: you don't choose which ones.
@@ -646,6 +682,7 @@ export function keepPending(state, { replaceId, role }) {
     replaceInSquad(next, replaceId, fresh);
     logMove(next, card.id, holderOf(state, card.id)?.id || null, next.club.id, sourceMove(state.pendingOpen.source));
     logMove(next, old.id, next.club.id, null, 'r');
+    pushInbox(next, 'squad', `${card.name} signs`, `${card.name} (${card.pos}, ${RARITIES[card.rarity]?.label || ''}) joins from ${state.pendingOpen.source}. ${old.name} leaves the club.`);
   }
   if (POOL_BY_ID[card.id] && !next.album.includes(card.id)) next.album.push(card.id);
   removeFromRivals(next, card.id);
@@ -767,7 +804,7 @@ export function closeSeason(state, seed) {
   ensureGms(next.world, seed + 5, state.season.year, state.club.id);
   // Coaches' titles in the stats book, then a fresh season page.
   next.stats = next.stats || newStats(state.season.year);
-  const titleTo = (clubId) => clubId && recordTitle(next.stats, coachKey(next.world, clubId, state.club.id), clubId === state.club.id ? (state.gmName || 'You') : (next.world.gms?.[clubId]?.name || 'Manager'), clubId);
+  const titleTo = (clubId) => clubId && recordTitle(next.stats, coachKey(next.world, clubId, state.club.id), clubId === state.club.id ? (state.coaches.coach?.name || state.gmName || 'You') : (next.world.gms?.[clubId]?.name || 'Manager'), clubId);
   for (const lg of Object.values(entry.leagues)) titleTo(lg.table[0][0]);
   for (const c of [...Object.values(entry.cups), ...Object.values(entry.continental), entry.cwc]) titleTo(c?.winner);
   // The four yearly awards, from this season's stats and trophies.
@@ -778,6 +815,10 @@ export function closeSeason(state, seed) {
   };
   const awards = decideAwards(next.stats.season, entry, { year: state.season.year, matchesLeftOf: leftOf });
   next.awards = [...(next.awards || []), awards];
+  for (const [k, label] of [['best', 'Best Player'], ['scorer', 'Top Scorer'], ['gk', 'Best Goalkeeper'], ['young', 'Best Young Player']]) {
+    const a = awards[k];
+    if (a && next.squad.some((c) => c.id === a.id)) pushInbox(next, 'award', `${a.name} is the ${label} of season ${state.season.year}`, 'One of yours takes a yearly award.');
+  }
   for (const a of [awards.best, awards.gk, awards.young, awards.scorer]) {
     const card = a && next.squad.find((c) => c.id === a.id);
     if (card) addFame(card, 2);
@@ -842,9 +883,26 @@ export function closeSeason(state, seed) {
     const stint = next.gm.career?.[next.gm.career.length - 1];
     const firstSeason = !stint || state.season.year <= stint.from;
     next.gm.sacked = !firstSeason && (next.gm.securityEnd < SACK_LINE || (next.gm.missedInRow >= 2 && next.gm.securityEnd < WARNING_LINE));
-    if (next.gm.sacked) items.push({ label: 'Sacked by the board', value: -15 });
+    // Contract: renewed at expiry if the owners are reasonably happy; otherwise you're out of contract.
+    next.gm.contract = next.gm.contract || newContract(stint?.from || 1, state.club.level);
+    if (!next.gm.sacked && next.gm.contract.until <= state.season.year) {
+      if (verdict !== 'missed' || next.gm.securityEnd >= 35) {
+        next.gm.contract = { from: next.gm.contract.from, until: state.season.year + 2 };
+        pushInbox(next, 'career', 'Contract extended', `The owners extend your contract until the end of season ${state.season.year + 2}.`);
+      } else {
+        next.gm.sacked = true;
+        next.gm.outOfContract = true;
+        pushInbox(next, 'career', 'Contract not renewed', 'The owners let your contract run out. Three clubs have called about you: pick one in Career.');
+      }
+    }
+    if (next.gm.sacked && !next.gm.outOfContract) {
+      items.push({ label: 'Sacked by the board', value: -15 });
+      pushInbox(next, 'career', 'You have been sacked', 'The owners have decided to make a change. Three clubs have already called: pick one in Career.');
+    }
     next.gm.reputation = applyReputation(before, items);
     next.gm.review = { season: state.season.year, objective, position, verdict, items, before, after: next.gm.reputation, sacked: next.gm.sacked };
+    pushInbox(next, 'board', `Season ${state.season.year} review: objective ${verdict}`, `${objective.text}: you finished ${position}${['th', 'st', 'nd', 'rd'][position % 10 > 3 || [11, 12, 13].includes(position % 100) ? 0 : position % 10]}. Reputation ${before} → ${next.gm.reputation}.`);
+    if (position === 1) pushInbox(next, 'title', `🏆 Champions of ${state.club.division}!`, `${state.club.name} win the league. The whole city is out in the streets.`);
     next.gm.searched = false;
     next.gm.offers = jobOffers(next.world, {
       passive: !next.gm.sacked,
@@ -853,7 +911,7 @@ export function closeSeason(state, seed) {
   }
   // Your academy intake: club legends where possible, waiting for Keep/Discard.
   const intake = userAcademyIntake(next.world, {
-    level: next.facilities.academy, clubId: next.club.id, nation: DIVISION_BY_ID[next.club.divisionId].code,
+    level: lvl(next, 'academy'), clubId: next.club.id, nation: DIVISION_BY_ID[next.club.divisionId].code,
     pools: CLUB_POOLS, poolById: POOL_BY_ID, allCards: PLAYER_CARDS, userIds: ownedIds(next), seed: seed + 23,
   });
   const rngYouth = makeRng(seed + 31);
@@ -863,9 +921,10 @@ export function closeSeason(state, seed) {
   const rng = makeRng(seed);
   next.inventory.offseason.push(randomOffseasonCard(next, rng));
   next.activeEvent = null;
-  next.perks = { shirtSponsor: 0, shape: 0 };
+  next.perks = { shape: 0 };
+  next.cardPlays = 0; // the summer opens next season's card plays
   next.phase = 'offseason';
-  next.market = { offers: makeMarketOffers(next, rng) };
+  next.market = makeMarket(next, rng, 'summer');
   return next;
 }
 
@@ -879,17 +938,59 @@ function rollRarity(rng) {
   return TIERS[0];
 }
 
+// An area card is only offered at a rarity that can still raise that area.
+const canRaise = (state, type, rarity) => {
+  const def = OFFSEASON_CARDS[type];
+  if (!def.facility) return true;
+  const level = lvl(state, def.facility);
+  const t = tierIndex(rarity);
+  return level < 5 && (t === 4 || level < def.values[t]);
+};
+
 function randomOffseasonCard(state, rng, group = null) {
-  const types = OFFSEASON_IDS.filter((id) => !group || OFFSEASON_CARDS[id].group === group);
-  return { uid: uid(state), type: rng.pick(types), rarity: rollRarity(rng) };
+  const types = OFFSEASON_IDS.filter((id) => (!group || OFFSEASON_CARDS[id].group === group) && !(OFFSEASON_CARDS[id].summerOnly && state.phase !== 'offseason'));
+  let card = { uid: uid(state), type: rng.pick(types), rarity: rollRarity(rng) };
+  for (let i = 0; i < 6 && !canRaise(state, card.type, card.rarity); i += 1) card = { ...card, type: rng.pick(types) };
+  if (!canRaise(state, card.type, card.rarity)) card.type = 'boostCrate';
+  return card;
 }
 
-function makeMarketOffers(state, rng) {
-  const groups = ['transfer', 'transfer', 'transfer', 'transfer', 'club', 'club', 'event', 'event', 'event'];
-  const offers = groups.map((g) => randomOffseasonCard(state, rng, g));
-  // Always offer at least one signing card.
-  if (!offers.some((o) => OFFSEASON_CARDS[o.type].scope)) offers[0] = { ...offers[0], type: 'worldSigning' };
-  return offers.map((o) => ({ ...o, price: cardPrice(o.type, o.rarity), sold: false }));
+// The Transfer Market is open all year: 9 offers each summer, and 6 fresh ones at the
+// start of the season and every MARKET_EVERY league matchdays.
+export const MARKET_EVERY = 4;
+const MARKET_GROUPS = {
+  summer: ['transfer', 'transfer', 'transfer', 'club', 'club', 'club', 'club', 'event', 'event'],
+  season: ['transfer', 'transfer', 'club', 'club', 'club', 'event'],
+};
+function makeMarket(state, rng, kind) {
+  const offers = MARKET_GROUPS[kind].map((g) => randomOffseasonCard(state, rng, g));
+  // Every summer market has at least one signing card.
+  if (kind === 'summer' && !offers.some((o) => OFFSEASON_CARDS[o.type].scope)) offers[0] = { ...offers[0], type: 'worldSigning' };
+  const priced = offers.map((o) => {
+    const area = OFFSEASON_CARDS[o.type].facility;
+    return { ...o, price: cardPrice(o.type, o.rarity, area ? lvl(state, area) : null), sold: false };
+  });
+  return { offers: priced, round: Math.floor((state.season?.matchday || 0) / MARKET_EVERY), fresh: true, kind };
+}
+
+// New offers every MARKET_EVERY league matchdays during the season (called after each match).
+function refreshMarket(next, seed) {
+  if (next.phase !== 'season' || !next.season) return;
+  const round = Math.floor(next.season.matchday / MARKET_EVERY);
+  if (next.market && round <= next.market.round) return;
+  next.market = makeMarket(next, makeRng(seed), 'season');
+}
+
+// The Market tab was opened: the "new offers" line on Home goes away.
+export function seeMarket(state) {
+  if (!state.market?.fresh) return state;
+  return { ...state, market: { ...state.market, fresh: false } };
+}
+
+// League matchdays until the next market refresh (null outside the season).
+export function marketRefreshIn(state) {
+  if (state.phase !== 'season' || !state.season || !state.market) return null;
+  return (state.market.round + 1) * MARKET_EVERY - state.season.matchday;
 }
 
 export function buyMarketCard(state, offerUid) {
@@ -918,7 +1019,7 @@ export function startNextSeason(state, seed) {
   }
   setObjective(next);
   next.phase = 'season';
-  next.market = null;
+  next.market = makeMarket(next, makeRng(seed + 77), 'season');
   next.record = { w: 0, d: 0, l: 0, gf: 0, ga: 0 };
   next.seasonStats = {};
   return next;
@@ -1008,9 +1109,10 @@ export function acceptOffer(state, clubId, carryKeys = [], seed = 1) {
   next.cohesion = 30;
   next.inventory = inventory;
   next.coins = start.coins;
-  next.facilities = { ...start.facilities };
+  next.facilities = fullFacilities(start.facilities);
   next.activeEvent = null;
-  next.perks = { shirtSponsor: 0, shape: 0 };
+  next.perks = { shape: 0 };
+  next.market = makeMarket(next, rng, 'summer'); // the new club's market, priced for its areas
   next.record = { w: 0, d: 0, l: 0, gf: 0, ga: 0 };
   next.seasonStats = {};
   for (const c of squad) if (POOL_BY_ID[c.id] && !next.album.includes(c.id)) next.album.push(c.id);
@@ -1024,6 +1126,9 @@ export function acceptOffer(state, clubId, carryKeys = [], seed = 1) {
   next.gm.offers = [];
   next.gm.confidence = { ...START_CONFIDENCE };
   next.gm.newJob = true;
+  next.gm.outOfContract = false;
+  next.gm.contract = newContract(year + 1, DIVISION_BY_ID[newClub.divisionId].level);
+  pushInbox(next, 'career', `You sign for ${newClub.name}`, `A ${next.gm.contract.until - next.gm.contract.from + 1}-season contract, until the end of season ${next.gm.contract.until}.`);
   return next;
 }
 
@@ -1074,14 +1179,26 @@ export function holderOf(state, cardId) {
   return Object.values(state.world?.clubs || {}).find((c) => c.keyPlayers.includes(cardId)) || null;
 }
 
+// Card plays: every management card you play counts, up to the season's limit (8, +1 at
+// Analytics level 3 and 5). The count resets when the season ends: summer plays count
+// towards the season that follows.
+export const cardPlaysLeft = (state) => Math.max(0, cardPlayLimit(state.facilities) - (state.cardPlays || 0));
+export const cardPlays = (state) => ({ used: state.cardPlays || 0, limit: cardPlayLimit(state.facilities) });
+
 // Checks whether a card can be used now, with a reason for the UI.
 export function canUseOffseason(state, item) {
   const def = OFFSEASON_CARDS[item.type];
-  if (state.phase !== 'offseason') return { ok: false, reason: 'Off-season only. The Transfer Market opens when the season ends.' };
+  if (!def) return { ok: false, reason: 'Unknown card.' };
+  if (state.phase === 'seasonEnd') return { ok: false, reason: 'Collect the season rewards on Home first.' };
+  if (def.summerOnly && state.phase !== 'offseason') return { ok: false, reason: 'Summer only: it prepares the start of a season.' };
   if (state.pendingOpen) return { ok: false, reason: 'Finish deciding on your new cards first.' };
-  if (def.group === 'event' && state.activeEvent) return { ok: false, reason: 'You already picked this season\'s event.' };
+  if (!cardPlaysLeft(state)) {
+    const { used, limit } = cardPlays(state);
+    return { ok: false, reason: `No card plays left (${used} / ${limit}). They reset when the season ends.` };
+  }
+  if (def.group === 'event' && state.activeEvent) return { ok: false, reason: 'One season event per season, and one is already active.' };
   if (def.facility) {
-    const level = state.facilities[def.facility];
+    const level = lvl(state, def.facility);
     const t = tierIndex(item.rarity);
     const cap = def.values[t];
     if (level >= 5) return { ok: false, reason: 'Already at max level.' };
@@ -1098,8 +1215,14 @@ const removeItem = (next, itemUid) => {
 };
 
 // target: { playerId, coachRole, position, trait, formation, passive }
-// Returns { state, message, success }.
+// Returns { state, message, success }. A card that works uses one of the season's card plays.
 export function useOffseasonCard(state, itemUid, target = {}, seed = 1) {
+  const r = playCard(state, itemUid, target, seed);
+  if (r.success) r.state.cardPlays = (state.cardPlays || 0) + 1;
+  return r;
+}
+
+function playCard(state, itemUid, target, seed) {
   const item = state.inventory.offseason.find((i) => i.uid === itemUid);
   if (!item) return { state, message: 'Card not found.' };
   const check = canUseOffseason(state, item);
@@ -1115,9 +1238,16 @@ export function useOffseasonCard(state, itemUid, target = {}, seed = 1) {
     next.pendingOpen = { source, cards, index: 0 };
   };
 
+  const when = state.phase === 'season' ? 'for the rest of this season' : 'all next season';
   if (def.group === 'event') {
     next.activeEvent = { type: item.type, rarity: item.rarity };
-    return { state: next, message: `${def.name} is active for next season.`, success: true };
+    return { state: next, message: `${def.name} is active ${when}.`, success: true };
+  }
+  if (def.facility) {
+    const key = def.facility;
+    next.facilities = { ...fullFacilities(next.facilities) };
+    next.facilities[key] = Math.min(5, next.facilities[key] + (t === 4 ? 2 : 1));
+    return { state: next, message: `${FACILITY_LABEL[key]} is now level ${next.facilities[key]}.`, success: true };
   }
 
   switch (item.type) {
@@ -1156,21 +1286,9 @@ export function useOffseasonCard(state, itemUid, target = {}, seed = 1) {
       next.lineup = autoArrange(next.lineup.map((id) => next.squad.find((c) => c.id === id)), coach.formation);
       return { state: next, message: `${coach.name} now plays ${coach.formation}.`, success: true };
     }
-    case 'stadiumEvolution':
-    case 'merchExpansion':
-    case 'trainingGround':
-    case 'youthAcademy': {
-      const key = def.facility;
-      next.facilities[key] = Math.min(5, next.facilities[key] + (t === 4 ? 2 : 1));
-      return { state: next, message: `${FACILITY_LABEL[key]} is now level ${next.facilities[key]}.`, success: true };
-    }
     case 'sportsScience': {
-      next.perks.shape = (next.perks.shape || 0) + v;
-      return { state: next, message: `Sports Science: +${next.perks.shape} team shape all next season.`, success: true };
-    }
-    case 'shirtSponsor': {
-      next.perks.shirtSponsor += v;
-      return { state: next, message: `Shirt sponsor signed: +${next.perks.shirtSponsor} coins per match next season.`, success: true };
+      next.perks = { ...(next.perks || {}), shape: (next.perks?.shape || 0) + v };
+      return { state: next, message: `Sports Science: +${next.perks.shape} team shape ${when}.`, success: true };
     }
     case 'boostCrate': {
       const got = [];
@@ -1230,7 +1348,7 @@ export const academyInfo = (level) => ({ count: ACADEMY_COUNT[level], best: TIER
 const YOUTH_RATING = [58, 64, 71, 78, 85];
 
 function youthPlayer(state, rng, pos, tier) {
-  const rating = YOUTH_RATING[tier] - 1 + rng.int(-1, 1) + Math.floor(state.facilities.academy / 2);
+  const rating = YOUTH_RATING[tier] - 1 + rng.int(-1, 1) + Math.floor(lvl(state, 'academy') / 2);
   const card = makeGenericCard(rng, { id: `youth-${uid(state)}`, pos, rating });
   card.rarity = rarityForOverall(overall(card));
   card.matchesLeft = 200 + rng.int(0, 40);
@@ -1250,6 +1368,29 @@ function logMove(next, id, from, to, type) {
   next.moves = recordMove(next.moves || {}, id, year, from, to, type);
 }
 
+// Older saves: fills in the club areas, card plays and the all-year Transfer Market.
+// Safe to run on any save, any number of times.
+export function migrateClubState(state) {
+  if (!state || !state.club) return state;
+  const next = { ...state };
+  next.facilities = fullFacilities(state.facilities);
+  if (typeof next.cardPlays !== 'number') next.cardPlays = 0;
+  if (state.inventory?.offseason?.some((i) => RENAMED_CARDS[i.type] || !OFFSEASON_CARDS[i.type])) {
+    next.inventory = {
+      ...state.inventory,
+      offseason: state.inventory.offseason.map((i) => (RENAMED_CARDS[i.type] ? { ...i, type: RENAMED_CARDS[i.type] } : i)).filter((i) => OFFSEASON_CARDS[i.type]),
+    };
+  }
+  if (next.market?.offers) {
+    next.market = { ...next.market, offers: next.market.offers.filter((o) => OFFSEASON_CARDS[RENAMED_CARDS[o.type] || o.type]).map((o) => ({ ...o, type: RENAMED_CARDS[o.type] || o.type })) };
+    if (next.market.round == null) next.market.round = Math.floor((next.season?.matchday || 0) / MARKET_EVERY);
+  }
+  if (!next.market && (next.phase === 'season' || next.phase === 'offseason')) {
+    next.market = makeMarket(next, makeRng((next.season?.year || 1) * 31 + (next.season?.matchday || 0)), next.phase === 'season' ? 'season' : 'summer');
+  }
+  return next;
+}
+
 // ---------------------------------------------------------------------------
 // Saving (browser storage; the game still works when storage is unavailable)
 
@@ -1260,7 +1401,7 @@ export function loadClubState() {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    return parsed?.version === SAVE_VERSION ? parsed : null;
+    return parsed?.version === SAVE_VERSION ? migrateClubState(parsed) : null;
   } catch {
     return null;
   }
