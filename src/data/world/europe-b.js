@@ -10,6 +10,8 @@ export const CLUBS = {
     { id: 'frankfurt', name: 'Eintracht Frankfurt', short: 'SGE', rating: 81, formation: '3-2-1', passive: 'cupSpecialist', colors: { primary: '#000000', secondary: '#e1000f', away: '#ffffff' } },
     { id: 'hoffenheim', name: 'TSG Hoffenheim', short: 'TSG', rating: 80, formation: '2-2-2', passive: 'counterMaster', colors: { primary: '#1961b5', secondary: '#ffffff', away: '#f2f2f2' } },
     { id: 'freiburg', name: 'SC Freiburg', short: 'SCF', rating: 79, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#e2001a', secondary: '#000000', away: '#ffffff' } },
+    { id: 'nurnberg', name: '1. FC Nürnberg', short: 'FCN', rating: 79, formation: '3-2-1', passive: 'motivator', colors: { primary: '#a6192e', secondary: '#000000', away: '#ffffff' } },
+    { id: 'munich-1860', name: 'TSV 1860 München', short: 'M60', rating: 79, formation: '2-3-1', passive: 'counterMaster', colors: { primary: '#6cadd7', secondary: '#ffffff', away: '#ffffff' } },
   ],
   'ger-2': [
     { id: 'wolfsburg', name: 'VfL Wolfsburg', short: 'WOB', rating: 78, formation: '3-1-2', passive: 'counterMaster', colors: { primary: '#65b32e', secondary: '#ffffff', away: '#1d3d1a' } },
@@ -20,6 +22,8 @@ export const CLUBS = {
     { id: 'koln', name: '1. FC Köln', short: 'KOE', rating: 75, formation: '2-3-1', passive: 'motivator', colors: { primary: '#ffffff', secondary: '#ed1c24', away: '#ed1c24' } },
     { id: 'hamburg', name: 'Hamburger SV', short: 'HSV', rating: 74, formation: '3-1-2', passive: 'motivator', colors: { primary: '#ffffff', secondary: '#0a3f86', away: '#0a3f86' } },
     { id: 'augsburg', name: 'FC Augsburg', short: 'FCA', rating: 73, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#ba3733', secondary: '#46714d', away: '#ffffff' } },
+    { id: 'fortuna-dusseldorf', name: 'Fortuna Düsseldorf', short: 'F95', rating: 73, formation: '2-2-2', passive: 'attackMinded', colors: { primary: '#e2001a', secondary: '#ffffff', away: '#ffffff' } },
+    { id: 'bochum', name: 'VfL Bochum', short: 'BOC', rating: 73, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#005ca9', secondary: '#ffffff', away: '#ffffff' } },
   ],
   'ger-3': [
     { id: 'heidenheim', name: '1. FC Heidenheim', short: 'HDH', rating: 72, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#e2001a', secondary: '#003d7c', away: '#ffffff' } },
@@ -30,6 +34,8 @@ export const CLUBS = {
     { id: 'kaiserslautern', name: '1. FC Kaiserslautern', short: 'FCK', rating: 67, formation: '2-3-1', passive: 'motivator', colors: { primary: '#e2001a', secondary: '#ffffff', away: '#ffffff' } },
     { id: 'darmstadt', name: 'Darmstadt 98', short: 'D98', rating: 66, formation: '2-2-2', passive: 'attackMinded', colors: { primary: '#004b9b', secondary: '#ffffff', away: '#ffffff' } },
     { id: 'karlsruhe', name: 'Karlsruher SC', short: 'KSC', rating: 65, formation: '3-2-1', passive: 'cupSpecialist', colors: { primary: '#00399b', secondary: '#ffffff', away: '#ffffff' } },
+    { id: 'dynamo-dresden', name: 'Dynamo Dresden', short: 'SGD', rating: 66, formation: '3-1-2', passive: 'motivator', colors: { primary: '#ffd200', secondary: '#000000', away: '#000000' } },
+    { id: 'braunschweig', name: 'Eintracht Braunschweig', short: 'EBS', rating: 66, formation: '2-3-1', passive: 'fitnessGuru', colors: { primary: '#ffd200', secondary: '#0033a0', away: '#ffffff' } },
   ],
   'fra-1': [
     { id: 'psg', name: 'Paris Saint-Germain', short: 'PSG', rating: 80, formation: '2-3-1', passive: 'tactician', colors: { primary: '#004170', secondary: '#da291c', away: '#ffffff' } },
@@ -40,6 +46,8 @@ export const CLUBS = {
     { id: 'strasbourg', name: 'RC Strasbourg', short: 'RCS', rating: 74, formation: '3-1-2', passive: 'fitnessGuru', colors: { primary: '#009fe3', secondary: '#ffffff', away: '#ffffff' } },
     { id: 'lens', name: 'RC Lens', short: 'RCL', rating: 74, formation: '3-2-1', passive: 'motivator', colors: { primary: '#ffd400', secondary: '#e1001a', away: '#000000' } },
     { id: 'nice', name: 'OGC Nice', short: 'NIC', rating: 73, formation: '2-3-1', passive: 'counterMaster', colors: { primary: '#e2001a', secondary: '#000000', away: '#ffffff' } },
+    { id: 'saint-etienne', name: 'Saint-Étienne', short: 'STE', rating: 74, formation: '2-3-1', passive: 'motivator', colors: { primary: '#00843d', secondary: '#ffffff', away: '#ffffff' } },
+    { id: 'bordeaux', name: 'Girondins de Bordeaux', short: 'BOR', rating: 74, formation: '3-2-1', passive: 'tactician', colors: { primary: '#0a1f44', secondary: '#ffffff', away: '#ffffff' } },
   ],
   'fra-2': [
     { id: 'rennes', name: 'Stade Rennais', short: 'REN', rating: 72, formation: '2-3-1', passive: 'attackMinded', colors: { primary: '#e13327', secondary: '#000000', away: '#ffffff' } },
@@ -50,6 +58,8 @@ export const CLUBS = {
     { id: 'auxerre', name: 'AJ Auxerre', short: 'AJA', rating: 66, formation: '3-1-2', passive: 'cupSpecialist', colors: { primary: '#ffffff', secondary: '#004b9b', away: '#004b9b' } },
     { id: 'lorient', name: 'FC Lorient', short: 'FCL', rating: 65, formation: '2-3-1', passive: 'fitnessGuru', colors: { primary: '#f58220', secondary: '#000000', away: '#ffffff' } },
     { id: 'le-havre', name: 'Le Havre AC', short: 'HAC', rating: 64, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#87c3e8', secondary: '#1d3260', away: '#ffffff' } },
+    { id: 'montpellier', name: 'Montpellier', short: 'MHS', rating: 66, formation: '2-3-1', passive: 'counterMaster', colors: { primary: '#0033a0', secondary: '#f47920', away: '#ffffff' } },
+    { id: 'sochaux', name: 'Sochaux', short: 'FCS', rating: 65, formation: '3-2-1', passive: 'fitnessGuru', colors: { primary: '#ffd200', secondary: '#0033a0', away: '#0033a0' } },
   ],
   'por-1': [
     { id: 'sporting-cp', name: 'Sporting CP', short: 'SCP', rating: 79, formation: '2-3-1', passive: 'tactician', colors: { primary: '#00805a', secondary: '#ffffff', away: '#000000' } },
@@ -60,6 +70,8 @@ export const CLUBS = {
     { id: 'famalicao', name: 'Famalicão', short: 'FAM', rating: 73, formation: '2-3-1', passive: 'fitnessGuru', colors: { primary: '#ffffff', secondary: '#1b3f8b', away: '#1b3f8b' } },
     { id: 'gil-vicente', name: 'Gil Vicente', short: 'GIL', rating: 72, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#e2001a', secondary: '#1d3d8f', away: '#ffffff' } },
     { id: 'santa-clara', name: 'Santa Clara', short: 'SCL', rating: 72, formation: '3-1-2', passive: 'counterMaster', colors: { primary: '#e2001a', secondary: '#ffffff', away: '#ffffff' } },
+    { id: 'boavista', name: 'Boavista', short: 'BOA', rating: 72, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#000000', secondary: '#ffffff', away: '#ffffff' } },
+    { id: 'maritimo', name: 'Marítimo', short: 'MTM', rating: 72, formation: '3-1-2', passive: 'counterMaster', colors: { primary: '#00843d', secondary: '#e2001a', away: '#ffffff' } },
   ],
   'por-2': [
     { id: 'moreirense', name: 'Moreirense', short: 'MOR', rating: 70, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#00843d', secondary: '#ffffff', away: '#ffffff' } },
@@ -70,6 +82,8 @@ export const CLUBS = {
     { id: 'alverca', name: 'FC Alverca', short: 'ALV', rating: 65, formation: '2-2-2', passive: 'attackMinded', colors: { primary: '#e2001a', secondary: '#1d3d8f', away: '#ffffff' } },
     { id: 'estrela-amadora', name: 'Estrela da Amadora', short: 'EAM', rating: 64, formation: '3-1-2', passive: 'counterMaster', colors: { primary: '#e2001a', secondary: '#00843d', away: '#ffffff' } },
     { id: 'cd-nacional', name: 'CD Nacional', short: 'NAC', rating: 63, formation: '3-2-1', passive: 'fitnessGuru', colors: { primary: '#000000', secondary: '#ffffff', away: '#ffffff' } },
+    { id: 'belenenses', name: 'Belenenses', short: 'BEL', rating: 64, formation: '2-3-1', passive: 'tactician', colors: { primary: '#0057b8', secondary: '#ffffff', away: '#ffffff' } },
+    { id: 'vitoria-setubal', name: 'Vitória de Setúbal', short: 'VFC', rating: 63, formation: '3-2-1', passive: 'motivator', colors: { primary: '#00843d', secondary: '#ffffff', away: '#ffffff' } },
   ],
   'ned-1': [
     { id: 'psv', name: 'PSV Eindhoven', short: 'PSV', rating: 80, formation: '2-3-1', passive: 'attackMinded', colors: { primary: '#ed1c24', secondary: '#ffffff', away: '#000000' } },
@@ -80,6 +94,8 @@ export const CLUBS = {
     { id: 'utrecht', name: 'FC Utrecht', short: 'UTR', rating: 74, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#e2001a', secondary: '#ffffff', away: '#ffffff' } },
     { id: 'nec', name: 'NEC Nijmegen', short: 'NEC', rating: 73, formation: '2-2-2', passive: 'attackMinded', colors: { primary: '#e2001a', secondary: '#00843d', away: '#000000' } },
     { id: 'go-ahead-eagles', name: 'Go Ahead Eagles', short: 'GAE', rating: 72, formation: '3-2-1', passive: 'cupSpecialist', colors: { primary: '#e2001a', secondary: '#ffd400', away: '#1a1a1a' } },
+    { id: 'vitesse', name: 'Vitesse', short: 'VIT', rating: 72, formation: '2-3-1', passive: 'attackMinded', colors: { primary: '#ffd200', secondary: '#000000', away: '#ffffff' } },
+    { id: 'ado-den-haag', name: 'ADO Den Haag', short: 'ADO', rating: 72, formation: '3-2-1', passive: 'motivator', colors: { primary: '#00843d', secondary: '#ffd200', away: '#ffffff' } },
   ],
   'ned-2': [
     { id: 'heerenveen', name: 'SC Heerenveen', short: 'HEE', rating: 70, formation: '2-3-1', passive: 'motivator', colors: { primary: '#0062b8', secondary: '#ffffff', away: '#ffffff' } },
@@ -90,6 +106,8 @@ export const CLUBS = {
     { id: 'nac-breda', name: 'NAC Breda', short: 'NAC', rating: 65, formation: '2-3-1', passive: 'motivator', colors: { primary: '#ffd400', secondary: '#000000', away: '#000000' } },
     { id: 'heracles', name: 'Heracles Almelo', short: 'HER', rating: 64, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#000000', secondary: '#ffffff', away: '#ffffff' } },
     { id: 'excelsior', name: 'Excelsior', short: 'EXC', rating: 63, formation: '2-2-2', passive: 'counterMaster', colors: { primary: '#e2001a', secondary: '#000000', away: '#ffffff' } },
+    { id: 'volendam', name: 'FC Volendam', short: 'VOL', rating: 64, formation: '2-2-2', passive: 'fitnessGuru', colors: { primary: '#f47920', secondary: '#ffffff', away: '#ffffff' } },
+    { id: 'willem-ii', name: 'Willem II', short: 'WIL', rating: 65, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#e2001a', secondary: '#ffffff', away: '#0033a0' } },
   ],
 };
 

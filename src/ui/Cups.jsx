@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { clubById } from '../engine/season.js';
-import { CONTINENTS, CONTINENT_NAME, CUP_ROUND_NAME, groupStandings } from '../engine/competitions.js';
+import { CONTINENTS, CONTINENT_NAME, cupRoundNames, groupStandings } from '../engine/competitions.js';
 import { Crest } from './Art.jsx';
 import { ClubLink } from './nav.jsx';
 import CompStats from './CompStats.jsx';
@@ -51,11 +51,11 @@ function Tie({ state, game, label }) {
 
 export function DomesticCup({ state, cup }) {
   if (!cup) return <p className="hint">This country has no cup.</p>;
-  const names = CUP_ROUND_NAME[cup.size >= 16 ? 16 : 8];
+  const names = cupRoundNames(cup);
   const inCup = cup.clubs.includes(state.club.id);
   return (
     <div className="bracket">
-      <p className="hint">{cup.country} Cup · {cup.size} clubs · single-match knockout, lower-division club at home.{!inCup && cup.clubs.length ? ' Your club isn\'t in it: only divisions 1 and 2 play.' : ''}</p>
+      <p className="hint">{cup.country} Cup · {cup.size} clubs · single-match knockout, lower-division club at home{cup.prelim ? `; the ${cup.prelim.length} lowest-ranked clubs play a preliminary round` : ''}.{!inCup && cup.clubs.length ? ' Your club isn\'t in it: only divisions 1 and 2 play.' : ''}</p>
       {cup.winner && <p className="promo is-up">🏆 Winner: {clubById(state.world, cup.winner).name}</p>}
       {cup.rounds.length === 0 && <p className="hint">The draw happens before the first round.</p>}
       {cup.rounds.map((games, r) => (
@@ -96,6 +96,12 @@ export function Continental({ state, c, name }) {
   return (
     <div className="bracket">
       {c.winner && <p className="promo is-up">🏆 {name} winner: {clubById(state.world, c.winner).name}</p>}
+      {c.prelim && (
+        <>
+          <h4 className="sub-title">Preliminary round</h4>
+          {c.prelim.map((g, i) => <Tie key={i} state={state} game={g} />)}
+        </>
+      )}
       {c.qualifying && (
         <>
           <h4 className="sub-title">Qualifying round</h4>
@@ -117,7 +123,7 @@ export function Continental({ state, c, name }) {
           <Tie state={state} game={c.final} />
         </>
       )}
-      {!c.qualifying && !c.groups && <p className="hint">Entrants: {c.entrants.map((id) => clubById(state.world, id).name).join(', ')}</p>}
+      {!c.prelim && !c.qualifying && !c.groups && <p className="hint">Entrants: {c.entrants.map((id) => clubById(state.world, id).name).join(', ')}</p>}
     </div>
   );
 }

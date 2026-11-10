@@ -25,17 +25,21 @@ import { isDerby, derbyName } from '../data/rivals.js';
 import { normalizeTactics } from '../engine/tactics.js';
 import { RARITIES, TRAITS, POSITIONS, overall, rarityForOverall, autoArrange } from '../engine/cards.js';
 import { PACKS, openPack, mergeDuplicate, drawFromPool, MAX_STARS } from '../engine/packs.js';
-import { applyCurses, buildWorld, createSeason, playMatchday, goalsFromMatch, standings, removeKeyPlayer, endOfSeason, divisionName, refreshStrengths, userFixture, quickResult } from '../engine/season.js';
+import { PROMOTION_SPOTS, applyCurses, buildWorld, createSeason, playMatchday, goalsFromMatch, standings, removeKeyPlayer, endOfSeason, divisionName, refreshStrengths, userFixture, quickResult } from '../engine/season.js';
 import {
   CALENDAR, createCompetitions, prepareSlot, recordGame, quickKnockout, involves, compKey, qualifiers, tablesByStrength, tablesFromSeason, CONTINENT_NAME, CONTINENTS,
 } from '../engine/competitions.js';
 
-export const SAVE_VERSION = 3;
+// v4: 10-club divisions, 44 leagues, 12-card squads. Older saves can't be continued.
+export const SAVE_VERSION = 4;
+// The user's squad: 7 starters and 5 reserves. Starting squads use this shape.
+export const SQUAD_SIZE = 12;
+const SQUAD_SHAPE = ['GK', 'GK', 'DEF', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'MID', 'FWD', 'FWD'];
 
 export const POOLS = { player: PLAYER_CARDS, coach: COACH_CARDS };
 export const POOL_BY_ID = CARD_BY_ID;
 const PLAYER_POOL = PLAYER_CARDS;
-export const PRIZES = [600, 350, 250, 180, 120, 90, 60, 30];
+export const PRIZES = [600, 380, 280, 210, 160, 120, 90, 60, 40, 20];
 export const START_DIVISION = 'esp-3';
 
 export { FACILITY_LABEL };
@@ -55,7 +59,7 @@ const uid = (state) => {
 // Starting squad: the club's named cards plus generic Common players.
 // A rookie's squad is thin: tuned with scripts/career-sim.mjs so season 1 is a fight to stay off the bottom.
 const START_LEGENDS = 1;
-const START_FILLER_DELTA = -1;
+const START_FILLER_DELTA = 0;
 
 function startingSquad(clubId, divisionId, formation, seed) {
   const rng = makeRng(seed);
@@ -65,7 +69,7 @@ function startingSquad(clubId, divisionId, formation, seed) {
   const byRarity = (r) => pool.filter((id) => POOL_BY_ID[id].rarity === r).sort(() => rng.next() - 0.5);
   const named = [...byRarity('uncommon'), ...byRarity('rare')].slice(0, START_LEGENDS).map((id) => structuredClone(POOL_BY_ID[id]));
   const used = new Set(named.map((c) => c.name.split(' ').slice(-1)[0]));
-  const want = ['GK', 'GK', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'FWD', 'FWD'];
+  const want = [...SQUAD_SHAPE];
   for (const c of named) {
     const i = want.indexOf(c.pos);
     if (i >= 0) want.splice(i, 1); else want.pop();
@@ -253,8 +257,10 @@ function cohesionFloor(state) {
 // (loads near 100%) lowers shape; spreading minutes keeps it high. No injuries, no
 // per-player tiredness: one team number. Sports Science adds to it for a season.
 const LOAD_KEEP = 0.75; // each match keeps 75% of the old load: ≈ 8-match memory
-const LOAD_FREE = 0.65; // up to 65% of the minutes costs nothing
-const LOAD_COST = 20; // shape lost per 100% of overload
+// Tuned for 12-card squads (v1.9): the same 7 every match settles near 57 (Tired); rotating
+// one player a match stays near 81 (OK), two a match near 87 (Fresh).
+const LOAD_FREE = 0.55; // up to 55% of the minutes costs nothing
+const LOAD_COST = 15; // shape lost per 100% of overload
 export const SHAPE_LABELS = [[85, 'Fresh'], [65, 'OK'], [45, 'Tired'], [0, 'Exhausted']];
 export const loadOf = (state, id) => state.loads?.[id] ?? 0.5;
 export function teamShape(state) {
@@ -341,13 +347,26 @@ const INCOME_CATEGORY = (label) => (
     : ['Trophy prize', 'Finalist prize', 'Qualified for the group stage'].includes(label) ? 'Prizes' : 'Results'
 );
 
+// Card wear: a season has 18 league games since v1.9 (14 before), so every 5th appearance is
+// free (4 of 5 cost a match) and careers last about as many seasons as they did.
+const FREE_EVERY = 5;
+function wear(card) {
+  card.wearApps = (card.wearApps || 0) + 1;
+  if (card.wearApps % FREE_EVERY !== 0) card.matchesLeft -= 1;
+}
+
 // Prize money per result in each competition (league and cup scale with the division).
+// v1.9: league and cup rates cut by about a quarter for the longer season (18 league games plus
+// preliminary cup rounds), so a season pays roughly what it did with 14.
 const RESULT_COINS = {
-  league: { win: 60, draw: 25, loss: 10, scaled: true },
-  cup: { win: 80, draw: 25, loss: 10, scaled: true },
+  league: { win: 45, draw: 20, loss: 8, scaled: true },
+  cup: { win: 65, draw: 20, loss: 8, scaled: true },
   continental: { win: 100, draw: 40, loss: 20, scaled: false },
   cwc: { win: 150, draw: 60, loss: 30, scaled: false },
 };
+
+// Business income per match, scaled for the longer v1.9 season.
+const MATCH_PACE = 0.8;
 
 // Income from the business areas (data/facilities.js), per match at today's levels.
 // homeOnly items are paid at home games only. Labels match the season finance categories.
@@ -363,6 +382,8 @@ export function businessIncome(state) {
     { area: 'merch', label: `Merchandise (L${f('merch')})`, coins: Math.round(merch) },
     { area: 'sponsor', label: `Sponsor · ${SPONSOR_NAMES[f('sponsor')]}`, coins: Math.round(SPONSOR_INCOME[f('sponsor')] * m) },
   ];
+  // v1.9: 18 league games a season (14 before): each match pays a little less.
+  for (const it of items) it.coins = Math.round(it.coins * MATCH_PACE);
   if (state.perks?.shirtSponsor) items.push({ area: null, label: 'Shirt sponsor', coins: state.perks.shirtSponsor }); // older saves
   return items;
 }
@@ -376,11 +397,11 @@ export function matchRewards(state, match, userSide, game = { competition: 'leag
   const k = pay.scaled ? m : 1;
   const items = [];
   const lostOnPens = match.result.shootout && winner !== userSide;
-  if (winner === userSide) items.push({ label: match.result.shootout ? 'Win on penalties' : 'Win', coins: pay.win * k });
-  else if (winner === null) items.push({ label: 'Draw', coins: pay.draw * k });
-  else items.push({ label: lostOnPens ? 'Lost on penalties' : 'Defeat', coins: pay.loss * k });
-  if (conceded === 0) items.push({ label: 'Clean sheet', coins: 20 * m });
-  if (own >= 3) items.push({ label: '3+ goals', coins: 20 * m });
+  if (winner === userSide) items.push({ label: match.result.shootout ? 'Win on penalties' : 'Win', coins: Math.round(pay.win * k) });
+  else if (winner === null) items.push({ label: 'Draw', coins: Math.round(pay.draw * k) });
+  else items.push({ label: lostOnPens ? 'Lost on penalties' : 'Defeat', coins: Math.round(pay.loss * k) });
+  if (conceded === 0) items.push({ label: 'Clean sheet', coins: Math.round(15 * m) });
+  if (own >= 3) items.push({ label: '3+ goals', coins: Math.round(15 * m) });
   for (const it of businessIncome(state)) if (it.coins > 0 && (!it.homeOnly || match.teams[userSide].isHome)) items.push({ label: it.label, coins: it.coins });
   const final = game.label?.endsWith('Final');
   if (game.competition === 'cup' && state.activeEvent?.type === 'cupRun') items[0].coins = Math.round(items[0].coins * 1.5);
@@ -458,7 +479,7 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
     const card = next.squad.find((c) => c.id === id);
     if (card) addFame(card, p.goals * 0.15 + p.assists * 0.05 + (id === motmId ? 0.4 : 0));
     if (card && card.matchesLeft != null) {
-      card.matchesLeft -= 1;
+      wear(card);
       if (card.matchesLeft <= 0) retired.push(card);
     }
   }
@@ -476,7 +497,7 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
   for (const role of ['coach', 'assistant']) {
     const coach = next.coaches[role];
     if (coach?.matchesLeft != null) {
-      coach.matchesLeft -= 1;
+      wear(coach);
       if (coach.matchesLeft <= 0) {
         retiredCoaches.push(coach);
         next.hallOfFame.push({ card: coach, stats: null, season: next.season?.year });
@@ -746,11 +767,11 @@ export function seasonSummary(state) {
   const div = DIVISION_BY_ID[divId];
   const table = standings(state.season, divId);
   const position = table.findIndex((r) => r.id === state.club.id) + 1;
-  const prize = (PRIZES[position - 1] || 0) * mult(state);
+  const prize = Math.round((PRIZES[position - 1] || 0) * mult(state));
   const upper = DIVISIONS.find((d) => d.code === div.code && d.tier === div.tier - 1);
   const lower = DIVISIONS.find((d) => d.code === div.code && d.tier === div.tier + 1);
-  const promoted = position === 1 && !!upper;
-  const relegated = position === table.length && !!lower;
+  const promoted = position <= PROMOTION_SPOTS && !!upper;
+  const relegated = position > table.length - PROMOTION_SPOTS && !!lower;
   const packs = position === 1 ? ['gold'] : position <= 3 ? ['silver'] : [];
   if (promoted) packs.push('silver');
   return { table, position, prize, packs, promoted, relegated, upper, lower, division: div };
@@ -872,7 +893,7 @@ export function closeSeason(state, seed) {
   // Board review: objective, reputation, and job offers (or the sack).
   if (next.gm) {
     const summary = seasonSummary(state);
-    const objective = state.gm.objective || { target: 8, text: 'Finish the season' };
+    const objective = state.gm.objective || { target: 10, text: 'Finish the season' };
     const verdict = judgeObjective(objective, position);
     const items = weighReputation(reputationChanges({ verdict, promoted: summary.promoted, leagueTitle: position === 1, trophies: state.season.userTrophies || [] }), state.club.level, next.gm.reputation);
     const before = next.gm.reputation;
@@ -957,7 +978,7 @@ function randomOffseasonCard(state, rng, group = null) {
 
 // The Transfer Market is open all year: 9 offers each summer, and 6 fresh ones at the
 // start of the season and every MARKET_EVERY league matchdays.
-export const MARKET_EVERY = 4;
+export const MARKET_EVERY = 5; // 18 matchdays → refreshes after MD 5, 10, 15 (three a season, as with 14 and 4)
 const MARKET_GROUPS = {
   summer: ['transfer', 'transfer', 'transfer', 'club', 'club', 'club', 'club', 'event', 'event'],
   season: ['transfer', 'transfer', 'club', 'club', 'club', 'event'],
@@ -1069,8 +1090,8 @@ export function acceptOffer(state, clubId, carryKeys = [], seed = 1) {
   const named = newClub.keyPlayers.map((id) => ({ ...structuredClone(POOL_BY_ID[id]), matchesLeft: world.cardLeft[id] ?? POOL_BY_ID[id].matchesLeft }));
   newClub.keyPlayers = [];
   const used = new Set(named.map((c) => c.name.split(' ').slice(-1)[0]));
-  const want = ['GK', 'GK', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'FWD', 'FWD'];
-  const squad = named.sort((a, b) => overall(b) - overall(a)).slice(0, 10);
+  const want = [...SQUAD_SHAPE];
+  const squad = named.sort((a, b) => overall(b) - overall(a)).slice(0, SQUAD_SIZE);
   for (const c of squad) { const i = want.indexOf(c.pos); if (i >= 0) want.splice(i, 1); else want.pop(); }
   want.forEach((pos, i) => squad.push(makeGenericCard(rng, { id: `gen-${clubId}-${uid(next)}-${i}`, pos, rating: FILLER_RATING[level], used })));
   for (const id of carriedPlayers) {

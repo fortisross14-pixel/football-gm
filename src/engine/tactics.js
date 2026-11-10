@@ -113,14 +113,25 @@ export function styleAdvice(t, A) {
   const n = (v) => Math.round(v);
   const good = (text) => out.push({ tone: 'good', text });
   const bad = (text) => out.push({ tone: 'bad', text });
-  if (t.tempo >= 4) (A.pas >= 72 ? good : bad)(`Fast tempo with Passing ${n(A.pas)}: ${A.pas >= 72 ? 'your passers can play it.' : 'too many passes will go astray.'}`);
-  if (t.tempo <= 2 && A.pas < 62) good(`Patient tempo protects weaker passers (Passing ${n(A.pas)}).`);
-  if (t.press >= 4) (A.phy >= 70 ? good : bad)(`High press with Physical ${n(A.phy)}: ${A.phy >= 70 ? 'they can keep it up.' : 'they will tire fast. Consider Fresh Legs, Second Wind or a fitness coach.'}`);
-  if (t.line >= 4) (A.defPhy >= 70 ? good : bad)(`High line with defenders' Physical ${n(A.defPhy)}: ${A.defPhy >= 70 ? 'quick enough to cover.' : 'slow defenders get caught in behind.'}`);
-  if (t.offsideTrap) (A.defDef >= 72 && A.defPhy >= 66 ? good : bad)(`Offside trap with Defense ${n(A.defDef)} and Physical ${n(A.defPhy)} at the back: ${A.defDef >= 72 && A.defPhy >= 66 ? 'they can run it.' : 'risky.'}`);
-  if (t.setPieces) (A.set >= 70 ? good : bad)(`Set pieces with a Set pieces rating of ${n(A.set)}: ${A.set >= 70 ? 'a real weapon.' : 'not worth it yet.'}`);
-  if (t.buildUp === 'short') (A.pas >= 66 ? good : bad)(`Short build-up with Passing ${n(A.pas)}${A.pas >= 66 ? '.' : ': risky against pressing teams.'}`);
-  if (t.buildUp === 'long') (A.fwdPhy >= 74 ? good : bad)(`Long balls with forwards' Physical ${n(A.fwdPhy)}: ${A.fwdPhy >= 74 ? 'they will win them.' : 'they will lose most of them.'}`);
+  // Relative to the squad's own level: is this one of the team's strengths? (A bottom-tier
+  // squad can still play to its strengths; thresholds aren't elite numbers.)
+  const base = (A.pas + A.sho + A.def + A.phy) / 4;
+  const at = (offset) => base + offset;
+  const fast = A.pas >= at(2);
+  if (t.tempo >= 4) (fast ? good : bad)(`Fast tempo with Passing ${n(A.pas)}: ${fast ? 'passing is a strength of this team.' : 'too many passes will go astray.'}`);
+  if (t.tempo <= 2 && A.pas < at(-2)) good(`Patient tempo protects weaker passers (Passing ${n(A.pas)}).`);
+  const fit = A.phy >= at(0);
+  if (t.press >= 4) (fit ? good : bad)(`High press with Physical ${n(A.phy)}: ${fit ? 'they can keep it up.' : 'they will tire fast. Consider Fresh Legs, Second Wind or a fitness coach.'}`);
+  const quick = A.defPhy >= at(0);
+  if (t.line >= 4) (quick ? good : bad)(`High line with defenders' Physical ${n(A.defPhy)}: ${quick ? 'quick enough to cover.' : 'slow defenders get caught in behind.'}`);
+  const trap = A.defDef >= at(2) && A.defPhy >= at(-4);
+  if (t.offsideTrap) (trap ? good : bad)(`Offside trap with Defense ${n(A.defDef)} and Physical ${n(A.defPhy)} at the back: ${trap ? 'they can run it.' : 'risky.'}`);
+  const setOk = A.set >= at(0);
+  if (t.setPieces) (setOk ? good : bad)(`Set pieces with a Set pieces rating of ${n(A.set)}: ${setOk ? 'a real weapon.' : 'not worth it yet.'}`);
+  const shortOk = A.pas >= at(-4);
+  if (t.buildUp === 'short') (shortOk ? good : bad)(`Short build-up with Passing ${n(A.pas)}${shortOk ? '.' : ': risky against pressing teams.'}`);
+  const longOk = A.fwdPhy >= at(3);
+  if (t.buildUp === 'long') (longOk ? good : bad)(`Long balls with forwards' Physical ${n(A.fwdPhy)}: ${longOk ? 'they will win them.' : 'they will lose most of them.'}`);
   if (A.wide !== null && A.central !== null) {
     const wideBetter = A.wide > A.central + 2;
     const centreBetter = A.central > A.wide + 2;
@@ -128,7 +139,8 @@ export function styleAdvice(t, A) {
     else if (t.attack === 'centre' && wideBetter) bad(`Your wide players (${n(A.wide)}) are better than your central ones (${n(A.central)}): attack down the wings.`);
     else if (wideBetter || centreBetter) good(`Attacking through the ${t.attack === 'wings' ? 'wings' : 'centre'} uses your best attackers.`);
   }
-  if (t.counter) (A.phy >= 68 ? good : bad)(`Counter-attacks with Physical ${n(A.phy)}${A.phy >= 68 ? ': quick enough to break.' : ': too slow to break.'}`);
+  const breakOk = A.phy >= at(-2);
+  if (t.counter) (breakOk ? good : bad)(`Counter-attacks with Physical ${n(A.phy)}${breakOk ? ': quick enough to break.' : ': too slow to break.'}`);
   return out;
 }
 

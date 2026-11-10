@@ -9,8 +9,9 @@ import * as europeA from '../src/data/world/europe-a.js';
 import * as europeB from '../src/data/world/europe-b.js';
 import * as europeC from '../src/data/world/europe-c-southam.js';
 import * as rest from '../src/data/world/rest.js';
+import * as europeD from '../src/data/world/europe-d-new.js';
 
-const REGIONS = [europeA, europeB, europeC, rest];
+const REGIONS = [europeA, europeB, europeC, rest, europeD];
 const CLUBS_BY_DIVISION = Object.assign({}, ...REGIONS.map((r) => r.CLUBS));
 const PLAYER_CARDS = [...PLAYER_POOL, ...REGIONS.flatMap((r) => r.PLAYERS)];
 import { overall, rarityForOverall, TRAITS, POSITIONS } from '../src/engine/cards.js';

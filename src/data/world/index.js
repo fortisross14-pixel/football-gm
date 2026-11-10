@@ -4,13 +4,16 @@ import * as europeA from './europe-a.js';
 import * as europeB from './europe-b.js';
 import * as europeC from './europe-c-southam.js';
 import * as rest from './rest.js';
+import * as europeD from './europe-d-new.js';
 import * as squadsA from './squads-a.js';
 import * as squadsB from './squads-b.js';
 import * as squadsC from './squads-c.js';
 import * as squadsD from './squads-d.js';
+import * as squadsE from './squads-e.js';
+import * as squadsF from './squads-f.js';
 
-const REGIONS = [europeA, europeB, europeC, rest];
-const SQUAD_FILES = [squadsA, squadsB, squadsC, squadsD];
+const REGIONS = [europeA, europeB, europeC, rest, europeD];
+const SQUAD_FILES = [squadsA, squadsB, squadsC, squadsD, squadsE, squadsF];
 
 // Each club's history pool: named cards (any era) it draws its squad and academy players from.
 export const CLUB_POOLS = Object.assign({}, ...SQUAD_FILES.map((f) => f.SQUADS || {}));

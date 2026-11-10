@@ -10,6 +10,8 @@ export const CLUBS = {
     { id: 'pachuca', name: 'Pachuca', short: 'PAC', rating: 74, formation: '3-1-2', passive: 'counterMaster', colors: { primary: '#003c7d', secondary: '#ffffff', away: '#ffffff' } },
     { id: 'guadalajara', name: 'Guadalajara', short: 'GDL', rating: 74, formation: '2-3-1', passive: 'fitnessGuru', colors: { primary: '#c8102e', secondary: '#ffffff', away: '#0a2463' } },
     { id: 'pumas-unam', name: 'Pumas UNAM', short: 'PUM', rating: 72, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#0f1e3d', secondary: '#b8975a', away: '#ffffff' } },
+    { id: 'santos-laguna', name: 'Santos Laguna', short: 'SAN', rating: 75, formation: '2-3-1', passive: 'attackMinded', colors: { primary: '#00843d', secondary: '#ffffff', away: '#ffffff' } },
+    { id: 'leon', name: 'Club León', short: 'LEO', rating: 74, formation: '3-2-1', passive: 'motivator', colors: { primary: '#00843d', secondary: '#ffffff', away: '#ffffff' } },
   ],
   'usa-1': [
     { id: 'inter-miami', name: 'Inter Miami', short: 'MIA', rating: 73, formation: '2-3-1', passive: 'attackMinded', colors: { primary: '#f7b5cd', secondary: '#231f20', away: '#231f20' } },
@@ -20,6 +22,8 @@ export const CLUBS = {
     { id: 'columbus-crew', name: 'Columbus Crew', short: 'CLB', rating: 69, formation: '3-2-1', passive: 'tactician', colors: { primary: '#fedd00', secondary: '#000000', away: '#000000' } },
     { id: 'seattle-sounders', name: 'Seattle Sounders', short: 'SEA', rating: 69, formation: '2-2-2', passive: 'cupSpecialist', colors: { primary: '#5d9741', secondary: '#005595', away: '#005595' } },
     { id: 'nashville-sc', name: 'Nashville SC', short: 'NSH', rating: 69, formation: '3-1-2', passive: 'ironDiscipline', colors: { primary: '#ece83a', secondary: '#1f1646', away: '#1f1646' } },
+    { id: 'la-galaxy', name: 'LA Galaxy', short: 'LAG', rating: 71, formation: '2-2-2', passive: 'attackMinded', colors: { primary: '#00245d', secondary: '#ffd200', away: '#ffffff' } },
+    { id: 'dc-united', name: 'D.C. United', short: 'DCU', rating: 69, formation: '3-2-1', passive: 'motivator', colors: { primary: '#000000', secondary: '#e2001a', away: '#ffffff' } },
   ],
   'col-1': [
     { id: 'atletico-nacional', name: 'Atlético Nacional', short: 'NAC', rating: 68, formation: '2-3-1', passive: 'cupSpecialist', colors: { primary: '#009a44', secondary: '#ffffff', away: '#ffffff' } },
@@ -30,16 +34,20 @@ export const CLUBS = {
     { id: 'deportes-tolima', name: 'Deportes Tolima', short: 'TOL', rating: 65, formation: '3-2-1', passive: 'fitnessGuru', colors: { primary: '#7b1e3a', secondary: '#f2c400', away: '#ffffff' } },
     { id: 'independiente-medellin', name: 'Independiente Medellín', short: 'DIM', rating: 66, formation: '2-2-2', passive: 'counterMaster', colors: { primary: '#c8102e', secondary: '#0033a0', away: '#0033a0' } },
     { id: 'once-caldas', name: 'Once Caldas', short: 'ONC', rating: 64, formation: '3-1-2', passive: 'counterMaster', colors: { primary: '#ffffff', secondary: '#1a1a1a', away: '#d71920' } },
+    { id: 'deportivo-cali', name: 'Deportivo Cali', short: 'CAL', rating: 66, formation: '2-3-1', passive: 'tactician', colors: { primary: '#00843d', secondary: '#ffffff', away: '#ffffff' } },
+    { id: 'envigado', name: 'Envigado', short: 'ENV', rating: 63, formation: '3-1-2', passive: 'fitnessGuru', colors: { primary: '#f47920', secondary: '#00843d', away: '#ffffff' } },
   ],
   'sam-1': [
     { id: 'ldu-quito', name: 'LDU Quito', short: 'LDU', rating: 69, formation: '2-3-1', passive: 'fitnessGuru', colors: { primary: '#ffffff', secondary: '#d71920', away: '#0b2240' } },
     { id: 'independiente-del-valle', name: 'Independiente del Valle', short: 'IDV', rating: 69, formation: '2-3-1', passive: 'tactician', colors: { primary: '#0b0b0b', secondary: '#0057b8', away: '#ffffff' } },
     { id: 'penarol', name: 'Peñarol', short: 'PEN', rating: 68, formation: '3-2-1', passive: 'motivator', colors: { primary: '#fdd20a', secondary: '#000000', away: '#ffffff' } },
     { id: 'nacional-uru', name: 'Nacional', short: 'NAC', rating: 67, formation: '3-1-2', passive: 'cupSpecialist', colors: { primary: '#ffffff', secondary: '#003da5', away: '#003da5' } },
-    { id: 'colo-colo', name: 'Colo-Colo', short: 'COL', rating: 67, formation: '2-2-2', passive: 'motivator', colors: { primary: '#ffffff', secondary: '#000000', away: '#000000' } },
-    { id: 'universidad-de-chile', name: 'Universidad de Chile', short: 'UCH', rating: 67, formation: '2-3-1', passive: 'attackMinded', colors: { primary: '#0033a0', secondary: '#d71920', away: '#ffffff' } },
     { id: 'libertad', name: 'Libertad', short: 'LIB', rating: 65, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#000000', secondary: '#ffffff', away: '#ffffff' } },
     { id: 'cerro-porteno', name: 'Cerro Porteño', short: 'CER', rating: 66, formation: '3-1-2', passive: 'counterMaster', colors: { primary: '#c8102e', secondary: '#003da5', away: '#ffffff' } },
+    { id: 'olimpia', name: 'Olimpia', short: 'OLI', rating: 67, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#ffffff', secondary: '#000000', away: '#000000' } },
+    { id: 'barcelona-sc', name: 'Barcelona SC', short: 'BSC', rating: 66, formation: '2-3-1', passive: 'motivator', colors: { primary: '#ffd200', secondary: '#000000', away: '#ffffff' } },
+    { id: 'universitario', name: 'Universitario', short: 'UNI', rating: 66, formation: '2-2-2', passive: 'attackMinded', colors: { primary: '#f2e6c2', secondary: '#8b1e3f', away: '#8b1e3f' } },
+    { id: 'alianza-lima', name: 'Alianza Lima', short: 'ALI', rating: 66, formation: '2-3-1', passive: 'counterMaster', colors: { primary: '#0033a0', secondary: '#ffffff', away: '#ffffff' } },
   ],
   'jpn-1': [
     { id: 'kashima-antlers', name: 'Kashima Antlers', short: 'KAS', rating: 72, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#b5121b', secondary: '#0d1c42', away: '#ffffff' } },
@@ -50,6 +58,8 @@ export const CLUBS = {
     { id: 'machida-zelvia', name: 'Machida Zelvia', short: 'MAC', rating: 70, formation: '3-1-2', passive: 'ironDiscipline', colors: { primary: '#1d3f8f', secondary: '#ffffff', away: '#ffffff' } },
     { id: 'urawa-reds', name: 'Urawa Red Diamonds', short: 'URA', rating: 69, formation: '2-3-1', passive: 'cupSpecialist', colors: { primary: '#e60012', secondary: '#000000', away: '#ffffff' } },
     { id: 'kawasaki-frontale', name: 'Kawasaki Frontale', short: 'KAW', rating: 69, formation: '2-3-1', passive: 'attackMinded', colors: { primary: '#2f95d3', secondary: '#000000', away: '#ffffff' } },
+    { id: 'gamba-osaka', name: 'Gamba Osaka', short: 'GAM', rating: 70, formation: '2-3-1', passive: 'tactician', colors: { primary: '#0033a0', secondary: '#000000', away: '#ffffff' } },
+    { id: 'yokohama-f-marinos', name: 'Yokohama F. Marinos', short: 'YFM', rating: 70, formation: '2-2-2', passive: 'attackMinded', colors: { primary: '#0033a0', secondary: '#ffffff', away: '#e2001a' } },
   ],
   'asi-1': [
     { id: 'al-sadd', name: 'Al-Sadd', short: 'SAD', rating: 69, formation: '2-3-1', passive: 'attackMinded', colors: { primary: '#ffffff', secondary: '#000000', away: '#000000' } },
@@ -60,6 +70,8 @@ export const CLUBS = {
     { id: 'sharjah', name: 'Sharjah', short: 'SHJ', rating: 66, formation: '3-1-2', passive: 'motivator', colors: { primary: '#ffffff', secondary: '#c8102e', away: '#c8102e' } },
     { id: 'persepolis', name: 'Persepolis', short: 'PER', rating: 66, formation: '3-2-1', passive: 'motivator', colors: { primary: '#e30613', secondary: '#ffffff', away: '#ffffff' } },
     { id: 'tractor', name: 'Tractor', short: 'TRA', rating: 67, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#d71920', secondary: '#ffffff', away: '#ffffff' } },
+    { id: 'esteghlal', name: 'Esteghlal', short: 'EST', rating: 67, formation: '3-2-1', passive: 'motivator', colors: { primary: '#0033a0', secondary: '#ffffff', away: '#ffffff' } },
+    { id: 'pakhtakor', name: 'Pakhtakor', short: 'PAK', rating: 66, formation: '2-3-1', passive: 'fitnessGuru', colors: { primary: '#00843d', secondary: '#ffffff', away: '#ffffff' } },
   ],
   'apc-1': [
     { id: 'ulsan-hd', name: 'Ulsan HD', short: 'ULS', rating: 68, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#0055a4', secondary: '#ffd200', away: '#ffffff' } },
@@ -70,6 +82,8 @@ export const CLUBS = {
     { id: 'chengdu-rongcheng', name: 'Chengdu Rongcheng', short: 'CHE', rating: 67, formation: '3-1-2', passive: 'counterMaster', colors: { primary: '#c8102e', secondary: '#ffffff', away: '#ffffff' } },
     { id: 'melbourne-city', name: 'Melbourne City', short: 'MCY', rating: 67, formation: '2-3-1', passive: 'fitnessGuru', colors: { primary: '#6caddf', secondary: '#1c2c5b', away: '#1c2c5b' } },
     { id: 'buriram-united', name: 'Buriram United', short: 'BUR', rating: 66, formation: '3-2-1', passive: 'cupSpecialist', colors: { primary: '#1a2a80', secondary: '#f58220', away: '#ffffff' } },
+    { id: 'guangzhou-fc', name: 'Guangzhou FC', short: 'GZF', rating: 68, formation: '2-3-1', passive: 'tactician', colors: { primary: '#e2001a', secondary: '#ffffff', away: '#ffffff' } },
+    { id: 'sydney-fc', name: 'Sydney FC', short: 'SYD', rating: 66, formation: '2-2-2', passive: 'attackMinded', colors: { primary: '#6cadd7', secondary: '#0b1f45', away: '#ffffff' } },
   ],
   'sau-1': [
     { id: 'al-hilal', name: 'Al-Hilal', short: 'HIL', rating: 80, formation: '2-3-1', passive: 'tactician', colors: { primary: '#0055a5', secondary: '#ffffff', away: '#ffffff' } },
@@ -80,6 +94,8 @@ export const CLUBS = {
     { id: 'al-ettifaq', name: 'Al-Ettifaq', short: 'ETT', rating: 74, formation: '3-2-1', passive: 'tactician', colors: { primary: '#00843d', secondary: '#e30613', away: '#ffffff' } },
     { id: 'al-shabab-sau', name: 'Al-Shabab', short: 'SHB', rating: 73, formation: '3-1-2', passive: 'counterMaster', colors: { primary: '#ffffff', secondary: '#000000', away: '#1a1a1a' } },
     { id: 'al-taawoun', name: 'Al-Taawoun', short: 'TAA', rating: 73, formation: '3-1-2', passive: 'counterMaster', colors: { primary: '#ffcc00', secondary: '#1f3c88', away: '#1f3c88' } },
+    { id: 'al-fateh', name: 'Al-Fateh', short: 'FAT', rating: 72, formation: '3-2-1', passive: 'counterMaster', colors: { primary: '#00843d', secondary: '#ffffff', away: '#ffffff' } },
+    { id: 'al-fayha', name: 'Al-Fayha', short: 'FAY', rating: 72, formation: '2-3-1', passive: 'ironDiscipline', colors: { primary: '#f47920', secondary: '#0033a0', away: '#ffffff' } },
   ],
   'nga-1': [
     { id: 'remo-stars', name: 'Remo Stars', short: 'REM', rating: 64, formation: '3-2-1', passive: 'fitnessGuru', colors: { primary: '#0072ce', secondary: '#ffffff', away: '#ffd200' } },
@@ -90,6 +106,8 @@ export const CLUBS = {
     { id: 'shooting-stars', name: 'Shooting Stars', short: '3SC', rating: 62, formation: '3-2-1', passive: 'counterMaster', colors: { primary: '#0047ab', secondary: '#ffffff', away: '#d71920' } },
     { id: 'plateau-united', name: 'Plateau United', short: 'PLA', rating: 62, formation: '2-2-2', passive: 'fitnessGuru', colors: { primary: '#d71920', secondary: '#ffd200', away: '#ffffff' } },
     { id: 'bendel-insurance', name: 'Bendel Insurance', short: 'BEN', rating: 62, formation: '3-1-2', passive: 'ironDiscipline', colors: { primary: '#0057b8', secondary: '#ffd200', away: '#ffffff' } },
+    { id: 'heartland', name: 'Heartland', short: 'HRT', rating: 62, formation: '3-2-1', passive: 'motivator', colors: { primary: '#e2001a', secondary: '#ffffff', away: '#ffffff' } },
+    { id: 'julius-berger', name: 'Julius Berger', short: 'JUL', rating: 62, formation: '2-3-1', passive: 'ironDiscipline', colors: { primary: '#00843d', secondary: '#ffd200', away: '#ffffff' } },
   ],
   'egy-1': [
     { id: 'al-ahly', name: 'Al Ahly', short: 'AHL', rating: 70, formation: '2-3-1', passive: 'cupSpecialist', colors: { primary: '#c8102e', secondary: '#ffffff', away: '#ffffff' } },
@@ -100,6 +118,8 @@ export const CLUBS = {
     { id: 'smouha', name: 'Smouha', short: 'SMO', rating: 63, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#0057b8', secondary: '#ffffff', away: '#ffffff' } },
     { id: 'enppi', name: 'ENPPI', short: 'ENP', rating: 63, formation: '3-2-1', passive: 'fitnessGuru', colors: { primary: '#d71920', secondary: '#ffffff', away: '#ffffff' } },
     { id: 'modern-sport', name: 'Modern Sport', short: 'MOD', rating: 63, formation: '3-1-2', passive: 'counterMaster', colors: { primary: '#1a1a1a', secondary: '#ffd200', away: '#ffffff' } },
+    { id: 'ismaily', name: 'Ismaily', short: 'ISM', rating: 64, formation: '2-3-1', passive: 'attackMinded', colors: { primary: '#ffd200', secondary: '#0033a0', away: '#0033a0' } },
+    { id: 'ghazl-el-mahalla', name: 'Ghazl El Mahalla', short: 'GHZ', rating: 62, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#ffffff', secondary: '#0033a0', away: '#0033a0' } },
   ],
   'afr-1': [
     { id: 'mamelodi-sundowns', name: 'Mamelodi Sundowns', short: 'SUN', rating: 71, formation: '2-3-1', passive: 'tactician', colors: { primary: '#ffd200', secondary: '#007a33', away: '#0057b8' } },
@@ -110,6 +130,8 @@ export const CLUBS = {
     { id: 'al-hilal-omdurman', name: 'Al-Hilal Omdurman', short: 'HIL', rating: 67, formation: '3-1-2', passive: 'counterMaster', colors: { primary: '#0055a5', secondary: '#ffffff', away: '#ffffff' } },
     { id: 'mc-alger', name: 'MC Alger', short: 'MCA', rating: 66, formation: '3-2-1', passive: 'fitnessGuru', colors: { primary: '#c8102e', secondary: '#00843d', away: '#ffffff' } },
     { id: 'raja-casablanca', name: 'Raja Casablanca', short: 'RCA', rating: 65, formation: '2-2-2', passive: 'motivator', colors: { primary: '#00843d', secondary: '#ffffff', away: '#ffffff' } },
+    { id: 'tp-mazembe', name: 'TP Mazembe', short: 'TPM', rating: 68, formation: '3-2-1', passive: 'motivator', colors: { primary: '#000000', secondary: '#ffffff', away: '#ffffff' } },
+    { id: 'kaizer-chiefs', name: 'Kaizer Chiefs', short: 'KAI', rating: 66, formation: '2-3-1', passive: 'attackMinded', colors: { primary: '#ffd200', secondary: '#000000', away: '#000000' } },
   ],
 };
 
@@ -167,8 +189,6 @@ export const PLAYERS = [
   { id: 'p-junior-sornoza', name: 'Junior Sornoza', pos: 'MID', rarity: 'rare', att: 74, def: 62, phy: 66, trait: 'playmaker', matchesLeft: 120, nation: 'ECU', clubId: 'independiente-del-valle' },
   { id: 'p-washington-aguerre', name: 'Washington Aguerre', pos: 'GK', rarity: 'rare', att: 22, def: 71, phy: 66, trait: null, matchesLeft: 140, nation: 'URU', clubId: 'penarol' },
   { id: 'p-luis-mejia', name: 'Luis Mejía', pos: 'GK', rarity: 'rare', att: 20, def: 70, phy: 68, trait: 'shotStopper', matchesLeft: 135, nation: 'PAN', clubId: 'nacional-uru' },
-  { id: 'p-arturo-vidal', name: 'Arturo Vidal', pos: 'MID', rarity: 'rare', att: 70, def: 70, phy: 70, trait: 'leader', matchesLeft: 70, nation: 'CHI', clubId: 'colo-colo' },
-  { id: 'p-charles-aranguiz', name: 'Charles Aránguiz', pos: 'MID', rarity: 'rare', att: 70, def: 68, phy: 66, trait: null, matchesLeft: 75, nation: 'CHI', clubId: 'universidad-de-chile' },
   { id: 'p-lorenzo-melgarejo', name: 'Lorenzo Melgarejo', pos: 'FWD', rarity: 'uncommon', att: 70, def: 40, phy: 70, trait: null, matchesLeft: 110, nation: 'PAR', clubId: 'libertad' },
   { id: 'p-federico-carrizo', name: 'Federico Carrizo', pos: 'MID', rarity: 'uncommon', att: 74, def: 58, phy: 64, trait: 'playmaker', matchesLeft: 120, nation: 'ARG', clubId: 'cerro-porteno' },
   { id: 'p-akram-afif', name: 'Akram Afif', pos: 'FWD', rarity: 'rare', att: 80, def: 40, phy: 68, trait: 'bigGame', matchesLeft: 140, nation: 'QAT', clubId: 'al-sadd' },

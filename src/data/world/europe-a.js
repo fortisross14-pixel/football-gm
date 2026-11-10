@@ -10,6 +10,8 @@ export const CLUBS = {
     { id: 'betis', name: 'Real Betis', short: 'BET', rating: 80, formation: '2-3-1', passive: 'attackMinded', colors: { primary: '#00954c', secondary: '#ffffff', away: '#1d1d1b' } },
     { id: 'real-sociedad', name: 'Real Sociedad', short: 'RSO', rating: 80, formation: '2-3-1', passive: 'tactician', colors: { primary: '#0067b1', secondary: '#ffffff', away: '#e8c547' } },
     { id: 'celta', name: 'Celta Vigo', short: 'CEL', rating: 79, formation: '2-2-2', passive: 'attackMinded', colors: { primary: '#8ac3ee', secondary: '#ffffff', away: '#c8102e' } },
+    { id: 'alaves', name: 'Deportivo Alavés', short: 'ALA', rating: 79, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#1e4fa0', secondary: '#ffffff', away: '#111111' } },
+    { id: 'levante', name: 'Levante', short: 'LEV', rating: 79, formation: '2-3-1', passive: 'attackMinded', colors: { primary: '#b4053f', secondary: '#0a3a82', away: '#ffffff' } },
   ],
   'esp-2': [
     { id: 'sevilla', name: 'Sevilla', short: 'SEV', rating: 76, formation: '3-2-1', passive: 'motivator', colors: { primary: '#ffffff', secondary: '#d6001c', away: '#d6001c' } },
@@ -20,6 +22,8 @@ export const CLUBS = {
     { id: 'mallorca', name: 'Mallorca', short: 'MLL', rating: 74, formation: '3-1-2', passive: 'counterMaster', colors: { primary: '#e20613', secondary: '#000000', away: '#ffffff' } },
     { id: 'getafe', name: 'Getafe', short: 'GET', rating: 74, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#005999', secondary: '#ffffff', away: '#d2232a' } },
     { id: 'espanyol', name: 'Espanyol', short: 'ESP', rating: 75, formation: '2-3-1', passive: 'motivator', colors: { primary: '#007fc8', secondary: '#ffffff', away: '#111111' } },
+    { id: 'oviedo', name: 'Real Oviedo', short: 'OVI', rating: 74, formation: '2-3-1', passive: 'motivator', colors: { primary: '#0052a3', secondary: '#ffffff', away: '#f2c200' } },
+    { id: 'elche', name: 'Elche', short: 'ELC', rating: 74, formation: '3-2-1', passive: 'fitnessGuru', colors: { primary: '#ffffff', secondary: '#00843d', away: '#00843d' } },
   ],
   'esp-3': [
     { id: 'racing', name: 'Racing Santander', short: 'RAC', rating: 68, formation: '2-3-1', passive: 'motivator', colors: { primary: '#0f8a4f', secondary: '#ffffff', away: '#101820' } },
@@ -30,6 +34,8 @@ export const CLUBS = {
     { id: 'valladolid', name: 'Real Valladolid', short: 'VLL', rating: 74, formation: '2-3-1', passive: 'fitnessGuru', colors: { primary: '#5b2a86', secondary: '#ffffff', away: '#f2f2f2' } },
     { id: 'granada', name: 'Granada', short: 'GRA', rating: 72, formation: '3-2-1', passive: 'motivator', colors: { primary: '#c8102e', secondary: '#ffffff', away: '#0b2a5b' } },
     { id: 'almeria', name: 'Almería', short: 'ALM', rating: 68, formation: '2-2-2', passive: 'attackMinded', colors: { primary: '#e2231a', secondary: '#ffffff', away: '#111111' } },
+    { id: 'cadiz', name: 'Cádiz', short: 'CAD', rating: 70, formation: '3-1-2', passive: 'counterMaster', colors: { primary: '#ffd200', secondary: '#0033a0', away: '#0033a0' } },
+    { id: 'las-palmas', name: 'Las Palmas', short: 'LPA', rating: 71, formation: '2-3-1', passive: 'tactician', colors: { primary: '#ffe600', secondary: '#0057b8', away: '#0057b8' } },
   ],
   'eng-1': [
     { id: 'arsenal', name: 'Arsenal', short: 'ARS', rating: 88, formation: '2-3-1', passive: 'tactician', colors: { primary: '#ef0107', secondary: '#ffffff', away: '#023474' } },
@@ -40,6 +46,8 @@ export const CLUBS = {
     { id: 'aston-villa', name: 'Aston Villa', short: 'AVL', rating: 83, formation: '2-3-1', passive: 'counterMaster', colors: { primary: '#670e36', secondary: '#95bfe5', away: '#ffffff' } },
     { id: 'tottenham', name: 'Tottenham Hotspur', short: 'TOT', rating: 82, formation: '2-2-2', passive: 'attackMinded', colors: { primary: '#ffffff', secondary: '#132257', away: '#132257' } },
     { id: 'man-united', name: 'Manchester United', short: 'MUN', rating: 82, formation: '3-1-2', passive: 'motivator', colors: { primary: '#da291c', secondary: '#000000', away: '#ffffff' } },
+    { id: 'blackburn', name: 'Blackburn Rovers', short: 'BLB', rating: 79, formation: '2-2-2', passive: 'motivator', colors: { primary: '#009ee0', secondary: '#ffffff', away: '#ed1c24' } },
+    { id: 'derby', name: 'Derby County', short: 'DER', rating: 79, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#ffffff', secondary: '#000000', away: '#000000' } },
   ],
   'eng-2': [
     { id: 'crystal-palace', name: 'Crystal Palace', short: 'CRY', rating: 78, formation: '3-2-1', passive: 'counterMaster', colors: { primary: '#1b458f', secondary: '#c4122e', away: '#ffffff' } },
@@ -50,6 +58,8 @@ export const CLUBS = {
     { id: 'fulham', name: 'Fulham', short: 'FUL', rating: 75, formation: '2-3-1', passive: 'motivator', colors: { primary: '#ffffff', secondary: '#000000', away: '#cc0000' } },
     { id: 'everton', name: 'Everton', short: 'EVE', rating: 75, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#003399', secondary: '#ffffff', away: '#f5d130' } },
     { id: 'west-ham', name: 'West Ham United', short: 'WHU', rating: 74, formation: '2-3-1', passive: 'motivator', colors: { primary: '#7a263a', secondary: '#1bb1e7', away: '#ffffff' } },
+    { id: 'sheffield-wednesday', name: 'Sheffield Wednesday', short: 'SHW', rating: 74, formation: '2-3-1', passive: 'attackMinded', colors: { primary: '#0050a0', secondary: '#ffffff', away: '#f2c200' } },
+    { id: 'west-brom', name: 'West Bromwich Albion', short: 'WBA', rating: 74, formation: '3-2-1', passive: 'counterMaster', colors: { primary: '#122f67', secondary: '#ffffff', away: '#ffffff' } },
   ],
   'eng-3': [
     { id: 'leeds', name: 'Leeds United', short: 'LEE', rating: 70, formation: '2-2-2', passive: 'fitnessGuru', colors: { primary: '#ffffff', secondary: '#1d428a', away: '#ffcd00' } },
@@ -60,6 +70,8 @@ export const CLUBS = {
     { id: 'southampton', name: 'Southampton', short: 'SOU', rating: 68, formation: '2-3-1', passive: 'attackMinded', colors: { primary: '#d71920', secondary: '#ffffff', away: '#ffc20e' } },
     { id: 'ipswich', name: 'Ipswich Town', short: 'IPS', rating: 67, formation: '2-2-2', passive: 'motivator', colors: { primary: '#0044a9', secondary: '#ffffff', away: '#e2231a' } },
     { id: 'middlesbrough', name: 'Middlesbrough', short: 'MID', rating: 66, formation: '2-3-1', passive: 'fitnessGuru', colors: { primary: '#e11b22', secondary: '#ffffff', away: '#111111' } },
+    { id: 'stoke', name: 'Stoke City', short: 'STK', rating: 67, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#e03a3e', secondary: '#ffffff', away: '#1b2b4b' } },
+    { id: 'norwich', name: 'Norwich City', short: 'NOR', rating: 68, formation: '2-3-1', passive: 'tactician', colors: { primary: '#fff200', secondary: '#00a650', away: '#00a650' } },
   ],
   'ita-1': [
     { id: 'inter', name: 'Inter', short: 'INT', rating: 87, formation: '3-1-2', passive: 'tactician', colors: { primary: '#0068a8', secondary: '#000000', away: '#ffffff' } },
@@ -70,6 +82,8 @@ export const CLUBS = {
     { id: 'roma', name: 'Roma', short: 'ROM', rating: 82, formation: '3-2-1', passive: 'counterMaster', colors: { primary: '#8e1f2f', secondary: '#f0bc42', away: '#ffffff' } },
     { id: 'como', name: 'Como', short: 'COM', rating: 80, formation: '2-3-1', passive: 'tactician', colors: { primary: '#1d3e8f', secondary: '#ffffff', away: '#ffffff' } },
     { id: 'bologna', name: 'Bologna', short: 'BOL', rating: 80, formation: '2-3-1', passive: 'fitnessGuru', colors: { primary: '#a21c26', secondary: '#1a2f48', away: '#ffffff' } },
+    { id: 'brescia', name: 'Brescia', short: 'BRE', rating: 79, formation: '2-3-1', passive: 'tactician', colors: { primary: '#005cab', secondary: '#ffffff', away: '#ffffff' } },
+    { id: 'vicenza', name: 'Vicenza', short: 'VIC', rating: 79, formation: '2-2-2', passive: 'attackMinded', colors: { primary: '#e2001a', secondary: '#ffffff', away: '#0b2240' } },
   ],
   'ita-2': [
     { id: 'lazio', name: 'Lazio', short: 'LAZ', rating: 78, formation: '2-3-1', passive: 'motivator', colors: { primary: '#87d8f7', secondary: '#ffffff', away: '#111111' } },
@@ -80,6 +94,8 @@ export const CLUBS = {
     { id: 'sassuolo', name: 'Sassuolo', short: 'SAS', rating: 73, formation: '2-3-1', passive: 'attackMinded', colors: { primary: '#00a752', secondary: '#000000', away: '#ffffff' } },
     { id: 'parma', name: 'Parma', short: 'PAR', rating: 72, formation: '2-3-1', passive: 'tactician', colors: { primary: '#ffffff', secondary: '#111111', away: '#fcd116' } },
     { id: 'cagliari', name: 'Cagliari', short: 'CAG', rating: 72, formation: '3-2-1', passive: 'motivator', colors: { primary: '#a6192e', secondary: '#002d62', away: '#ffffff' } },
+    { id: 'empoli', name: 'Empoli', short: 'EMP', rating: 72, formation: '2-3-1', passive: 'tactician', colors: { primary: '#005bab', secondary: '#ffffff', away: '#ffffff' } },
+    { id: 'bari', name: 'Bari', short: 'BAR', rating: 72, formation: '3-1-2', passive: 'motivator', colors: { primary: '#e2001a', secondary: '#ffffff', away: '#ffffff' } },
   ],
   'ita-3': [
     { id: 'palermo', name: 'Palermo', short: 'PAL', rating: 70, formation: '2-3-1', passive: 'attackMinded', colors: { primary: '#eaa1c3', secondary: '#111111', away: '#111111' } },
@@ -90,6 +106,8 @@ export const CLUBS = {
     { id: 'cremonese', name: 'Cremonese', short: 'CRE', rating: 66, formation: '3-1-2', passive: 'counterMaster', colors: { primary: '#c8102e', secondary: '#9b9b9b', away: '#ffffff' } },
     { id: 'sampdoria', name: 'Sampdoria', short: 'SAM', rating: 66, formation: '2-2-2', passive: 'motivator', colors: { primary: '#1f4ea1', secondary: '#ffffff', away: '#ffffff' } },
     { id: 'pisa', name: 'Pisa', short: 'PIS', rating: 65, formation: '3-2-1', passive: 'motivator', colors: { primary: '#1a1a1a', secondary: '#004b9b', away: '#ffffff' } },
+    { id: 'perugia', name: 'Perugia', short: 'PER', rating: 66, formation: '3-2-1', passive: 'counterMaster', colors: { primary: '#e2001a', secondary: '#ffffff', away: '#ffffff' } },
+    { id: 'chievo', name: 'Chievo Verona', short: 'CHI', rating: 65, formation: '2-3-1', passive: 'fitnessGuru', colors: { primary: '#ffd200', secondary: '#0033a0', away: '#0033a0' } },
   ],
 };
 

@@ -14,6 +14,8 @@ export const CLUBS = {
     c('goztepe', 'Göztepe', 'GOZ', 73, '2-3-1', 'fitnessGuru', '#ffd200', '#d71920', '#ffffff'),
     c('samsunspor', 'Samsunspor', 'SAM', 73, '3-1-2', 'counterMaster', '#e30613', '#ffffff', '#1a1a1a'),
     c('alanyaspor', 'Alanyaspor', 'ALA', 72, '2-2-2', 'counterMaster', '#f58220', '#00843d', '#ffffff'),
+    c('bursaspor', 'Bursaspor', 'BUR', 73, '2-3-1', 'motivator', '#00843d', '#ffffff', '#ffffff'),
+    c('konyaspor', 'Konyaspor', 'KON', 72, '3-2-1', 'ironDiscipline', '#00843d', '#ffffff', '#ffffff'),
   ],
   'sco-1': [
     c('celtic', 'Celtic', 'CEL', 74, '2-3-1', 'attackMinded', '#018749', '#ffffff', '#000000'),
@@ -24,6 +26,8 @@ export const CLUBS = {
     c('motherwell', 'Motherwell', 'MOT', 64, '2-3-1', 'tactician', '#f9b200', '#7d1e3c', '#ffffff'),
     c('dundee-united', 'Dundee United', 'DUN', 63, '3-2-1', 'ironDiscipline', '#f47a20', '#000000', '#ffffff'),
     c('st-mirren', 'St Mirren', 'STM', 63, '3-1-2', 'cupSpecialist', '#000000', '#ffffff', '#e30613'),
+    c('kilmarnock', 'Kilmarnock', 'KIL', 63, '3-2-1', 'ironDiscipline', '#003da5', '#ffffff', '#ffd200'),
+    c('dundee-fc', 'Dundee', 'DFC', 63, '2-3-1', 'counterMaster', '#0b1f45', '#ffffff', '#ffffff'),
   ],
   'aut-1': [
     c('red-bull-salzburg', 'Red Bull Salzburg', 'RBS', 72, '2-2-2', 'fitnessGuru', '#ffffff', '#d6001c', '#0b1f45'),
@@ -34,6 +38,8 @@ export const CLUBS = {
     c('wolfsberger-ac', 'Wolfsberger AC', 'WAC', 65, '3-1-2', 'cupSpecialist', '#000000', '#ffffff', '#e2001a'),
     c('tsv-hartberg', 'TSV Hartberg', 'HAR', 63, '2-3-1', 'counterMaster', '#00539f', '#009b48', '#ffffff'),
     c('scr-altach', 'SCR Altach', 'ALT', 62, '3-2-1', 'ironDiscipline', '#000000', '#ffffff', '#e2001a'),
+    c('wacker-innsbruck', 'Wacker Innsbruck', 'WIN', 64, '3-2-1', 'motivator', '#00843d', '#000000', '#ffffff'),
+    c('grazer-ak', 'Grazer AK', 'GAK', 63, '2-3-1', 'fitnessGuru', '#e2001a', '#ffffff', '#ffffff'),
   ],
   'gre-1': [
     c('olympiacos', 'Olympiacos', 'OLY', 74, '2-3-1', 'tactician', '#e2001a', '#ffffff', '#ffffff'),
@@ -44,16 +50,20 @@ export const CLUBS = {
     c('ofi-crete', 'OFI Crete', 'OFI', 64, '3-1-2', 'cupSpecialist', '#000000', '#ffffff', '#e2001a'),
     c('levadiakos', 'Levadiakos', 'LEV', 63, '2-2-2', 'attackMinded', '#00843d', '#ffffff', '#ffffff'),
     c('atromitos', 'Atromitos', 'ATR', 62, '3-2-1', 'ironDiscipline', '#0057b8', '#ffffff', '#ffffff'),
+    c('panionios', 'Panionios', 'PNI', 63, '3-2-1', 'counterMaster', '#e2001a', '#0033a0', '#ffffff'),
+    c('iraklis', 'Iraklis', 'IRA', 63, '2-3-1', 'tactician', '#0033a0', '#ffffff', '#ffffff'),
   ],
   'eur-1': [
-    c('club-brugge', 'Club Brugge', 'BRU', 74, '2-3-1', 'tactician', '#0072ce', '#000000', '#ffffff'),
     c('shakhtar-donetsk', 'Shakhtar Donetsk', 'SHA', 70, '2-2-2', 'attackMinded', '#f26522', '#000000', '#ffffff'),
-    c('fc-copenhagen', 'FC Copenhagen', 'FCK', 70, '3-2-1', 'motivator', '#ffffff', '#001e62', '#001e62'),
     c('bodo-glimt', 'Bodø/Glimt', 'BOD', 70, '2-3-1', 'fitnessGuru', '#ffd700', '#000000', '#ffffff'),
     c('red-star-belgrade', 'Red Star Belgrade', 'RSB', 69, '3-1-2', 'motivator', '#e2001a', '#ffffff', '#ffffff'),
     c('slavia-prague', 'Slavia Prague', 'SLA', 69, '3-2-1', 'fitnessGuru', '#ffffff', '#e2001a', '#e2001a'),
     c('dinamo-zagreb', 'Dinamo Zagreb', 'DIN', 68, '2-2-2', 'cupSpecialist', '#0057b8', '#ffffff', '#ffffff'),
-    c('fc-basel', 'FC Basel', 'BAS', 67, '2-3-1', 'counterMaster', '#e2001a', '#0033a0', '#ffffff'),
+    c('dynamo-kyiv', 'Dynamo Kyiv', 'DYN', 70, '2-3-1', 'attackMinded', '#ffffff', '#0055a5', '#0055a5'),
+    c('ferencvaros', 'Ferencváros', 'FTC', 68, '3-2-1', 'motivator', '#00843d', '#ffffff', '#ffffff'),
+    c('malmo-ff', 'Malmö FF', 'MFF', 68, '2-2-2', 'fitnessGuru', '#6cadd7', '#ffffff', '#ffffff'),
+    c('legia-warsaw', 'Legia Warsaw', 'LEG', 68, '3-1-2', 'ironDiscipline', '#00843d', '#ffffff', '#e2001a'),
+    c('sparta-prague', 'Sparta Prague', 'SPA', 68, '2-3-1', 'tactician', '#8b1e3f', '#ffffff', '#ffffff'),
   ],
   'arg-1': [
     c('river-plate', 'River Plate', 'RIV', 80, '2-3-1', 'attackMinded', '#ffffff', '#e2001a', '#000000'),
@@ -64,6 +74,8 @@ export const CLUBS = {
     c('rosario-central', 'Rosario Central', 'ROS', 75, '3-2-1', 'ironDiscipline', '#003f87', '#ffd200', '#ffffff'),
     c('lanus', 'Lanús', 'LAN', 74, '2-2-2', 'cupSpecialist', '#7a1f3d', '#ffffff', '#ffffff'),
     c('argentinos-juniors', 'Argentinos Juniors', 'ARJ', 73, '2-3-1', 'fitnessGuru', '#e2001a', '#ffffff', '#ffffff'),
+    c('gimnasia-lp', 'Gimnasia La Plata', 'GEL', 73, '3-2-1', 'motivator', '#ffffff', '#0033a0', '#0033a0'),
+    c('banfield', 'Banfield', 'BAN', 72, '2-3-1', 'counterMaster', '#00843d', '#ffffff', '#ffffff'),
   ],
   'arg-2': [
     c('independiente', 'Independiente', 'IND', 71, '3-2-1', 'motivator', '#e2001a', '#ffffff', '#ffffff'),
@@ -74,6 +86,8 @@ export const CLUBS = {
     c('belgrano', 'Belgrano', 'BEL', 66, '2-3-1', 'motivator', '#75aadb', '#ffffff', '#000000'),
     c('union-santa-fe', 'Unión', 'UNI', 64, '2-2-2', 'fitnessGuru', '#e2001a', '#ffffff', '#1a1a1a'),
     c('newells-old-boys', "Newell's Old Boys", 'NOB', 63, '2-3-1', 'attackMinded', '#e2001a', '#000000', '#ffffff'),
+    c('colon', 'Colón', 'COL', 65, '3-1-2', 'ironDiscipline', '#e2001a', '#000000', '#ffffff'),
+    c('ferro-carril-oeste', 'Ferro Carril Oeste', 'FER', 63, '3-2-1', 'tactician', '#00843d', '#ffffff', '#ffffff'),
   ],
   'bra-1': [
     c('flamengo', 'Flamengo', 'FLA', 80, '2-3-1', 'attackMinded', '#e2001a', '#000000', '#ffffff'),
@@ -84,6 +98,8 @@ export const CLUBS = {
     c('bahia', 'Bahia', 'BAH', 74, '2-3-1', 'fitnessGuru', '#003da5', '#e2001a', '#ffffff'),
     c('sao-paulo', 'São Paulo', 'SAO', 73, '3-2-1', 'motivator', '#ffffff', '#e2001a', '#000000'),
     c('corinthians', 'Corinthians', 'COR', 73, '3-1-2', 'ironDiscipline', '#ffffff', '#000000', '#000000'),
+    c('athletico-pr', 'Athletico Paranaense', 'CAP', 74, '2-3-1', 'attackMinded', '#e2001a', '#000000', '#ffffff'),
+    c('sport-recife', 'Sport Recife', 'SPT', 72, '3-2-1', 'motivator', '#e2001a', '#000000', '#ffffff'),
   ],
   'bra-2': [
     c('atletico-mineiro', 'Atlético Mineiro', 'CAM', 72, '2-2-2', 'motivator', '#000000', '#ffffff', '#ffffff'),
@@ -94,6 +110,8 @@ export const CLUBS = {
     c('mirassol', 'Mirassol', 'MIR', 67, '3-2-1', 'fitnessGuru', '#ffd200', '#00843d', '#00843d'),
     c('red-bull-bragantino', 'Red Bull Bragantino', 'RBB', 66, '2-3-1', 'fitnessGuru', '#ffffff', '#e2001a', '#0b1f45'),
     c('fortaleza', 'Fortaleza', 'FOR', 65, '3-1-2', 'counterMaster', '#e2001a', '#003da5', '#ffffff'),
+    c('guarani', 'Guarani', 'GUA', 65, '2-3-1', 'fitnessGuru', '#00843d', '#ffffff', '#ffffff'),
+    c('vitoria-ba', 'Vitória', 'VTR', 66, '3-1-2', 'counterMaster', '#e2001a', '#000000', '#ffffff'),
   ],
 };
 
@@ -144,14 +162,11 @@ export const PLAYERS = [
   p('p-juan-neira', 'Juan Neira', 'FWD', 'uncommon', 68, 34, 68, null, 160, 'ARG', 'ofi-crete'),
 
   // ---- Europe Other ----
-  p('p-hans-vanaken', 'Hans Vanaken', 'MID', 'rare', 80, 68, 72, 'playmaker', 115, 'BEL', 'club-brugge'),
   p('p-dmytro-riznyk', 'Dmytro Riznyk', 'GK', 'rare', 22, 72, 68, 'shotStopper', 165, 'UKR', 'shakhtar-donetsk'),
-  p('p-youssoufa-moukoko', 'Youssoufa Moukoko', 'FWD', 'rare', 74, 34, 70, null, 175, 'GER', 'fc-copenhagen'),
   p('p-jens-petter-hauge', 'Jens Petter Hauge', 'FWD', 'rare', 76, 38, 70, 'clutch', 150, 'NOR', 'bodo-glimt'),
   p('p-marko-arnautovic', 'Marko Arnautović', 'FWD', 'rare', 74, 38, 76, 'bigGame', 80, 'AUT', 'red-star-belgrade'),
   p('p-tomas-chory', 'Tomáš Chorý', 'FWD', 'rare', 72, 38, 82, 'poacher', 130, 'CZE', 'slavia-prague'),
   p('p-dominik-livakovic', 'Dominik Livaković', 'GK', 'rare', 22, 73, 70, 'shotStopper', 130, 'CRO', 'dinamo-zagreb'),
-  p('p-xherdan-shaqiri', 'Xherdan Shaqiri', 'MID', 'rare', 82, 56, 64, 'playmaker', 90, 'SUI', 'fc-basel'),
 
   // ---- Argentina ----
   p('p-franco-armani', 'Franco Armani', 'GK', 'epic', 22, 82, 66, 'shotStopper', 70, 'ARG', 'river-plate'),

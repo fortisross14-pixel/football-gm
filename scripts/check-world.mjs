@@ -3,7 +3,7 @@
 import { readdirSync } from 'node:fs';
 import { resolve, basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { DIVISIONS, DIVISION_BY_ID, LEVEL_RATING, keyPlayerTarget } from '../src/data/world/structure.js';
+import { DIVISIONS, DIVISION_BY_ID, LEVEL_RATING, keyPlayerTarget, DIVISION_SIZE } from '../src/data/world/structure.js';
 import { PLAYER_POOL } from '../src/data/pool.js';
 import { overall, rarityForOverall, TRAITS, FORMATIONS, POSITIONS } from '../src/engine/cards.js';
 import { COACH_PASSIVES } from '../src/data/coachPassives.js';
@@ -34,7 +34,7 @@ for (const file of files) {
   for (const [divId, clubs] of Object.entries(CLUBS)) {
     const div = DIVISION_BY_ID[divId];
     if (!div) { err(`${name}: unknown division id ${divId}`); continue; }
-    if (clubs.length !== 8) err(`${name}: ${divId} has ${clubs.length} clubs (need 8)`);
+    if (clubs.length !== DIVISION_SIZE) err(`${name}: ${divId} has ${clubs.length} clubs (need ${DIVISION_SIZE})`);
     const shorts = new Set();
     const [lo, hi] = LEVEL_RATING[div.level];
     for (const c of clubs) {

@@ -7,7 +7,7 @@ import {
 import { buildAiTeam } from '../src/engine/aiTeam.js';
 import { overall, rarityForOverall } from '../src/engine/cards.js';
 import { openPack, PACKS } from '../src/engine/packs.js';
-import { standings, userFixture, aiTeamFor, clubById } from '../src/engine/season.js';
+import { MATCHDAYS, standings, userFixture, aiTeamFor, clubById } from '../src/engine/season.js';
 import { OFFSEASON_IDS, OFFSEASON_CARDS, cardText, TIERS, SIGNING_TIERS } from '../src/data/offseason.js';
 import { PLAYER_POOL, COACH_POOL } from '../src/data/pool.js';
 import { skillOf, MAX_SKILLS } from '../src/data/skills.js';
@@ -129,7 +129,7 @@ test('keep, merge and discard', () => {
   if (!duplicateOf(s, first)) {
     s = keepPending(s, { replaceId: s.bench[0] });
     assert.ok(s.squad.some((c) => c.id === first.id));
-    assert.equal(s.squad.length, 10);
+    assert.equal(s.squad.length, 12);
   } else s = mergePending(s);
   const coinsBefore = s.coins;
   s = discardPending(s);
@@ -147,11 +147,11 @@ test('keep, merge and discard', () => {
 
 test('a full season runs, ends and opens the Transfer Market', () => {
   let s = fresh();
-  for (let md = 0; md < 14; md += 1) s = playMatchday(s, 100 + md);
+  for (let md = 0; md < MATCHDAYS; md += 1) s = playMatchday(s, 100 + md);
   assert.equal(s.phase, 'seasonEnd');
   const table = standings(s.season, s.club.divisionId);
-  assert.equal(table.length, 8);
-  assert.ok(table.every((r) => r.p === 14));
+  assert.equal(table.length, 10);
+  assert.ok(table.every((r) => r.p === MATCHDAYS));
   assert.equal(table.reduce((a, r) => a + r.gf, 0), table.reduce((a, r) => a + r.ga, 0));
   const coins = s.coins;
   s = closeSeason(s, 3);
@@ -172,7 +172,7 @@ test('a full season runs, ends and opens the Transfer Market', () => {
 test('all 33 management card types can be used', () => {
   assert.equal(OFFSEASON_IDS.length, 33);
   let base = fresh();
-  for (let md = 0; md < 14; md += 1) base = playMatchday(base, 300 + md);
+  for (let md = 0; md < MATCHDAYS; md += 1) base = playMatchday(base, 300 + md);
   base = resolve(closeSeason(base, 1));
   for (const type of OFFSEASON_IDS) {
     for (const rarity of TIERS) {
@@ -192,23 +192,23 @@ test('all 33 management card types can be used', () => {
 
 test('promotion and relegation move clubs between tiers', () => {
   let s = fresh();
-  for (let md = 0; md < 14; md += 1) s = playMatchday(s, 700 + md);
+  for (let md = 0; md < MATCHDAYS; md += 1) s = playMatchday(s, 700 + md);
   s.season.divisions['esp-3'].table.racing.pts = 999; // force the title
   s = closeSeason(s, 8);
   assert.equal(s.club.divisionId, 'esp-2');
   assert.equal(s.club.level, 2);
   assert.equal(s.lastSeason.userMove.type, 'promoted');
-  assert.equal(s.lastSeason.moves.length, 26); // 13 pairs of adjacent tiers
-  for (const ids of Object.values(s.world.divisions)) assert.equal(ids.length, 8);
+  assert.equal(s.lastSeason.moves.length, 60); // 15 pairs of adjacent tiers × 2 up, 2 down
+  for (const ids of Object.values(s.world.divisions)) assert.equal(ids.length, 10);
   assert.ok(s.world.divisions['esp-2'].includes('racing'));
   s = startNextSeason(resolve(s), 9);
   assert.ok(userFixture(s.season, 'esp-2', 'racing'));
 });
 
-test('the world has 38 full divisions and a big card pool', () => {
+test('the world has 44 full divisions of 10 and a big card pool', () => {
   const s = fresh();
-  assert.equal(Object.keys(s.world.divisions).length, 38);
-  assert.equal(Object.keys(s.world.clubs).length, 304);
+  assert.equal(Object.keys(s.world.divisions).length, 44);
+  assert.equal(Object.keys(s.world.clubs).length, 440);
   assert.ok(POOLS.player.length >= 400, `pool ${POOLS.player.length}`);
   const seen = new Set(s.squad.map((c) => c.id));
   for (const c of Object.values(s.world.clubs)) {
@@ -223,13 +223,13 @@ test('the world has 38 full divisions and a big card pool', () => {
     }
   }
   // The user's club starts with its named cards plus generic commons.
-  assert.equal(s.squad.length, 10);
+  assert.equal(s.squad.length, 12);
   assert.ok(s.squad.filter((c) => c.generic).every((c) => c.rarity === 'common' && !c.name.includes(' ')));
 });
 
 test('off-season: academies, signings and retirements keep one card per club', () => {
   let s = fresh();
-  for (let md = 0; md < 14; md += 1) s = playMatchday(s, 900 + md);
+  for (let md = 0; md < MATCHDAYS; md += 1) s = playMatchday(s, 900 + md);
   s = closeSeason(s, 12);
   assert.ok(s.lastSeason.news.length > 0, 'expected some notable moves');
   const holders = new Map();
@@ -245,14 +245,14 @@ test('off-season: academies, signings and retirements keep one card per club', (
   let w = s.world;
   for (let y = 0; y < 10; y += 1) w = aiOffseason(w, { pools: CLUB_POOLS, poolById: POOL_BY_ID, allCards: PLAYER_CARDS, userIds: [], seed: y, countryOf: (d) => DIVISION_BY_ID[d].code }).world;
   assert.ok(w.retiredCount > 50, `retired ${w.retiredCount}`);
-  const avg = Object.values(w.clubs).reduce((a, c) => a + c.keyPlayers.length, 0) / 304;
+  const avg = Object.values(w.clubs).reduce((a, c) => a + c.keyPlayers.length, 0) / Object.keys(w.clubs).length;
   assert.ok(avg > 2, `squads ran dry: ${avg.toFixed(2)} named per club`);
   for (const c of Object.values(w.clubs)) assert.ok(c.keyPlayers.length <= 10);
 });
 
 test('signing cards bring a random player of the right rarity, maybe from another club', () => {
   let base = fresh();
-  for (let md = 0; md < 14; md += 1) base = playMatchday(base, 1300 + md);
+  for (let md = 0; md < MATCHDAYS; md += 1) base = playMatchday(base, 1300 + md);
   base = resolve(closeSeason(base, 2));
   let fromClub = 0;
   for (let i = 0; i < 40; i += 1) {
@@ -348,7 +348,7 @@ test('season events show up in the match and change it', () => {
 test('GM career: objective, review, offers and switching clubs with 2 cards', () => {
   let s = fresh();
   assert.ok(s.gm.objective && s.gm.objective.text);
-  for (let md = 0; md < 14; md += 1) s = playMatchday(s, 5000 + md);
+  for (let md = 0; md < MATCHDAYS; md += 1) s = playMatchday(s, 5000 + md);
   // Force a strong season so offers arrive.
   s.season.divisions['esp-3'].table.racing.pts = 999;
   s = resolve(closeSeason(s, 4));
@@ -365,7 +365,7 @@ test('GM career: objective, review, offers and switching clubs with 2 cards', ()
   assert.equal(moved.club.id, offer.clubId);
   assert.ok(moved.squad.some((c) => c.id === star.id), 'carried player comes along');
   assert.equal(moved.coaches.coach.name, keptCoach, 'carried coach comes along');
-  assert.equal(moved.squad.length, 10);
+  assert.equal(moved.squad.length, 12);
   assert.equal(moved.inventory.packs.length, 0, 'uncarried packs stay behind');
   assert.equal(moved.world.clubs[offer.clubId].keyPlayers.length, 0, 'your club has no AI squad');
   const leftBehind = s.squad.filter((c) => POOL_BY_ID[c.id] && c.id !== star.id).map((c) => c.id);
@@ -383,7 +383,7 @@ test('two missed objectives in a row with unhappy owners get you sacked', () => 
   s.gm.confidence = { board: 30, fans: 30 };
   s.gm.career[s.gm.career.length - 1].from = 0; // not the first season at the club
   s.gm.objective = { target: 1, text: 'Win the league' };
-  for (let md = 0; md < 14; md += 1) s = playMatchday(s, 6000 + md);
+  for (let md = 0; md < MATCHDAYS; md += 1) s = playMatchday(s, 6000 + md);
   s.season.divisions['esp-3'].table.racing.pts = -50; // finish last
   s = resolve(closeSeason(s, 5));
   assert.equal(s.gm.sacked, true);
@@ -399,7 +399,7 @@ test('a new career starts at any of three small clubs', () => {
   const s = newClubState(5, { clubId: offers[0].clubId, gmName: 'Test GM' });
   assert.equal(s.club.id, offers[0].clubId);
   assert.equal(s.gmName, 'Test GM');
-  assert.equal(s.squad.length, 10);
+  assert.equal(s.squad.length, 12);
   assert.ok(nextUserGame(s), 'has a first fixture');
   assert.equal(s.world.clubs[s.club.id].keyPlayers.length, 0);
 });
@@ -422,7 +422,7 @@ test('a card retires at zero matches and is replaced', () => {
   const next = playMatchday(worn, 5);
   assert.ok(!next.squad.some((c) => c.id === id));
   assert.equal(next.hallOfFame.length, 1);
-  assert.equal(next.squad.length, 10);
+  assert.equal(next.squad.length, 12);
 });
 
 test('skills: elite cards carry one, max 2 per match, conditions hold', () => {
@@ -517,13 +517,13 @@ test('history: a season is archived with champions, awards and cup finals; recor
   assert.equal(played.archive.length, 1);
   const entry = played.archive[0];
   const lg = entry.leagues[played.careerLog[0].divId];
-  assert.equal(lg.table.length, 8);
+  assert.equal(lg.table.length, 10);
   assert.ok(lg.glove && lg.glove[1]);
-  assert.ok(Object.keys(entry.leagues).length >= 38);
+  assert.ok(Object.keys(entry.leagues).length >= 44);
   assert.ok(played.records && Object.keys(played.records.players).length > 50);
   const champ = lg.table[0][0];
   assert.equal(clubHistory(played.archive, champ).honours.league, 1);
-  assert.ok(titleTable(played.archive).length >= 38);
+  assert.ok(titleTable(played.archive).length >= 44);
   assert.ok(Object.keys(played.world.gms).length > 290);
   assert.ok(gmRanking(played.world).length > 290);
   // Live stats and the yearly awards
@@ -541,7 +541,7 @@ test('house rule: a cursed Barcelona loses its stars and at least half its games
   assert.ok(barca.keyPlayers.every((id) => ['common', 'uncommon'].includes(POOL_BY_ID[id].rarity)));
   let losses = 0;
   let games = 0;
-  for (let md = 0; md < 14; md += 1) s = playMatchday(s, 9100 + md);
+  for (let md = 0; md < MATCHDAYS; md += 1) s = playMatchday(s, 9100 + md);
   for (const [, row] of Object.entries(s.season.divisions[barca.divisionId].table)) if (row === s.season.divisions[barca.divisionId].table.barcelona) { losses = row.l; games = row.p; }
   assert.ok(games >= 14 && losses / games >= 0.5, `Barcelona lost ${losses}/${games}`);
   assert.ok(!toggleCurse(s, 'barcelona').world.clubs.barcelona.cursed);
@@ -558,12 +558,53 @@ test('shape: the same 7 every week lowers it, rotating keeps it up, Sports Scien
   for (let i = 0; i < 12; i += 1) same = play(same, same.lineup);
   let rotate = fresh();
   const ids = rotate.squad.map((c) => c.id);
-  for (let i = 0; i < 12; i += 1) rotate = play(rotate, [rotate.lineup[0], ...ids.filter((id) => id !== rotate.lineup[0]).slice(i % 3, (i % 3) + 6)]);
+  for (let i = 0; i < 12; i += 1) rotate = play(rotate, [rotate.lineup[0], ...ids.filter((id) => id !== rotate.lineup[0]).slice(i % 5, (i % 5) + 6)]);
   assert.ok(teamShape(same) < 65, `same 7: ${teamShape(same)}`);
   assert.ok(teamShape(rotate) > teamShape(same) + 10, `rotating: ${teamShape(rotate)} vs ${teamShape(same)}`);
   assert.ok(teamShape({ ...same, perks: { shape: 30 } }) >= teamShape(same) + 25);
   assert.equal(shapeLabel(90), 'Fresh');
   assert.equal(shapeLabel(40), 'Exhausted');
+});
+
+test('v1.9 world: every division has 10 clubs, seasons have 18 league matchdays, squads hold 12', async () => {
+  const { CLUBS_BY_DIVISION } = await import('../src/data/world/index.js');
+  const { DIVISIONS } = await import('../src/data/world/structure.js');
+  const { CALENDAR, createCompetitions, qualifiers, tablesByStrength, cupRoundNames } = await import('../src/engine/competitions.js');
+  for (const d of DIVISIONS) assert.equal(CLUBS_BY_DIVISION[d.id]?.length, 10, d.id);
+  assert.equal(MATCHDAYS, 18);
+  assert.equal(CALENDAR.filter((x) => x === 'L').length, MATCHDAYS);
+  const s = fresh();
+  assert.equal(s.squad.length, 12);
+  assert.equal(s.bench.length, 5);
+  for (const fx of Object.values(s.season.divisions)) assert.equal(fx.fixtures.length, 18);
+  // Cups: 20 clubs (divisions 1 + 2) → 8 play a preliminary round into a 16 bracket; 10 → 4 into 8.
+  const comps = createCompetitions(s.world, qualifiers(tablesByStrength(s.world)), 3);
+  assert.equal(comps.cups.ESP.size, 20);
+  assert.equal(comps.cups.ESP.prelim.length, 8);
+  assert.equal(cupRoundNames(comps.cups.ESP).length, 5);
+  assert.equal(comps.cups.BEL.prelim.length, 4);
+  assert.equal(cupRoundNames(comps.cups.BEL).length, 4);
+  // Europe: 11 champions for 4 places, the last 6 listed play a preliminary round first.
+  assert.equal(comps.continental.europe.prelim.length, 3);
+  assert.equal(comps.continental.europe.seeded.length, 5);
+});
+
+test('v1.9 season: the league, cups and continental rounds all finish', () => {
+  let s = fresh();
+  for (let guard = 0; guard < 60 && s.phase === 'season'; guard += 1) {
+    const game = nextUserGame(s);
+    const homeFirst = game.homeId === s.club.id;
+    const me = buildUserTeam(s, [], homeFirst && !game.neutral);
+    const ai = aiTeamFor(s.world, game.opponentId, POOL_BY_ID, guard);
+    const m = simulateMatch({ home: homeFirst ? me : ai, away: homeFirst ? ai : me, seed: guard, context: { competition: game.competition, knockout: game.knockout, neutral: game.neutral } });
+    const side = homeFirst ? 0 : 1;
+    s = applyMatch(s, m, side, clubById(s.world, game.opponentId), matchRewards(s, m, side, game), 50 + guard, game).state;
+  }
+  assert.equal(s.phase, 'seasonEnd');
+  assert.ok(Object.values(s.season.divisions).every((d) => Object.values(d.table).every((r) => r.p === 18)));
+  assert.ok(Object.values(s.season.comps.cups).every((c) => c.winner));
+  assert.ok(['europe', 'americas', 'afap'].every((k) => s.season.comps.continental[k].winner));
+  assert.ok(s.season.comps.cwc.winner);
 });
 
 test('careers: two seasons fold per player, moves are logged, club pages read them', () => {
@@ -607,7 +648,7 @@ test('no sacking in a first season at a club', () => {
   let s = fresh();
   s.gm.missedInRow = 1;
   s.gm.confidence = { board: 5, fans: 5 };
-  for (let md = 0; md < 14; md += 1) s = playMatchday(s, 7000 + md);
+  for (let md = 0; md < MATCHDAYS; md += 1) s = playMatchday(s, 7000 + md);
   s = resolve(closeSeason(s, 5));
   assert.equal(s.gm.sacked, false);
 });
@@ -641,7 +682,7 @@ test('management cards can be played mid-season; events last the rest of the sea
   assert.equal(canUseOffseason(r.state, { type: 'preseasonCamp', rarity: 'rare' }).ok, false, 'pre-season camp is summer only');
   // The event ends with the season; the club area stays.
   let e = r.state;
-  for (let md = 3; md < 14; md += 1) e = playMatchday(e, 1600 + md);
+  for (let md = 3; md < MATCHDAYS; md += 1) e = playMatchday(e, 1600 + md);
   e = closeSeason(e, 5);
   assert.equal(e.activeEvent, null);
   assert.equal(e.facilities.store, 1);

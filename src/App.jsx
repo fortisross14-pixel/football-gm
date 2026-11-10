@@ -34,7 +34,7 @@ import { loadSlot, saveSlot, loadSettings, saveSettings } from './state/storage.
 // One-time hints, shown the first time each screen opens.
 const TIPS = {
   home: 'This is your club. Play your next match from here. Your board objective sits under the fixture, so keep an eye on it.',
-  squad: 'Tap a card, then another, to swap them. The head coach sets the formation. Set your tactics below: pressing, passing and the defensive line.',
+  squad: 'Tap a card, then another, to swap them. Your 5 reserves sit under the pitch. Tactics and Shape (cohesion, time on the field) have their own tabs.',
   cards: 'Owned: your players, items and the album. Shop: player packs, boost packs and, after the season, the Transfer Market.',
   league: 'Every league in the world plays each matchday. Tap any club to see its page, and open History for champions, top scorers, MVPs and Golden Gloves by season.',
   world: 'The wider world: manager rankings, the strongest clubs, all-time records and the Hall of Fame.',

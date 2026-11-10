@@ -11,7 +11,7 @@ A 7v7 football card game. You are the club's GM: collect player and coach cards,
 2. Merge to `main`: the `Deploy Vite site to GitHub Pages` workflow (`.github/workflows/deploy.yml`) tests, builds and publishes the game.
 3. Open the Pages link on your phone, then **Add to Home Screen** (Safari share menu, or Chrome's ⋮ menu → Install app). It runs full-screen and works offline.
 
-Careers are saved on the device. Use **Back up** in the main menu to move a career between devices (download the file or copy the text, then **Restore** on the other device).
+Careers are saved on the device (saves from before v1.9's 10-club world show as "Older version — can't be continued" and can be deleted). Use **Back up** in the main menu to move a career between devices (download the file or copy the text, then **Restore** on the other device).
 
 ## Run it
 
@@ -25,7 +25,7 @@ npm run build      # static build in dist/
 
 ## What's playable
 
-- **World:** 38 divisions and 304 real clubs across Europe, the Americas, Asia and Africa. Every division plays each matchday, and clubs go up and down between tiers at season end. Browse any league's table, fixtures and scorers.
+- **World:** 44 divisions of 10 clubs (440 real clubs) across Europe, the Americas, Asia and Africa: the Big 4 with three tiers, France, Portugal, the Netherlands, Argentina, Brazil, Mexico and Japan with two, and single leagues from Belgium and Turkey to Chile and Egypt. 18 matchdays a season; 2 up and 2 down between tiers. Every division plays each matchday. Browse any league's table, fixtures and scorers.
 - **Season:** you start in Spain · Division 3 with Racing Santander. Win the league to go up (and earn bigger rewards), finish last to go down.
 - **Competitions:** domestic cups, the European / Americas / Africa–APAC Cups (qualify through your league) and the Club World Cup, all interleaved with league matchdays. Trophies pay prize money and reward packs.
 - **Matches:** 6 blocks of 15 minutes with live commentary, subs, mentality, boosts (up to 3 per match) and **skills**: elite players and coaches each carry one, and you can fire 2 per match. Penalties in knockout games.
@@ -33,14 +33,15 @@ npm run build      # static build in dist/
 - **Shop:** Bronze, Silver, Gold, Elite and Coach packs (odds shown), plus sealed boost packs. Play a boost in a match and you get a free random boost card afterwards.
 - **Pack opening:**
   - Cards reveal one by one.
-  - For each card you choose Keep (pick who it replaces in your 10), Merge a duplicate (+1★, +2 stats, +30 matches) or Discard for coins.
+  - For each card you choose Keep (pick who it replaces in your 12), Merge a duplicate (+1★, +2 stats, +30 matches) or Discard for coins.
 - **Cards tab:** Owned (squad, items, album) and Shop (packs, boosts, Transfer Market).
 - **League tab:** every league by name, with table, fixtures, scorers, cups and **History**: champion, runner-up, top scorer, MVP and Golden Glove for every season, records by league, country or world, and your career season by season. Tap any club for its page (Overview, Squad, History with managers and transfers, Stats, Honours), any player for his profile (Overview, History club by club and season by season, Stats by competition) and any manager for his page.
-- **World tab:** manager rankings (you against 300 AI managers), power ranking and most decorated clubs, world records, Hall of Fame.
+- **World tab:** manager rankings (you against 400+ AI managers), power ranking and most decorated clubs, world records, Hall of Fame.
 - **Season end:** prize money, reward packs and a free management card.
-- **Transfer Market, open all year:** 33 management card types (random signings, youth, club-area upgrades, sponsors, season events…), each with a rarity that sets its strength. 9 offers each summer, 6 new ones every 4 league matchdays. Play cards from Cards → Items any time, up to **8 card plays a season** (+1 at Analytics level 3 and 5).
+- **Transfer Market, open all year:** 33 management card types (random signings, youth, club-area upgrades, sponsors, season events…), each with a rarity that sets its strength. 9 offers each summer, 6 new ones every 5 league matchdays. Play cards from Cards → Items any time, up to **8 card plays a season** (+1 at Analytics level 3 and 5).
 - **Card wear:** players and coaches lose a match each time they play and retire at 0.
 
+- **Squad:** 12 cards, a starting 7 and 5 reserves (3 subs a match). Rotating keeps the team's shape up.
 - **Main menu:** 3 save slots, new career (pick your name and one of three small-club job offers), back up / restore, settings (match speed, auto-play, reduced motion, tips).
 - **GM career:** reputation, board objectives, owners and fans confidence, job offers, moving clubs with 2 cards, getting sacked (3 offers, a level lower if a top-flight club fires you).
 - **Club management:** ten club areas, levels 0–5, each raised by its own card. Business: stadium, hospitality, club store, merchandise, sponsorship (income every match). Sports: training fields, gym, spa & recovery, youth academy, analytics. Plus income per match, finances, popularity and the trophy cabinet.
@@ -67,7 +68,7 @@ Progress is saved in the browser, automatically.
 | `scripts/tactics-check.mjs` | Simulates every tactic against a neutral side |
 | `scripts/smoke.cjs` | Clicks through every screen with a save and reports errors |
 | `src/data/pool.js` | Original card pool (112 players, 16 coaches) |
-| `src/data/world/` | World structure and the 4 region files (clubs + their named players) |
+| `src/data/world/` | World structure, the 5 region files (clubs + their named players) and the squads files (history pools; `squads-e/f.js` for the v1.9 clubs, written with `src/data/cardgen.js`) |
 | `scripts/check-world.mjs` | Validates the world data |
 | `scripts/check-nations.mjs` | Every named player/coach has a known nation (`src/data/nations.js`: code → name + flag) |
 | `src/state/managers.js` | Managers book: every career you have played, ranked (main menu → Managers) |

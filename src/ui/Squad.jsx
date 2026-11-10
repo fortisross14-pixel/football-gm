@@ -149,7 +149,7 @@ function Condition({ state }) {
           <small>Kick-off stamina {shapeStamina(shape)}%{shapePenalty(shape) ? ` · ${(shapePenalty(shape) * 100).toFixed(1)}% stats` : ''}{state.perks?.shape ? ` · Sports Science +${state.perks.shape}` : ''}</small>
         </div>
       </div>
-      <p className="hint">Keeping the same 7 builds cohesion. Spreading minutes keeps the team in shape: anyone over 65% of the minutes lately wears the team down. Subs count too.</p>
+      <p className="hint">Keeping the same 7 builds cohesion. Spreading minutes keeps the team in shape: anyone over 55% of the minutes lately wears the team down. Subs count too.</p>
       <h3 className="sub-title">Time on the field · last ~8 matches</h3>
       <ul className="load-list">
         {rows.map((c) => {
@@ -158,7 +158,7 @@ function Condition({ state }) {
             <li key={c.id} className={v > 65 ? 'is-high' : v < 20 ? 'is-low' : ''}>
               <span className="load-list__pos">{c.pos}</span>
               <span className="load-list__name">{c.name}</span>
-              <span className="load-list__bar"><i style={{ width: `${v}%` }} /><em style={{ left: '65%' }} /></span>
+              <span className="load-list__bar"><i style={{ width: `${v}%` }} /><em style={{ left: '55%' }} /></span>
               <b>{v}%</b>
             </li>
           );

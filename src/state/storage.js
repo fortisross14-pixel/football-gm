@@ -5,8 +5,11 @@ import { compressToUTF16, decompressFromUTF16 } from 'lz-string';
 import { managerEntry, makeCareerId } from './managers.js';
 
 export const SLOT_COUNT = 3;
-const slotKey = (n) => `football-cards-v${SAVE_VERSION}-slot-${n}`;
-const META_KEY = `football-cards-v${SAVE_VERSION}-slots`;
+const slotKey = (n, v = SAVE_VERSION) => `football-cards-v${v}-slot-${n}`;
+const metaKey = (v = SAVE_VERSION) => `football-cards-v${v}-slots`;
+const META_KEY = metaKey();
+// Earlier save formats that may still sit in storage (v3 = 8-club divisions, 10-card squads).
+const OLD_VERSIONS = Array.from({ length: SAVE_VERSION - 3 }, (_, i) => SAVE_VERSION - 1 - i);
 const LEGACY_KEY = 'football-cards-save-v3';
 const SETTINGS_KEY = 'football-cards-settings';
 // Every career ever played, separate from the slots (survives deletes and overwrites).
@@ -70,9 +73,25 @@ function migrate() {
   return next;
 }
 
+// A slot holds a current save (summary), a save from an older version (old: { version, summary })
+// that can't be continued, or nothing.
 export function listSlots() {
   const meta = migrate();
-  return Array.from({ length: SLOT_COUNT }, (_, i) => ({ n: i + 1, ...(meta[i + 1] ? { summary: meta[i + 1] } : {}) }));
+  const oldMeta = OLD_VERSIONS.map((v) => [v, read(metaKey(v)) || {}]);
+  return Array.from({ length: SLOT_COUNT }, (_, i) => {
+    const n = i + 1;
+    if (meta[n]) return { n, summary: meta[n] };
+    const found = oldMeta.find(([, m]) => m[n]);
+    return found ? { n, old: { version: found[0], summary: found[1][n] } } : { n };
+  });
+}
+
+// Removes an older-version save from a slot (the slot is then free for a new career).
+export function deleteOldSlot(n, version) {
+  remove(slotKey(n, version));
+  const meta = read(metaKey(version)) || {};
+  delete meta[n];
+  write(metaKey(version), meta);
 }
 
 export function loadSlot(n) {

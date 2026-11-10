@@ -269,8 +269,9 @@ function LastSummer({ state }) {
       )}
       <h3 className="sub-title">Promoted and relegated</h3>
       <ul className="moves">
-        {last.moves.filter((m) => m.type === 'promoted').map((m) => {
-          const down = last.moves.find((x) => x.type === 'relegated' && x.from === m.to);
+        {last.moves.map((m, i) => [m, last.moves[i + 1]]).filter(([m]) => m.type === 'promoted').map(([m, pair]) => {
+          // Moves come in pairs: each promoted club swaps with one relegated from the division above.
+          const down = pair?.type === 'relegated' && pair.from === m.to ? pair : last.moves.find((x) => x.type === 'relegated' && x.from === m.to);
           return (
             <li key={m.clubId}>
               <span className="is-up">▲ <ClubLink id={m.clubId}>{m.name}</ClubLink></span>
