@@ -111,7 +111,10 @@ const findClub = (clubId) => {
 export function newClubState(seed = 12345, { clubId = USER_CLUB.id, gmName = 'You' } = {}) {
   const found = findClub(clubId) || findClub(USER_CLUB.id);
   const base = { id: found.club.id, name: found.club.name, short: found.club.short, colors: found.club.colors };
+  // A random Uncommon, Rare or Epic head coach (never Common, never a Legend).
   const coaches = structuredClone(USER_COACHES);
+  const pool = COACH_CARDS.filter((c) => ['uncommon', 'rare', 'epic'].includes(c.rarity));
+  if (pool.length) coaches.coach = { ...structuredClone(makeRng(seed + 77).pick(pool)), role: 'coach' };
   const { squad, lineup, bench } = startingSquad(base.id, found.divisionId, coaches.coach.formation, seed);
   const state = {
     version: SAVE_VERSION,
