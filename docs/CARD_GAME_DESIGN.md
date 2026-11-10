@@ -760,3 +760,11 @@ Two team meters, shown on Home and Squad → Starting 7.
 
 `scripts/grade-check.mjs` and `scripts/balance.mjs` give the same numbers as before (the match engine didn't change).
 
+
+**After the world expansion (v2.0)**, 12 careers × 12 seasons (`BOT=… node scripts/career-sim.mjs 12 12`), tactics advice relative to the squad's own level, rookies start with 1 club legend and journeymen at the division's filler rating:
+
+| Bot | Season-1 finish (of 10) | Level-1 club (median) | Top club (median) | Sacked |
+|---|---|---|---|---|
+| Great | 3.0 | season 4 | season 7 (12/12) | 1 of 144 seasons |
+| Average | 5.4 | season 5 | season 8 (12/12) | 1 of 144 |
+| Poor | 9.0 | season 9 (7/12) | 3/12 by season 12 | 27 of 144 |
