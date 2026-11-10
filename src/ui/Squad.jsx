@@ -10,8 +10,10 @@ export default function Squad({ state, setState }) {
   const [view, setView] = useState('xi');
   return (
     <div className="screen screen--squad-wrap">
-      <Segmented label="Squad" value={view} options={[{ id: 'xi', label: 'Starting 7' }, { id: 'tactics', label: 'Tactics' }]} onChange={setView} />
-      {view === 'xi' ? <Lineup state={state} setState={setState} /> : <Tactics state={state} setState={setState} />}
+      <Segmented label="Squad" value={view} options={[{ id: 'xi', label: 'Starting 7' }, { id: 'tactics', label: 'Tactics' }, { id: 'shape', label: 'Shape' }]} onChange={setView} />
+      {view === 'xi' && <Lineup state={state} setState={setState} />}
+      {view === 'tactics' && <Tactics state={state} setState={setState} />}
+      {view === 'shape' && <Condition state={state} />}
     </div>
   );
 }
@@ -85,9 +87,7 @@ function Lineup({ state, setState }) {
         })}
       </div>
 
-      <Condition state={state} />
-
-      <h3 className="sub-title">Bench</h3>
+      <h3 className="sub-title">Reserves</h3>
       <div className="bench">
         {state.bench.map((id, i) => (
           <MiniCard key={id} card={byId(id)} selected={selected?.zone === 'bench' && selected.index === i} onClick={() => tap('bench', i)} />

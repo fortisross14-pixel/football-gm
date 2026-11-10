@@ -7,7 +7,8 @@ import { clubById, standings } from '../engine/season.js';
 import { OFFSEASON_CARDS, cardText } from '../data/offseason.js';
 import { effectiveCohesion, cohesionBonus, teamShape, shapeLabel, seasonSummary, FACILITY_LABEL, academyInfo, nextUserGame } from '../state/club.js';
 import { PACKS } from '../engine/packs.js';
-import { ClubLink, LeagueLink } from './nav.jsx';
+import { ClubLink, LeagueLink, CompLink } from './nav.jsx';
+import { compOfGame } from './Competitions.jsx';
 import { Confidence } from './Career.jsx';
 import { isDerby, derbyName } from '../data/rivals.js';
 
@@ -45,7 +46,7 @@ export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo
               <li key={i}>
                 <span className={`res res--${h.outcome}`}>{h.outcome}</span>
                 <span className="results__opp">{h.venue === 'H' ? 'vs' : '@'} <ClubLink id={h.opponentId}>{h.opponent}</ClubLink>{h.derby ? ' 🔥' : ''}</span>
-                <span className="results__comp">{h.competition}</span>
+                <span className="results__comp">{h.comp ? <CompLink comp={h.comp}>{h.competition}</CompLink> : h.competition}</span>
                 <b>{h.score[0]}–{h.score[1]}</b>
               </li>
             ))}
@@ -73,7 +74,7 @@ function NextMatch({ state, onPlay }) {
   return (
     <section className={`next-match${cupGame ? ` next-match--${game.competition}` : ''}`}>
       <div className="next-match__meta">
-        <span>Season {season.year} · {cupGame ? game.label : <><LeagueLink divId={state.club.divisionId}>{state.club.division}</LeagueLink> · {game.label}</>}</span>
+        <span>Season {season.year} · {cupGame ? <CompLink comp={compOfGame(state, game)}>{game.label}</CompLink> : <><LeagueLink divId={state.club.divisionId}>{state.club.division}</LeagueLink> · {game.label}</>}</span>
         {season.matchday > 0 && !cupGame && <span>You're {ordinal(pos)}</span>}
       </div>
       {state.gm?.objective && (
