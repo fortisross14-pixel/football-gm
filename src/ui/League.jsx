@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { standings, topScorers, clubById, MATCHDAYS } from '../engine/season.js';
+import { standings, topScorers, clubById, MATCHDAYS, PROMOTION_SPOTS } from '../engine/season.js';
 import { DIVISIONS, DIVISION_BY_ID, CONTINENT_LABEL } from '../data/world/structure.js';
 import { Crest } from './Art.jsx';
 import { Segmented } from './Home.jsx';
@@ -105,7 +105,7 @@ export function Table({ state, divId = state.club.divisionId, compact }) {
         {visible.map((r) => {
           const club = clubById(world, r.id);
           const pos = rows.indexOf(r) + 1;
-          const zone = pos === 1 && hasUp ? ' is-up' : pos === rows.length && hasDown ? ' is-down' : '';
+          const zone = pos <= PROMOTION_SPOTS && hasUp ? ' is-up' : pos > rows.length - PROMOTION_SPOTS && hasDown ? ' is-down' : '';
           return (
             <tr key={r.id} className={`${r.id === state.club.id ? 'is-user' : ''}${pos === 1 ? ' is-top' : ''}${zone}`}>
               <td>{pos}</td>

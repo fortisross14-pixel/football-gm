@@ -3,7 +3,7 @@
 import { recordGame as recordStats } from './statsbook.js';
 import { makeRng } from './rng.js';
 import { buildAiTeam, pickSquad, squadStrength, FILLER_RATING } from './aiTeam.js';
-import { DIVISIONS, DIVISION_BY_ID } from '../data/world/structure.js';
+import { DIVISIONS, DIVISION_BY_ID, DIVISION_SIZE } from '../data/world/structure.js';
 import { drawStartingSquads } from './transfers.js';
 
 // ---------------------------------------------------------------------------
@@ -53,7 +53,7 @@ export function removeKeyPlayer(world, playerId, poolById) {
 // ---------------------------------------------------------------------------
 // Fixtures
 
-// Double round-robin with the circle method: 8 clubs → 14 matchdays of 4 games.
+// Double round-robin with the circle method: 10 clubs → 18 matchdays of 5 games.
 export function makeFixtures(ids, seed) {
   const rng = makeRng(seed);
   const teams = [...ids].sort(() => rng.next() - 0.5);
@@ -91,7 +91,9 @@ export function createSeason({ year, world, seed }) {
   return { year, matchday: 0, done: false, divisions };
 }
 
-export const MATCHDAYS = 14;
+export const MATCHDAYS = 2 * (DIVISION_SIZE - 1);
+// Clubs that go up (and down) between adjacent tiers of a country each summer.
+export const PROMOTION_SPOTS = 2;
 
 // ---------------------------------------------------------------------------
 // Results
@@ -241,19 +243,23 @@ export function endOfSeason(season, world, poolById) {
     const table = standings(season, div.id);
     if (table.length) champions[div.id] = table[0].id;
   }
-  // 1 up and 1 down between adjacent tiers of the same country.
+  // PROMOTION_SPOTS up and down between adjacent tiers of the same country:
+  // the lower division's top clubs swap with the upper division's bottom clubs.
   for (const div of DIVISIONS) {
     const lower = DIVISIONS.find((d) => d.code === div.code && d.tier === div.tier + 1);
     if (!lower) continue;
-    const up = standings(season, lower.id)[0]?.id;
-    const down = standings(season, div.id).at(-1)?.id;
-    if (!up || !down) continue;
-    next.divisions[div.id] = next.divisions[div.id].map((id) => (id === down ? up : id));
-    next.divisions[lower.id] = next.divisions[lower.id].map((id) => (id === up ? down : id));
-    next.clubs[up].divisionId = div.id;
-    next.clubs[down].divisionId = lower.id;
-    moves.push({ clubId: up, from: lower.id, to: div.id, type: 'promoted' });
-    moves.push({ clubId: down, from: div.id, to: lower.id, type: 'relegated' });
+    const ups = standings(season, lower.id).slice(0, PROMOTION_SPOTS).map((r) => r.id);
+    const downs = standings(season, div.id).slice(-PROMOTION_SPOTS).reverse().map((r) => r.id);
+    ups.forEach((up, i) => {
+      const down = downs[i];
+      if (!up || !down) return;
+      next.divisions[div.id] = next.divisions[div.id].map((id) => (id === down ? up : id));
+      next.divisions[lower.id] = next.divisions[lower.id].map((id) => (id === up ? down : id));
+      next.clubs[up].divisionId = div.id;
+      next.clubs[down].divisionId = lower.id;
+      moves.push({ clubId: up, from: lower.id, to: div.id, type: 'promoted' });
+      moves.push({ clubId: down, from: div.id, to: lower.id, type: 'relegated' });
+    });
   }
   // Moved clubs get generic players of their new division's level.
   for (const m of moves) {

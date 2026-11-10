@@ -258,7 +258,7 @@ for (let c = 0; c < CAREERS; c += 1) {
   stats.firstD1.push(reached.d1);
   stats.firstContinental.push(reached.cont);
   stats.topClub.push(reached.top);
-  stats.worldNamed.push(Object.values(s.world.clubs).reduce((a, cl) => a + cl.keyPlayers.length, 0) / 304);
+  stats.worldNamed.push(Object.values(s.world.clubs).reduce((a, cl) => a + cl.keyPlayers.length, 0) / Object.keys(s.world.clubs).length);
   process.stdout.write(`career ${c + 1}/${CAREERS} done\r`);
 }
 

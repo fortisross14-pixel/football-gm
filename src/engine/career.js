@@ -2,6 +2,7 @@
 import { makeRng } from './rng.js';
 import { DIVISIONS, DIVISION_BY_ID, TOP_CLUBS } from '../data/world/structure.js';
 import { AI_SETTLED_BY_LEVEL, AI_FIT_BONUS } from './aiTeam.js';
+import { PROMOTION_SPOTS } from './season.js';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
@@ -21,10 +22,12 @@ export function boardObjective(world, divisionId, userClubId, userStrength) {
   const level = ids.filter((id) => Math.abs(rival(id) - userStrength) <= 0.5).length;
   const rank = 1 + stronger + Math.ceil(level / 2); // where the squad "should" finish
   const hasLower = DIVISIONS.some((d) => d.code === div.code && d.tier === div.tier + 1);
+  // 10-club divisions with 2 relegation places: the safe line is 8th.
+  const safe = ids.length + 1 - PROMOTION_SPOTS;
   if (rank <= 2) return { target: 1, text: 'Win the league' };
   if (rank <= 4) return { target: 3, text: 'Finish in the top 3' };
   if (rank <= 6) return { target: 6, text: 'Finish in the top 6' };
-  return hasLower ? { target: 7, text: 'Avoid relegation' } : { target: 7, text: 'Don\'t finish last' };
+  return hasLower ? { target: safe, text: 'Avoid relegation' } : { target: safe, text: `Finish in the top ${safe}` };
 }
 
 export function judgeObjective(objective, position) {
@@ -92,10 +95,12 @@ export function matchConfidence(conf, { outcome, gf, ga, competition, pos, targe
     next.fans += next.fans - before.fans;
     next.board += (next.board - before.board) * 0.25;
   }
-  next.board = clamp(next.board, 0, 100);
-  next.fans = clamp(next.fans, 0, 100);
+  // v1.9: 18 league games a season (14 before), so each match moves confidence a little less.
+  next.board = clamp(before.board + (next.board - before.board) * MATCH_WEIGHT, 0, 100);
+  next.fans = clamp(before.fans + (next.fans - before.fans) * MATCH_WEIGHT, 0, 100);
   return next;
 }
+const MATCH_WEIGHT = 0.8;
 
 // End of season: the verdict on the objective weighs most.
 export function seasonConfidence(conf, verdict, promoted) {

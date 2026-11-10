@@ -12,6 +12,8 @@ export const REST_SEASONS = 3;
 
 // Named-card cap per club: its starting range's top end, plus one for an academy graduate.
 export const namedCap = (clubId, div) => startingDraw(clubId, div)[1] + 1;
+// AI cards lose this many matches a season. Seasons have 18 league games since v1.9, but the
+// wear stays at the old pace so a card's career lasts as many seasons as before.
 const SEASON_MATCHES = 14;
 
 // Academy by facility level (0–5): how many cards and the best rarity it can produce.

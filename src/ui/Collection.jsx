@@ -7,7 +7,7 @@ import { BOOST_IDS } from '../data/boosts.js';
 import { OFFSEASON_CARDS, TIERS, cardValue } from '../data/offseason.js';
 import { COACH_PASSIVES } from '../data/coachPassives.js';
 import { PLAYER_POOL, COACH_POOL } from '../data/pool.js';
-import { canUseOffseason } from '../state/club.js';
+import { canUseOffseason, SQUAD_SIZE } from '../state/club.js';
 
 export default function Collection({ state, onOpenPack, onUseCard }) {
   const [tab, setTab] = useState('squad');
@@ -32,7 +32,7 @@ export default function Collection({ state, onOpenPack, onUseCard }) {
 
       {tab === 'squad' && (
         <>
-          <h3 className="sub-title">Players · {state.squad.length}/10</h3>
+          <h3 className="sub-title">Players · {state.squad.length}/{SQUAD_SIZE}</h3>
           <div className="card-grid">
             {[...state.squad].sort((a, b) => overall(b) - overall(a)).map((c) => (
               <PlayerCard key={c.id} card={c} colors={state.club.colors} size="medium" onClick={() => setViewing(c)} />

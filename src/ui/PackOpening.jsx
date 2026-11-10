@@ -3,7 +3,7 @@ import { PlayerCard, CoachCard, MiniCard, PackArt, Flag } from './Card.jsx';
 import { Silhouette } from './Art.jsx';
 import { sfx, haptic } from './motion.js';
 import { overall, RARITIES } from '../engine/cards.js';
-import { pendingCard, duplicateOf, canMerge, isCoach, POOL_BY_ID } from '../state/club.js';
+import { pendingCard, duplicateOf, canMerge, isCoach, POOL_BY_ID, SQUAD_SIZE } from '../state/club.js';
 
 // Full-screen flow for every new card, in three phases:
 //   sealed  → the pack breathes; tap to open (it shakes and bursts)
@@ -227,7 +227,7 @@ function ReleasePicker({ state, card, onPick }) {
   const list = [...state.squad].sort((a, b) => (b.pos === card.pos) - (a.pos === card.pos) || overall(a) - overall(b));
   return (
     <>
-      <p className="hint">Your squad is full (10). Pick who {card.name} replaces. They take that player's spot.</p>
+      <p className="hint">Your squad is full ({SQUAD_SIZE}). Pick who {card.name} replaces. They take that player's spot.</p>
       <div className="release-list">
         {list.map((c) => {
           const diff = newOvr - overall(c);

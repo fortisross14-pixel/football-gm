@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Crest } from './Art.jsx';
 import Sheet from './Sheet.jsx';
-import { listSlots, deleteSlot, exportSlot, importSave } from '../state/storage.js';
+import { listSlots, deleteSlot, deleteOldSlot, exportSlot, importSave } from '../state/storage.js';
 import { Segmented } from './Home.jsx';
 import ManagersSheet from './Managers.jsx';
 
@@ -25,8 +25,24 @@ export default function Menu({ onContinue, onNew, onImport, settings, setSetting
 
       <div className="slots">
         {slots.map((slot) => (
-          <div key={slot.n} className={`slot${slot.summary ? '' : ' slot--empty'}`}>
-            {slot.summary ? (
+          <div key={slot.n} className={`slot${slot.summary || slot.old ? '' : ' slot--empty'}${slot.old ? ' slot--old' : ''}`}>
+            {slot.old ? (
+              <>
+                <div className="slot__main" aria-disabled="true">
+                  <Crest colors={slot.old.summary.colors} short={slot.old.summary.short} size={44} id={slot.old.summary.clubId} />
+                  <span className="slot__body">
+                    <b>{slot.old.summary.club}</b>
+                    <span>{slot.old.summary.gmName} · Season {slot.old.summary.season}</span>
+                    <span className="muted">Older version — can't be continued</span>
+                  </span>
+                </div>
+                <div className="slot__tools">
+                  <button type="button" className="link-btn" onClick={() => {
+                    if (window.confirm(`Delete the old ${slot.old.summary.club} save (slot ${slot.n})? The world has changed (10-club leagues, 12-card squads), so it can't be continued.`)) { deleteOldSlot(slot.n, slot.old.version); refresh(); }
+                  }}>Delete</button>
+                </div>
+              </>
+            ) : slot.summary ? (
               <>
                 <button type="button" className="slot__main" onClick={() => onContinue(slot.n)}>
                   <Crest colors={slot.summary.colors} short={slot.summary.short} size={44} id={slot.summary.clubId} />
