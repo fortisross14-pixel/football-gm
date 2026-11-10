@@ -716,11 +716,22 @@ Tuned with `npm run career-sim`, a bot that plays whole careers the way a sensib
 Tactics grade (`node scripts/grade-check.mjs`, user-like squad vs equal AI, rival rating gap −4 / 0 / +4 / +8): green wins 80 / 72 / 57 / 45%; grey 64 / 52 / 40 / 32%; red 37 / 27 / 18 / 13% (losing 52% against equals). Team-wide bonus: green +15% (×coach quality), grey +7%, red −8%; AI settled edge 8 / 6 / 4% by level.
 
 
+**Club management (v1.9)**, `BOT=… node scripts/career-sim.mjs 16 10`, same seeds before and after. The bot buys management cards in the summer (reserve 400 coins) and mid-season only from spare money (reserve 1,500, packs come first), signings first, then club areas (business before sports), then one event.
+
+| Bot | Level-2 club (median) | Level-1 club | Top club | Sacked | Income season 1 / 6 / 10 | Area levels (of 50) by season 5 / 10 | Card plays used |
+|---|---|---|---|---|---|---|---|
+| Average, before | season 4 (16/16) | 14/16, season 8 | 9/16, season 9 | 13 | 912 / 3,987 / 7,189 | — | — |
+| Average, after | season 4 (15/16) | 15/16, season 8 | 11/16, season 10 | 16 | 916 / 3,093 / 7,458 | 8 / 22 | 4–6 of 8 |
+| Great, before → after | season 2 → 2 | season 4 → 4 | season 7 → 7 | 1 → 1 | 1,356 / 6,237 / 11,046 → 1,359 / 6,161 / 9,696 | 12 / 38 | 6–7 |
+| Poor, before → after | season 4 → 6 | 10/16 s6 → 12/16 s8 | 7/16 → 7/16 | 31 → 30 | 996 / 3,583 / 4,539 → 995 / 2,934 / 4,446 | 5 / 11 | ~3 |
+
+Business income (gate, hospitality, store, merchandise, sponsor) at season 10 is about 2,900 a season for the average bot against 2,570 for gate + merchandise before: a little more, for far more cards. Nobody comes close to maxing all ten areas in 10 seasons.
+
 ### Cohesion and shape (v1.8)
 
 Two team meters, shown on Home and Squad → Starting 7.
 
-- **Cohesion** (0–100): +4 to +14 per match (training ground), −10 for each starter changed from the last match. Worth up to +4% to +10% to all stats (training ground). Tactical Continuity sets a floor.
+- **Cohesion** (0–100): +4 to +12 per match (training fields), −10 for each starter changed from the last match. Worth up to +4% to +9% to all stats (training fields). Tactical Continuity sets a floor.
 - **Shape** (0–100, Fresh ≥ 85 · OK ≥ 65 · Tired ≥ 45 · Exhausted): from **time on the field**. Each player's load is his share of the minutes over about the last 8 matches (moving average; subs count for their minutes). Loads above 65% wear the team down (goalkeepers at 30%). Shape sets kick-off stamina (75% + a quarter of shape) and, under 65, costs up to −7% stats. No injuries, no per-player tiredness. AI clubs don't track it.
 - Measured: the same 7 every match settles at about 58 (Tired, −1.4%); rotating one player a match stays about 71 (OK).
-- **Sports Science** (club card, off-season): +8 / 12 / 16 / 22 / 30 shape for the whole next season by rarity, even without rotating.
+- **Sports Science** (club card): +8 / 12 / 16 / 22 / 30 shape by rarity until the season ends (all next season if played in the summer), even without rotating. The **Spa & recovery** area adds +3 per level permanently, and the **Gym** slows stamina drain by 4% per level.
