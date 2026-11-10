@@ -101,6 +101,7 @@ export function aiOffseason(world, { pools, poolById, allCards, userIds, seed, c
   const aiClubs = () => Object.values(next.clubs).filter((c) => c.id !== userClubId);
   const rng = makeRng(seed);
   const news = [];
+  const joined = {}; // cardId → how it joined (academy | signing), for the career log
   // Rested players become available again.
   next.resting = next.resting || {};
   for (const [id, left] of Object.entries(next.resting)) {
@@ -127,6 +128,7 @@ export function aiOffseason(world, { pools, poolById, allCards, userIds, seed, c
     club.keyPlayers.push(card.id);
     taken.add(card.id);
     next.cardLeft[card.id] = card.matchesLeft ?? 150;
+    joined[card.id] = how;
     if (tierOf(card) >= 3) news.push({ type: how, clubId: club.id, club: club.name, cardId: card.id, name: card.name, rarity: card.rarity });
   };
 
@@ -174,7 +176,7 @@ export function aiOffseason(world, { pools, poolById, allCards, userIds, seed, c
   }
 
   news.sort((a, b) => tierOf(poolById[b.cardId]) - tierOf(poolById[a.cardId]));
-  return { world: next, news };
+  return { world: next, news, joined };
 }
 
 // The user's academy intake for the off-season: cards waiting for Keep/Discard.

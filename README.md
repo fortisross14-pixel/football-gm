@@ -35,7 +35,7 @@ npm run build      # static build in dist/
   - Cards reveal one by one.
   - For each card you choose Keep (pick who it replaces in your 10), Merge a duplicate (+1★, +2 stats, +30 matches) or Discard for coins.
 - **Cards tab:** Owned (squad, items, album) and Shop (packs, boosts, Transfer Market).
-- **League tab:** every league by name, with table, fixtures, scorers, cups and **History**: champion, runner-up, top scorer, MVP and Golden Glove for every season, records by league, country or world, and your career season by season. Tap any club for its page: squad, honours, season-by-season record, all-time scorers.
+- **League tab:** every league by name, with table, fixtures, scorers, cups and **History**: champion, runner-up, top scorer, MVP and Golden Glove for every season, records by league, country or world, and your career season by season. Tap any club for its page (Overview, Squad, History with managers and transfers, Stats, Honours), any player for his profile (Overview, History club by club and season by season, Stats by competition) and any manager for his page.
 - **World tab:** manager rankings (you against 300 AI managers), power ranking and most decorated clubs, world records, Hall of Fame.
 - **Season end:** prize money, reward packs and a free off-season card. Then the **Transfer Market** opens with 25 off-season card types (poach rivals' players, free agents, youth, stadium upgrades, season events…), each with a rarity that sets its strength.
 - **Card wear:** players and coaches lose a match each time they play and retire at 0.
@@ -59,6 +59,7 @@ Progress is saved in the browser, automatically.
 | `src/engine/transfers.js` | History pools, academies, AI signings, retirements |
 | `src/engine/packs.js` | Pack odds, guarantees, duplicates |
 | `src/engine/history.js` | Season archive, all-time records, club histories |
+| `src/engine/careers.js` | Career log: every player's and manager's seasons, moves between clubs, club records |
 | `src/engine/gms.js` | AI managers: reputation, sackings, rankings |
 | `src/engine/career.js` | Board objective, reputation, owners/fans confidence, job offers |
 | `src/data/skills.js` | Intrinsic skills for Rare+ players and coaches |
