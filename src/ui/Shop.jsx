@@ -1,16 +1,21 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { PACKS, PACK_IDS, packOdds } from '../engine/packs.js';
 import { BOOSTS, BOOST_IDS, BOOST_PACKS } from '../data/boosts.js';
-import { TIERS, cardValue } from '../data/offseason.js';
+import { TIERS, OFFSEASON_CARDS } from '../data/offseason.js';
+import { packShift, marketRefreshIn } from '../state/club.js';
+import { CardPlays } from './Collection.jsx';
 import { RARITIES } from '../engine/cards.js';
 import { PackArt, BoostCard, OffseasonCard } from './Card.jsx';
 import { Segmented } from './Home.jsx';
 
-export default function Shop({ state, onBuyPack, onBuyBoostPack, onBuyOffer }) {
+export default function Shop({ state, onBuyPack, onBuyBoostPack, onBuyOffer, onSeeMarket }) {
   const [got, setGot] = useState(null);
   const off = state.phase === 'offseason';
-  const [tab, setTab] = useState(off ? 'market' : 'packs');
-  const shift = state.activeEvent?.type === 'scoutingNetwork' ? cardValue('scoutingNetwork', state.activeEvent.rarity) : 0;
+  const fresh = !!state.market?.fresh;
+  const [tab, setTab] = useState(off || fresh ? 'market' : 'packs');
+  const shift = packShift(state);
+  // Looking at the market clears the "new offers" note on Home.
+  useEffect(() => { if (tab === 'market' && fresh && onSeeMarket) onSeeMarket(); }, [tab, fresh]);
 
   return (
     <div className="screen">
@@ -21,7 +26,7 @@ export default function Shop({ state, onBuyPack, onBuyBoostPack, onBuyOffer }) {
         options={[
           { id: 'packs', label: 'Packs' },
           { id: 'boosts', label: 'Boosts' },
-          { id: 'market', label: off ? 'Market ●' : 'Market' },
+          { id: 'market', label: fresh ? 'Market ●' : 'Market' },
         ]}
         onChange={setTab}
       />
@@ -53,7 +58,7 @@ export default function Shop({ state, onBuyPack, onBuyBoostPack, onBuyOffer }) {
               </div>
             );
           })}
-          {shift > 0 && <p className="hint hint--accent">Scouting Network is active: better odds on every pack this season.</p>}
+          {shift > 0 && <p className="hint hint--accent">Better odds on every pack: {shift} points moved from Common to higher rarities (Scouting Network and Analytics).</p>}
         </div>
       )}
 
@@ -91,29 +96,44 @@ export default function Shop({ state, onBuyPack, onBuyBoostPack, onBuyOffer }) {
         </>
       )}
 
-      {tab === 'market' && (
-        off ? (
-          <>
-            <p className="hint">Off-season cards. Lower rarities appear more often. Buy them here, then play them from <b>Cards → Items</b> before the new season.</p>
-            <div className="ocard-grid">
-              {state.market.offers.map((o) => (
-                <OffseasonCard
-                  key={o.uid}
-                  item={o}
-                  disabled={o.sold || state.coins < o.price}
-                  onClick={() => onBuyOffer(o.uid)}
-                  footer={o.sold ? 'Bought' : `◎ ${o.price}`}
-                />
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="panel locked">
-            <b>Closed during the season</b>
-            <p className="hint">The Transfer Market opens when the season ends. It sells off-season cards: signings, academy, stadium upgrades and season events.</p>
-          </div>
-        )
-      )}
+      {tab === 'market' && <Market state={state} onBuyOffer={onBuyOffer} />}
     </div>
+  );
+}
+
+// The Transfer Market, open all year: management cards for the squad, the club and the season.
+function Market({ state, onBuyOffer }) {
+  const refresh = marketRefreshIn(state);
+  const offers = state.market?.offers || [];
+  const levelNote = (o) => {
+    const def = OFFSEASON_CARDS[o.type];
+    if (!def.facility) return '';
+    const now = state.facilities[def.facility] || 0;
+    const cap = def.values[TIERS.indexOf(o.rarity)];
+    if (now >= 5) return ' · max';
+    if (o.rarity !== 'legend' && now >= cap) return ` · only to L${cap}`;
+    return ` · L${now}→${Math.min(5, now + (o.rarity === 'legend' ? 2 : 1))}`;
+  };
+  return (
+    <>
+      <CardPlays state={state} />
+      <p className="hint">
+        Open all year. Buy cards here, then play them from <b>Cards → Items</b> whenever you like.
+        {' '}{state.phase === 'offseason' ? 'Fresh offers again when the season starts.' : refresh !== null && refresh > 0 ? `New offers in ${refresh} league matchday${refresh > 1 ? 's' : ''}.` : ''}
+      </p>
+      {offers.length === 0 ? <p className="hint">No offers right now.</p> : (
+        <div className="ocard-grid">
+          {offers.map((o) => (
+            <OffseasonCard
+              key={o.uid}
+              item={o}
+              disabled={o.sold || state.coins < o.price}
+              onClick={() => onBuyOffer(o.uid)}
+              footer={o.sold ? 'Bought' : `◎ ${o.price}${levelNote(o)}`}
+            />
+          ))}
+        </div>
+      )}
+    </>
   );
 }

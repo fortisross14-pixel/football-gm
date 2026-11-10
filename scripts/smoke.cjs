@@ -1,5 +1,5 @@
 // Clicks through every tab and sub-tab with a saved game and reports page errors.
-// Usage: (serve the build on :4173) node scripts/smoke.cjs <save.json> [outDir] [width]
+// Usage: (serve the build on :4173, or set PORT) node scripts/smoke.cjs <save.json> [outDir] [width]
 const { chromium } = require('playwright');
 const fs = require('fs');
 
@@ -26,7 +26,7 @@ const fs = require('fs');
   const shot = (name) => page.screenshot({ path: `${out}/${name}.png`, fullPage: true });
   const step = async (name, fn) => { try { await fn(); await page.waitForTimeout(250); await shot(name); } catch (e) { errors.push(`${name}: ${e.message.split('\n')[0]}`); } };
 
-  await page.goto('http://localhost:4173/');
+  await page.goto(`http://localhost:${process.env.PORT || 4173}/`);
   await page.waitForTimeout(500);
   await page.click('.slot__main');
   await page.waitForTimeout(400);
@@ -37,6 +37,12 @@ const fs = require('fs');
   await step('cards-owned', () => page.click('.tabbar button:nth-child(3)'));
   await step('cards-shop', () => page.click('.hub__switch .segmented__opts button:nth-child(2)'));
   await step('cards-shop-boosts', () => page.click('.screen .segmented__opts button:nth-child(2)'));
+  await step('cards-shop-market', () => page.click('.screen .segmented__opts button:nth-child(3)'));
+  await step('cards-shop-market-buy', () => page.click('.ocard:not([disabled]) >> nth=0'));
+  await step('cards-items', () => page.click('.hub__switch .segmented__opts button:nth-child(1)').then(() => page.click('.screen .segmented__opts button:nth-child(2)')));
+  await step('cards-items-use', () => page.click('.ocard-grid .ocard >> nth=0'));
+  await step('cards-items-used', () => page.click('.use-card .btn--primary:not([disabled])', { timeout: 2000 }).catch(() => page.keyboard.press('Escape')));
+  await step('club-management', () => page.click('.topbar__crest'));
   await step('league', () => page.click('.tabbar button:nth-child(4)'));
   await step('league-history', () => page.click('text=History'));
   await step('league-records', () => page.click('text=Records'));

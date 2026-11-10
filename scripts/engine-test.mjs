@@ -26,7 +26,10 @@ import { CLUB_POOLS, PLAYER_CARDS } from '../src/data/world/index.js';
 import {
   newClubState, buildUserTeam, matchRewards, applyMatch, buyPack, keepPending, mergePending, discardPending,
   pendingCard, duplicateOf, nextUserGame, newSeason, closeSeason, toggleCurse, teamShape, shapeLabel, acceptOffer, carryOptions, starterOffers, discardCommons, buyMarketCard, useOffseasonCard, startNextSeason, POOLS, POOL_BY_ID,
+  canUseOffseason, cardPlays, migrateClubState, effectiveCohesion, seasonMods, packShift, MARKET_EVERY,
 } from '../src/state/club.js';
+import { AREA_IDS, cardPlayLimit } from '../src/data/facilities.js';
+import { cardPrice } from '../src/data/offseason.js';
 
 let passed = 0;
 const test = (name, fn) => { fn(); passed += 1; console.log(`ok - ${name}`); };
@@ -165,8 +168,8 @@ test('a full season runs, ends and opens the Transfer Market', () => {
   assert.equal(s.season.year, 2);
 });
 
-test('all 28 off-season card types can be used', () => {
-  assert.equal(OFFSEASON_IDS.length, 28);
+test('all 33 management card types can be used', () => {
+  assert.equal(OFFSEASON_IDS.length, 33);
   let base = fresh();
   for (let md = 0; md < 14; md += 1) base = playMatchday(base, 300 + md);
   base = resolve(closeSeason(base, 1));
@@ -559,6 +562,119 @@ test('shape: the same 7 every week lowers it, rotating keeps it up, Sports Scien
   assert.ok(teamShape({ ...same, perks: { shape: 30 } }) >= teamShape(same) + 25);
   assert.equal(shapeLabel(90), 'Fresh');
   assert.equal(shapeLabel(40), 'Exhausted');
+});
+
+// ---------------------------------------------------------------------------
+// Club management: cards any time, card plays, club areas, old saves
+
+test('management cards can be played mid-season; events last the rest of the season', () => {
+  let s = fresh();
+  for (let md = 0; md < 3; md += 1) s = playMatchday(s, 1500 + md);
+  assert.equal(s.phase, 'season');
+  s.inventory.offseason = [{ uid: 'a', type: 'fortressSeason', rarity: 'rare' }, { uid: 'b', type: 'clubStore', rarity: 'common' }, { uid: 'c', type: 'preseasonCamp', rarity: 'rare' }];
+  let r = useOffseasonCard(s, 'a', {}, 1);
+  assert.equal(r.success, true, r.message);
+  assert.match(r.message, /rest of this season/);
+  assert.ok(seasonMods(r.state).home > 0);
+  r = useOffseasonCard(r.state, 'b', {}, 2);
+  assert.equal(r.success, true, r.message);
+  assert.equal(r.state.facilities.store, 1);
+  assert.equal(r.state.cardPlays, 2);
+  assert.equal(canUseOffseason(r.state, { type: 'preseasonCamp', rarity: 'rare' }).ok, false, 'pre-season camp is summer only');
+  // The event ends with the season; the club area stays.
+  let e = r.state;
+  for (let md = 3; md < 14; md += 1) e = playMatchday(e, 1600 + md);
+  e = closeSeason(e, 5);
+  assert.equal(e.activeEvent, null);
+  assert.equal(e.facilities.store, 1);
+  assert.equal(e.cardPlays, 0, 'card plays reset when the season ends');
+});
+
+test('per-season card-play limit, +1 with Analytics level 3', () => {
+  const s = fresh();
+  const limit = cardPlays(s).limit;
+  assert.equal(limit, 8);
+  s.coins = 0;
+  s.inventory.offseason = Array.from({ length: limit + 2 }, (_, i) => ({ uid: `p${i}`, type: 'boostCrate', rarity: 'common' }));
+  let x = s;
+  for (let i = 0; i < limit; i += 1) {
+    const r = useOffseasonCard(x, `p${i}`, {}, i);
+    assert.equal(r.success, true, r.message);
+    x = r.state;
+  }
+  assert.equal(cardPlays(x).used, limit);
+  const blocked = useOffseasonCard(x, `p${limit}`, {}, 99);
+  assert.notEqual(blocked.success, true);
+  assert.match(blocked.message, /No card plays left/);
+  assert.equal(cardPlayLimit({ analytics: 3 }), 9);
+  assert.equal(cardPlayLimit({ analytics: 5 }), 10);
+  const more = { ...x, facilities: { ...x.facilities, analytics: 3 } };
+  assert.equal(useOffseasonCard(more, `p${limit}`, {}, 98).success, true);
+});
+
+test('club areas: business areas add income items, sports areas lift shape, cohesion and odds', () => {
+  let s = fresh();
+  const fx = userFixture(s.season, s.club.divisionId, s.club.id);
+  const ai = aiTeamFor(s.world, fx.opponentId, POOL_BY_ID, 3);
+  const me = buildUserTeam(s, [], true);
+  const m = simulateMatch({ home: me, away: ai, seed: 4 });
+  const base = matchRewards(s, m, 0);
+  const rich = { ...s, facilities: { ...s.facilities, hospitality: 3, store: 2, sponsor: 2 } };
+  const more = matchRewards(rich, m, 0);
+  for (const label of ['Hospitality', 'Club store', 'Sponsor']) assert.ok(more.items.some((i) => i.label.startsWith(label)), `${label} income`);
+  assert.ok(more.total > base.total);
+  // Spa: better shape; Gym: slower stamina drain; Analytics: pack odds.
+  assert.ok(teamShape({ ...s, facilities: { ...s.facilities, spa: 5 } }) >= Math.min(100, teamShape(s) + 10));
+  assert.ok(seasonMods({ ...s, facilities: { ...s.facilities, gym: 3 } }).drain > seasonMods(s).drain);
+  assert.equal(packShift({ ...s, facilities: { ...s.facilities, analytics: 5 } }), 6);
+  // Training fields: more cohesion per match.
+  const low = { ...s, cohesion: 20, facilities: { ...s.facilities, training: 0 } };
+  const high = { ...s, cohesion: 20, facilities: { ...s.facilities, training: 5 } };
+  const after = (st) => applyMatch(st, m, 0, clubById(st.world, fx.opponentId), matchRewards(st, m, 0), 7).state.cohesion;
+  assert.ok(after(high) > after(low));
+  // Card prices scale with the area's level.
+  assert.ok(cardPrice('hospitality', 'epic', 4) > cardPrice('hospitality', 'epic', 1));
+});
+
+test('the Transfer Market is open all season and refreshes every few matchdays', () => {
+  let s = fresh();
+  assert.equal(s.phase, 'season');
+  assert.equal(s.market.offers.length, 6);
+  assert.ok(s.market.offers.every((o) => !OFFSEASON_CARDS[o.type].summerOnly));
+  const first = s.market.offers.map((o) => o.uid).join();
+  s.coins = 99999;
+  s = buyMarketCard(s, s.market.offers[0].uid);
+  assert.ok(s.market.offers[0].sold);
+  assert.equal(s.inventory.offseason.length, 1);
+  for (let md = 0; md < MARKET_EVERY; md += 1) s = playMatchday(s, 1700 + md);
+  assert.notEqual(s.market.offers.map((o) => o.uid).join(), first, 'new offers after a few matchdays');
+  assert.equal(s.market.fresh, true);
+});
+
+test('old saves load: missing club areas, card plays and market are filled in', () => {
+  const s = fresh();
+  const old = structuredClone(s);
+  old.facilities = { stadium: 4, merch: 3, training: 2, academy: 1 };
+  delete old.cardPlays;
+  old.market = null;
+  old.perks = { shirtSponsor: 20, shape: 0 };
+  old.inventory.offseason = [{ uid: 'o1', type: 'shirtSponsor', rarity: 'rare' }];
+  const m = migrateClubState(old);
+  for (const k of AREA_IDS) assert.ok(Number.isInteger(m.facilities[k]), k);
+  assert.equal(m.facilities.stadium, 4);
+  assert.equal(m.facilities.hospitality, 2);
+  assert.equal(m.facilities.gym, 0);
+  assert.equal(m.cardPlays, 0);
+  assert.ok(m.market.offers.length > 0);
+  assert.equal(m.inventory.offseason[0].type, 'findSponsor');
+  assert.equal(useOffseasonCard(m, 'o1', {}, 1).state.facilities.sponsor, m.facilities.sponsor + 1);
+  assert.deepEqual(migrateClubState(m).facilities, m.facilities, 'migration is idempotent');
+  // An old save with only the four facilities still plays a match.
+  const legacy = { ...old, facilities: { stadium: 1, merch: 0, training: 1, academy: 0 } };
+  const fx = userFixture(legacy.season, legacy.club.divisionId, legacy.club.id);
+  const mt = simulateMatch({ home: buildUserTeam(legacy, [], true), away: aiTeamFor(legacy.world, fx.opponentId, POOL_BY_ID, 1), seed: 2 });
+  assert.ok(matchRewards(legacy, mt, 0).items.some((i) => i.label === 'Shirt sponsor'));
+  assert.ok(effectiveCohesion(legacy) >= 0);
 });
 
 console.log(`\n${passed} tests passed`);

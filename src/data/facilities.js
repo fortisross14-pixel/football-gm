@@ -1,0 +1,74 @@
+// Club management areas: ten facilities (levels 0–5) that belong to the club, each raised
+// by its own Club card from the Transfer Market. Business areas earn coins every match;
+// Sports areas make the team better. Numbers here are the single source for the engine
+// (state/club.js) and the Club management screen.
+
+export const MAX_LEVEL = 5;
+
+// Per-match income tables are multiplied by the division multiplier (data/demo.js).
+export const STADIUM_INCOME = [30, 45, 54, 64, 74, 85]; // per home game
+export const HOSPITALITY_INCOME = [0, 10, 18, 27, 36, 46]; // per home game
+export const STORE_INCOME = [0, 4, 7, 10, 14, 18]; // every match
+export const MERCH_MULT = [0.5, 0.9, 1.3, 1.7, 2.1, 2.5]; // × squad popularity × 0.3, every match
+export const SPONSOR_INCOME = [0, 6, 11, 17, 24, 32]; // every match
+export const SPONSOR_NAMES = ['No sponsor', 'Local business', 'Regional brand', 'National brand', 'Major brand', 'Global partner'];
+export const MERCH_LINES = ['Replica kits', 'Kits and scarves', 'Lifestyle range', 'Lifestyle and kids', 'Online store', 'Global brand'];
+
+export const COHESION_GAIN = [4, 5, 7, 8, 10, 12]; // per match
+export const COHESION_MAX_BONUS = [0.04, 0.05, 0.06, 0.07, 0.08, 0.09]; // at 100 cohesion
+export const GYM_DRAIN = [0, 4, 8, 12, 16, 20]; // % slower stamina drain
+export const SPA_SHAPE = [0, 3, 6, 9, 12, 15]; // + team shape
+export const ANALYTICS_ODDS = [0, 1, 2, 3, 4, 6]; // pack odds points moved from Common upwards
+
+// Card plays per season: 8, +1 at Analytics level 3 and +1 at level 5.
+export const CARD_PLAYS_BASE = 8;
+export const cardPlayLimit = (facilities) => CARD_PLAYS_BASE + ((facilities?.analytics || 0) >= 3 ? 1 : 0) + ((facilities?.analytics || 0) >= 5 ? 1 : 0);
+
+export const AREAS = {
+  stadium: { group: 'business', label: 'Stadium', icon: '🏟', card: 'stadiumEvolution' },
+  hospitality: { group: 'business', label: 'Hospitality', icon: '🍽', card: 'hospitality' },
+  store: { group: 'business', label: 'Club store', icon: '🏪', card: 'clubStore' },
+  merch: { group: 'business', label: 'Merchandise', icon: '👕', card: 'merchExpansion' },
+  sponsor: { group: 'business', label: 'Sponsorship', icon: '🤝', card: 'findSponsor' },
+  training: { group: 'sports', label: 'Training fields', icon: '🏋', card: 'trainingGround' },
+  gym: { group: 'sports', label: 'Gym', icon: '💪', card: 'gymUpgrade' },
+  spa: { group: 'sports', label: 'Spa & recovery', icon: '🧖', card: 'spaRecovery' },
+  academy: { group: 'sports', label: 'Youth academy', icon: '🏫', card: 'youthAcademy' },
+  analytics: { group: 'sports', label: 'Analytics', icon: '📊', card: 'analyticsDept' },
+};
+export const AREA_IDS = Object.keys(AREAS);
+export const AREA_GROUPS = [
+  { id: 'business', label: 'Business', ids: AREA_IDS.filter((k) => AREAS[k].group === 'business') },
+  { id: 'sports', label: 'Sports', ids: AREA_IDS.filter((k) => AREAS[k].group === 'sports') },
+];
+export const FACILITY_LABEL = Object.fromEntries(AREA_IDS.map((k) => [k, AREAS[k].label]));
+
+// Fills in every area: old saves had only stadium, merch, training and academy. The new
+// areas start a little below the club's existing ones, so a big club stays a big club.
+export function fullFacilities(fac = {}) {
+  const near = (k) => Math.max(0, (fac[k] || 0) - 2);
+  const derived = { hospitality: near('stadium'), store: near('merch'), sponsor: near('merch'), gym: near('training'), spa: near('training'), analytics: near('academy') };
+  return Object.fromEntries(AREA_IDS.map((k) => [k, Math.max(0, Math.min(MAX_LEVEL, fac[k] ?? derived[k] ?? 0))]));
+}
+
+// Short text of what an area does at a level. m is the division multiplier; academy needs
+// the intake tables, passed in by the caller to keep this file free of engine imports.
+export function areaEffect(id, level, { m = 1, academy = null } = {}) {
+  const c = (v) => Math.round(v * m);
+  switch (id) {
+    case 'stadium': return `Home gate ◎ ${c(STADIUM_INCOME[level])} a home game`;
+    case 'hospitality': return level ? `Restaurant and boxes ◎ ${c(HOSPITALITY_INCOME[level])} a home game` : 'No restaurant yet';
+    case 'store': return level ? `Store sales ◎ ${c(STORE_INCOME[level])} a match` : 'No club store yet';
+    case 'merch': return `${MERCH_LINES[level]}: popularity × ${MERCH_MULT[level]} × 0.3 a match`;
+    case 'sponsor': return level ? `${SPONSOR_NAMES[level]}: ◎ ${c(SPONSOR_INCOME[level])} a match` : 'No sponsor yet';
+    case 'training': return `Cohesion +${COHESION_GAIN[level]} a match, worth up to +${Math.round(COHESION_MAX_BONUS[level] * 100)}% stats`;
+    case 'gym': return level ? `Stamina drains ${GYM_DRAIN[level]}% slower` : 'No gym yet';
+    case 'spa': return level ? `+${SPA_SHAPE[level]} team shape` : 'No spa yet';
+    case 'academy': return academy ? `${academy.count} academy player${academy.count > 1 ? 's' : ''} a year, up to ${academy.best}` : `Academy level ${level}`;
+    case 'analytics': {
+      const plays = cardPlayLimit({ analytics: level }) - CARD_PLAYS_BASE;
+      return level ? `Pack odds +${ANALYTICS_ODDS[level]} points${plays ? `, +${plays} card play${plays > 1 ? 's' : ''} a season` : ''}` : 'No analysts yet';
+    }
+    default: return '';
+  }
+}

@@ -3,6 +3,11 @@
 > Replaces the old management-sim design (`GAME_DESIGN_DOCUMENT.md`), which is kept for reference only.
 > Language: English. Platform: web (React + Vite), mobile-first.
 
+**Changes in v1.9 (club management)**
+- **Ten club areas** (§4.5) in two groups: Business (stadium, hospitality, club store, merchandise, sponsorship) and Sports (training fields, gym, spa & recovery, youth academy, analytics). Each has its own Club card; steps are a bit smaller than the old four facilities.
+- **Cards any time** (§4.6): the Transfer Market is open all year (9 offers each summer, 6 fresh ones every 4 league matchdays) and management cards are played from Cards → Items whenever you like, within **8 card plays per season** (+1 at Analytics level 3 and 5).
+- The Club screen is now **Club management** (§9): areas with level pips, current and next effect, income per match.
+
 **Changes in v1.6**
 - **Skills** (§5.4): Rare, Epic and Legend players and coaches carry an intrinsic skill. Up to 2 activations per match, from any mix of players and coaches. Timing is the tactic.
 - **Tactics** (§5.5): pressing, passing and defensive line, with counters and synergies with cards.
@@ -141,7 +146,7 @@ Clubs qualify through **last season's** league results. For season 1, the seeded
 
 | Phase | Events |
 |---|---|
-| Off-season | **Transfer Market** opens: play transfer cards (extend careers, evolve the stadium, sign players), play 1 season event, shop |
+| Off-season | **Summer Transfer Market** (9 fresh offers): sign players, upgrade club areas, pick a season event. The market stays open all season, with 6 new offers every 4 league matchdays |
 | Weeks 1–2 | League MD 1–2 · Europe qualifying |
 | Weeks 3–4 | League MD 3–4 · Continental group game 1 · Cup R16 (16-club cups) |
 | Weeks 5–6 | League MD 5–6 · Continental group game 2 · Cup QF |
@@ -166,9 +171,9 @@ Clubs qualify through **last season's** league results. For season 1, the seeded
 | **Players** | Player packs | Plays matches until it retires | **10** (7 starters + 3 bench) |
 | **Coaches** | Coach packs | Head coach + assistant, retire like players | **2** |
 | **In-game boosts** | Shop | Used during a match, then gone | Unlimited |
-| **Off-season: Transfer Market** | Off-season market offer, rewards | Played in the off-season, then gone (§4.6) | Unlimited |
-| **Off-season: Infrastructure** | Off-season market offer | Raises a facility at your current club by 1 level, then gone (§4.5) | Unlimited |
-| **Off-season: Season events** | Off-season market offer (3 random) | Played in the off-season, lasts 1 season, then gone (§4.7) | Unlimited (1 played per season) |
+| **Management: Transfer** | Transfer Market (all year), season reward | Played any time, then gone (§4.6) | Card plays per season |
+| **Management: Club** | Transfer Market (all year), season reward | Raises one club area at your current club, then gone (§4.5) | Card plays per season |
+| **Management: Season events** | Transfer Market (all year), season reward | Lasts the season (from the summer: all of it; mid-season: until it ends) (§4.7) | 1 active per season, counts as a play |
 
 **Pack opening:** for each player or coach card you choose **Keep** or **Discard**. Keeping one when your slots are full means releasing an owned card. Discarded or released cards give quick-sell coins.
 
@@ -242,33 +247,49 @@ Boosts are never bought one by one. They come in sealed packs (**Boost Pack** 3 
 | Golden Chance | Epic | Pick a player: a big chance for them in the next segment |
 | Twelfth Man | Legend | +15% all stats for 30 minutes |
 
-### 4.5 Facilities (built with off-season cards)
+### 4.5 Club areas (facilities)
 
-Facility levels (0–5) **belong to the club**, not to you. If you leave, the levels stay behind. They're raised with the Club cards in the Transfer Market (§4.6). The card's **rarity sets the highest level it can build**:
+Ten areas, levels 0–5. They **belong to the club**, not to you: if you leave, the levels stay behind. Each area is raised by **its own Club card** from the Transfer Market (§4.6), and the card's **rarity sets the highest level it can build**:
 
 | Rarity | Common | Uncommon | Rare | Epic | Legend |
 |---|---|---|---|---|---|
 | Builds | +1, up to level 2 | +1, up to level 3 | +1, up to level 4 | +1, up to level 5 | +2 levels |
 
-| Facility | Effect at levels 0 / 1 / 2 / 3 / 4 / 5 |
-|---|---|
-| **Stadium** | Home-game income 30 / 45 / 60 / 80 / 100 / 125 × division multiplier |
-| **Merchandise** | Squad popularity × 0.5 / 1 / 1.5 / 2 / 2.5 / 3 × 0.3 coins per match |
-| **Training ground** | Cohesion +4 / 6 / 8 / 10 / 12 / 14 per match, and a max bonus of 4 / 5 / 6 / 7 / 8 / 10% all stats |
-| **Youth academy** | Academy fill-ins rated 48 / 50 / 52 / 54 / 56 / 58, and better Youth Intake players |
+Card prices also grow with the area's current level (×0.8 / 1 / 1.25 / 1.55 / 1.9 from level 0 up), so the last levels are expensive. All numbers live in `src/data/facilities.js`. Coin amounts are × the division multiplier (0.9 / 1.4 / 1.75 for levels 3 / 2 / 1).
 
-Clubs start with levels that match their size. The demo club starts at stadium 1, merchandise 0, training 1, academy 0.
+| Group | Area · card | Effect at levels 0 / 1 / 2 / 3 / 4 / 5 |
+|---|---|---|
+| Business | 🏟 **Stadium** · Stadium Evolution | Home gate 30 / 45 / 54 / 64 / 74 / 85 a home game |
+| Business | 🍽 **Hospitality** · Restaurant & Boxes | 0 / 10 / 18 / 27 / 36 / 46 a home game |
+| Business | 🏪 **Club store** · Club Store | 0 / 4 / 7 / 10 / 14 / 18 every match |
+| Business | 👕 **Merchandise** · Merchandise Line (kits → lifestyle → global) | Squad popularity × 0.5 / 0.9 / 1.3 / 1.7 / 2.1 / 2.5 × 0.3 every match |
+| Business | 🤝 **Sponsorship** · Find a Sponsor (local business → global partner) | 0 / 6 / 11 / 17 / 24 / 32 every match |
+| Sports | 🏋 **Training fields** · Training Fields | Cohesion +4 / 5 / 7 / 8 / 10 / 12 a match; max bonus 4 / 5 / 6 / 7 / 8 / 9% all stats |
+| Sports | 💪 **Gym** · Gym Upgrade | Stamina drains 0 / 4 / 8 / 12 / 16 / 20% slower |
+| Sports | 🧖 **Spa & recovery** · Spa & Recovery | Team shape +0 / 3 / 6 / 9 / 12 / 15 |
+| Sports | 🏫 **Youth academy** · Youth Academy | Academy fill-ins rated 48–58, intake 1–3 players a year up to Uncommon…Legend |
+| Sports | 📊 **Analytics** · Analytics Dept. | Pack odds +0 / 1 / 2 / 3 / 4 / 6 points from Common to higher; +1 card play a season at level 3 and level 5 |
 
-**Cohesion (0–100):** goes up after every match by the Training ground amount. Each new starter compared with the last match costs −10 (Tactical Continuity sets a floor). The bonus is cohesion% × the Training ground's max bonus.
+There are no injuries, so there's no medical area: the gym and spa work on stamina and team shape instead.
 
-### 4.6 Off-season cards and the Transfer Market
+Clubs start with levels that match their size (`clubStart`): a small level-3 club has stadium 1 and training 1 and nothing else; a level-1 club about 2–4 in each area; the giants 3–5. Older saves keep their four facilities and get the new areas a little below them (hospitality = stadium − 2, store and sponsorship = merchandise − 2, gym and spa = training − 2, analytics = academy − 2, never below 0).
 
-When the season ends, the **Transfer Market** opens with 9 off-season cards for sale. Every off-season card has a **rarity** that sets how strong it is, and **lower rarities appear more often** (Common 45%, Uncommon 28%, Rare 17%, Epic 8%, Legend 2%). You also get 1 random off-season card as a season reward.
+**Cohesion (0–100):** goes up after every match by the Training fields amount. Each new starter compared with the last match costs −10 (Tactical Continuity sets a floor). The bonus is cohesion% × the Training fields' max bonus.
 
-There are **27 card types** in three groups:
-- **Transfer:** squad moves. You can play as many as you like.
-- **Club:** facilities and deals. You can play as many as you like.
-- **Season event:** lasts the whole next season. Only **1 per season**.
+### 4.6 Management cards and the Transfer Market
+
+The **Transfer Market is open all year**. Each summer it has 9 fresh offers (3 transfer, 4 club, 2 events, always at least one signing); during the season it has 6 (2 transfer, 3 club, 1 event), replaced at the start of the season and every **4 league matchdays** (Home shows a line when there are new offers). Every card has a **rarity** that sets how strong it is, and **lower rarities appear more often** (Common 45%, Uncommon 28%, Rare 17%, Epic 8%, Legend 2%). Club cards are only offered at a rarity that can still raise that area. You also get 1 random card as a season reward.
+
+**Playing cards.** Cards are played from Cards → Items **at any time** (not during a match, not while a pack is open, not between the last match and collecting the season rewards).
+- **Card plays per season: 8** (+1 at Analytics level 3, +1 at level 5). Every card played counts, whatever its group. Shown as "Card plays this season: 3 / 8" in Items, the Market and Club management.
+- The count **resets when the season ends**: summer plays count towards the season that follows.
+- **Season events:** 1 per season. Played in the summer they last all season; played mid-season they apply for the rest of that season. They end when the season ends.
+- **Summer only:** Pre-season Camp (it boosts the first matchdays). Everything else, signings included, works mid-season too: a mid-season signing is the winter window.
+
+There are **33 card types** in three groups:
+- **Transfer:** squad moves.
+- **Club:** one card per club area (§4.5), plus Sports Science and Boost Crate.
+- **Season event:** one per season.
 
 Effects at Common and Legend (Uncommon, Rare and Epic sit in between):
 
@@ -284,11 +305,8 @@ Effects at Common and Legend (Uncommon, Rare and Epic sit in between):
 | 🔁 **Position Retraining** | Transfer | Move one player to a new position (−4 to all stats). | Move one player to a new position with no stat loss. | 120 → 960 |
 | 🎓 **Trait Coach** | Transfer | Teach one player a random new trait. | Teach one player the trait of your choice. | 150 → 1200 |
 | 📋 **Tactical Course** | Transfer | Your head coach learns a new formation of your choice. | Your head coach learns a new formation of your choice and can switch passive. | 150 → 1200 |
-| 🏟 **Stadium Evolution** | Club | Stadium +1 level, up to level 2. More income per home game. | Stadium +2 levels (max 5). More income per home game. | 250 → 2000 |
-| 👕 **Merchandise Expansion** | Club | Merchandise +1 level, up to level 2. Popular players sell more shirts. | Merchandise +2 levels (max 5). | 220 → 1760 |
-| 🏋 **Training Ground** | Club | Training ground +1 level, up to level 2. Faster, stronger cohesion. | Training ground +2 levels (max 5). | 250 → 2000 |
-| 🏫 **Youth Academy** | Club | Youth academy +1 level, up to level 2. More and better academy players each off-season. | Youth academy +2 levels (max 5). | 250 → 2000 |
-| 🤝 **Shirt Sponsor** | Club | +10 coins for every match next season. | +90 coins for every match next season. | 100 → 800 |
+| 🏟 **Stadium Evolution** · 🍽 **Restaurant & Boxes** · 🏪 **Club Store** · 👕 **Merchandise Line** · 🤝 **Find a Sponsor** · 🏋 **Training Fields** · 💪 **Gym Upgrade** · 🧖 **Spa & Recovery** · 🏫 **Youth Academy** · 📊 **Analytics Dept.** | Club | Its area +1 level, up to level 2. | Its area +2 levels (max 5). | 140–180 (Common, level 0) → 2,600–3,300 (Legend, level 4) |
+| 🧪 **Sports Science** | Club | +8 team shape until the season ends (all next season if played in the summer). | +30 team shape. | 180 → 1440 |
 | 📦 **Boost Crate** | Club | 3 random in-game boosts. | 8 random in-game boosts. | 150 → 1200 |
 | 🏰 **Fortress Season** | Season event | +4% all stats at home. | +13% all stats at home. | 300 → 2400 |
 | 🔥 **Indomitable Spirit** | Season event | When losing from 60': +8% all stats. | When losing from 60': +20% all stats. | 300 → 2400 |
@@ -316,7 +334,7 @@ Any card you gain from an off-season card (signings, Youth Intake, Golden Genera
 
 ### 4.7 Season events
 
-The season events are the "Season event" rows in the table above. Their effect lasts the whole next season, and a new one can be picked each off-season.
+The season events are the "Season event" rows in the table above. One can be active at a time. Played in the summer it lasts the whole next season; played mid-season it lasts until that season ends. Pre-season Camp is summer only.
 
 ### 4.8 Club squads, history pools and the academy
 
@@ -445,7 +463,8 @@ AI clubs play their identity with a coach that fits it. Pre-match scouting shows
 | Continental win / draw / loss | 100 / 40 / 20 |
 | Club World Cup win / draw / loss | 150 / 60 / 30 |
 | Bonuses | Clean sheet +20, 3+ goals +20 (× multiplier) |
-| Home game | Stadium income (§4.5) |
+| Home game | Stadium gate + hospitality (§4.5) |
+| Every match | Club store + sponsorship (§4.5) |
 | Merchandise (every match) | Squad popularity × merchandise multiplier × 0.3 |
 | League prizes (1st → 8th) | 600 / 350 / 250 / 180 / 120 / 90 / 60 / 30 × multiplier |
 | Trophy prizes | Cup 400 × multiplier, continental 1,500, Club World Cup 2,500; continental finalist 500; European qualifying 150 |
@@ -573,12 +592,12 @@ The original plan, kept for reference:
 2. **Squad:** pitch view with 7 starters, 3 bench, head coach and assistant. Drag to swap. Cohesion meter.
 3. **My cards:** players, coaches, inventory (boosts, off-season cards, unopened packs), card album with completion %, Hall of Fame.
 4. **Shop:** packs and boosts all season. Pack opening with a rarity reveal and Keep/Discard.
-5. **Transfer Market (off-season):** transfer cards, infrastructure, season events, and signing cards.
+5. **Transfer Market (Cards → Shop → Market, open all year):** transfer cards, club-area cards, season events and signing cards, with the season's card plays.
 6. **Match:** pitch, commentary, decision drawer with subs, mentality and boosts. Penalty shootout view.
 7. **Competitions:** league table, fixtures, top scorers, cup bracket, continental groups and bracket, Club World Cup.
 8. **Career:** reputation, board objective, job offers, "take 2 cards" picker, GM history.
 9. **History:** club timeline, trophy cabinet, Hall of Fame, world records, past winners.
-10. **Club:** facility levels and income breakdown.
+10. **Club management:** card plays, the ten areas grouped Business / Sports with level pips, current and next-level effect and the card that raises each, income per match, season finances, squad, season event, trophies.
 
 **Visual direction**
 - Dark pitch-green UI with bright rarity frames: grey, teal, blue, purple, gold.
