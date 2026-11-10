@@ -31,6 +31,7 @@ function addPlayer(book, comp, e) {
 function addCoach(book, comp, key, name, clubId, res) {
   const row = book.coaches[key] || (book.coaches[key] = { n: name, c: clubId, s: {}, t: 0 });
   row.c = clubId;
+  row.n = name;
   const t = row.s[comp] || (row.s[comp] = [0, 0, 0, 0]);
   t[0] += 1;
   t[res === 'W' ? 1 : res === 'D' ? 2 : 3] += 1;

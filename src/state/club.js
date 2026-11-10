@@ -493,7 +493,7 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
       const p = team.players[id];
       return { id, name: p.card.name, pos: p.card.pos, goals: p.goals, rating: p.rating || 6, cs: p.card.pos === 'GK' && conceded === 0 && (p.minutes ?? 90) >= 45, motm: id === motmId };
     });
-    const statsArgs = { world: next.world, poolById: POOL_BY_ID, homeId, awayId, score: match.score, goals: goalsFromMatch(match), detail: { side: userSide, lines }, userClubId: next.club.id, userName: next.gmName || 'You' };
+    const statsArgs = { world: next.world, poolById: POOL_BY_ID, homeId, awayId, score: match.score, goals: goalsFromMatch(match), detail: { side: userSide, lines }, userClubId: next.club.id, userName: next.coaches.coach?.name || next.gmName || 'You' };
     if (slot === 'L') {
       recordStats(next.stats, { ...statsArgs, comp: `L:${next.club.divisionId}` });
       const userGame = { divisionId: next.club.divisionId, homeId, awayId, score: match.score, goals: goalsFromMatch(match) };
@@ -767,7 +767,7 @@ export function closeSeason(state, seed) {
   ensureGms(next.world, seed + 5, state.season.year, state.club.id);
   // Coaches' titles in the stats book, then a fresh season page.
   next.stats = next.stats || newStats(state.season.year);
-  const titleTo = (clubId) => clubId && recordTitle(next.stats, coachKey(next.world, clubId, state.club.id), clubId === state.club.id ? (state.gmName || 'You') : (next.world.gms?.[clubId]?.name || 'Manager'), clubId);
+  const titleTo = (clubId) => clubId && recordTitle(next.stats, coachKey(next.world, clubId, state.club.id), clubId === state.club.id ? (state.coaches.coach?.name || state.gmName || 'You') : (next.world.gms?.[clubId]?.name || 'Manager'), clubId);
   for (const lg of Object.values(entry.leagues)) titleTo(lg.table[0][0]);
   for (const c of [...Object.values(entry.cups), ...Object.values(entry.continental), entry.cwc]) titleTo(c?.winner);
   // The four yearly awards, from this season's stats and trophies.
