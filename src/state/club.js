@@ -59,7 +59,7 @@ const uid = (state) => {
 // Starting squad: the club's named cards plus generic Common players.
 // A rookie's squad is thin: tuned with scripts/career-sim.mjs so season 1 is a fight to stay off the bottom.
 const START_LEGENDS = 1;
-const START_FILLER_DELTA = -1;
+const START_FILLER_DELTA = 0;
 
 function startingSquad(clubId, divisionId, formation, seed) {
   const rng = makeRng(seed);
