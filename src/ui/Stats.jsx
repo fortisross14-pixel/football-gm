@@ -4,7 +4,7 @@ import { DIVISIONS, DIVISION_BY_ID } from '../data/world/structure.js';
 import { CONTINENT_NAME } from '../engine/competitions.js';
 import { Segmented } from './Home.jsx';
 import { Crest } from './Art.jsx';
-import { ClubLink } from './nav.jsx';
+import { ClubLink, PlayerLink, ManagerLink, useSticky } from './nav.jsx';
 
 // Live stats: any moment, any competition, players and coaches.
 const COUNTRIES = [...new Map(DIVISIONS.filter((d) => d.tier === 1).map((d) => [d.code, d])).values()];
@@ -32,14 +32,14 @@ const COACH_KEYS = [
   { id: 'titles', label: 'Titles', col: 'Titles' },
 ];
 
-export default function Stats({ state, initialScope = 'all' }) {
+export default function Stats({ state, initialScope = 'all', memoKey = 'stats' }) {
   const stats = state.stats || { season: emptyBook(), all: emptyBook() };
   // Fresh season with no games yet: open on last season instead of an empty board.
-  const [period, setPeriod] = useState(Object.keys(stats.season.players).length ? 'season' : stats.lastSeason ? 'last' : 'all');
-  const [scope, setScope] = useState(initialScope);
-  const [who, setWho] = useState('players');
-  const [key, setKey] = useState('goals');
-  const [ckey, setCkey] = useState('wins');
+  const [period, setPeriod] = useSticky(`${memoKey}.period`, Object.keys(stats.season.players).length ? 'season' : stats.lastSeason ? 'last' : 'all');
+  const [scope, setScope] = useSticky(`${memoKey}.scope`, initialScope);
+  const [who, setWho] = useSticky(`${memoKey}.who`, 'players');
+  const [key, setKey] = useSticky(`${memoKey}.key`, 'goals');
+  const [ckey, setCkey] = useSticky(`${memoKey}.ckey`, 'wins');
   const book = period === 'season' ? stats.season : period === 'last' ? (stats.lastSeason || emptyBook()) : stats.all;
   const filter = compFilter(scope);
   const rows = useMemo(() => playerBoard(book, { filter, key, minApps: period === 'all' ? 15 : 5, limit: 25 }), [book, scope, key, period]);
@@ -87,7 +87,7 @@ export default function Stats({ state, initialScope = 'all' }) {
                   {rows.map((p, i) => (
                     <tr key={p.id} className={p.clubId === state.club.id ? 'is-user' : ''}>
                       <td>{i + 1}</td>
-                      <td className="table__club"><b>{p.name}</b></td>
+                      <td className="table__club"><b><PlayerLink id={p.id} name={p.name} /></b></td>
                       <td className="is-key">{k.fmt(p)}</td>
                       <td className="table__club">{club(p.clubId) ? <ClubLink id={p.clubId} className="club-inline"><Crest colors={club(p.clubId).colors} short={club(p.clubId).short} id={p.clubId} size={16} /> <span>{club(p.clubId).short}</span></ClubLink> : '—'}</td>
                       <td>{p.pos}</td>
@@ -113,7 +113,7 @@ export default function Stats({ state, initialScope = 'all' }) {
                   {crows.map((c, i) => (
                     <tr key={c.key} className={c.isUser ? 'is-user' : ''}>
                       <td>{i + 1}</td>
-                      <td className="table__club"><b>{c.name}{c.isUser ? ' (you)' : ''}</b></td>
+                      <td className="table__club"><b><ManagerLink mkey={c.key}>{c.name}{c.isUser ? ' (your coach)' : ''}</ManagerLink></b></td>
                       <td className="table__club">{club(c.clubId) ? <ClubLink id={c.clubId}>{club(c.clubId).short}</ClubLink> : '—'}</td>
                       <td>{c.played}</td>
                       <td className={ckey === 'wins' ? 'is-key' : ''}>{c.wins}</td><td>{c.draws}</td><td>{c.losses}</td>

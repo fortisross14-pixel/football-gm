@@ -35,14 +35,15 @@ npm run build      # static build in dist/
   - Cards reveal one by one.
   - For each card you choose Keep (pick who it replaces in your 10), Merge a duplicate (+1★, +2 stats, +30 matches) or Discard for coins.
 - **Cards tab:** Owned (squad, items, album) and Shop (packs, boosts, Transfer Market).
-- **League tab:** every league by name, with table, fixtures, scorers, cups and **History**: champion, runner-up, top scorer, MVP and Golden Glove for every season, records by league, country or world, and your career season by season. Tap any club for its page: squad, honours, season-by-season record, all-time scorers.
+- **League tab:** every league by name, with table, fixtures, scorers, cups and **History**: champion, runner-up, top scorer, MVP and Golden Glove for every season, records by league, country or world, and your career season by season. Tap any club for its page (Overview, Squad, History with managers and transfers, Stats, Honours), any player for his profile (Overview, History club by club and season by season, Stats by competition) and any manager for his page.
 - **World tab:** manager rankings (you against 300 AI managers), power ranking and most decorated clubs, world records, Hall of Fame.
-- **Season end:** prize money, reward packs and a free off-season card. Then the **Transfer Market** opens with 25 off-season card types (poach rivals' players, free agents, youth, stadium upgrades, season events…), each with a rarity that sets its strength.
+- **Season end:** prize money, reward packs and a free management card.
+- **Transfer Market, open all year:** 33 management card types (random signings, youth, club-area upgrades, sponsors, season events…), each with a rarity that sets its strength. 9 offers each summer, 6 new ones every 4 league matchdays. Play cards from Cards → Items any time, up to **8 card plays a season** (+1 at Analytics level 3 and 5).
 - **Card wear:** players and coaches lose a match each time they play and retire at 0.
 
 - **Main menu:** 3 save slots, new career (pick your name and one of three small-club job offers), back up / restore, settings (match speed, auto-play, reduced motion, tips).
 - **GM career:** reputation, board objectives, owners and fans confidence, job offers, moving clubs with 2 cards, getting sacked (3 offers, a level lower if a top-flight club fires you).
-- **Club screen:** facilities, finances, popularity, trophy cabinet.
+- **Club management:** ten club areas, levels 0–5, each raised by its own card. Business: stadium, hospitality, club store, merchandise, sponsorship (income every match). Sports: training fields, gym, spa & recovery, youth academy, analytics. Plus income per match, finances, popularity and the trophy cabinet.
 
 Progress is saved in the browser, automatically.
 
@@ -59,6 +60,7 @@ Progress is saved in the browser, automatically.
 | `src/engine/transfers.js` | History pools, academies, AI signings, retirements |
 | `src/engine/packs.js` | Pack odds, guarantees, duplicates |
 | `src/engine/history.js` | Season archive, all-time records, club histories |
+| `src/engine/careers.js` | Career log: every player's and manager's seasons, moves between clubs, club records |
 | `src/engine/gms.js` | AI managers: reputation, sackings, rankings |
 | `src/engine/career.js` | Board objective, reputation, owners/fans confidence, job offers |
 | `src/data/skills.js` | Intrinsic skills for Rare+ players and coaches |
@@ -69,6 +71,7 @@ Progress is saved in the browser, automatically.
 | `scripts/check-world.mjs` | Validates the world data |
 | `scripts/check-nations.mjs` | Every named player/coach has a known nation (`src/data/nations.js`: code → name + flag) |
 | `src/state/managers.js` | Managers book: every career you have played, ranked (main menu → Managers) |
-| `src/data/offseason.js` | The 25 off-season card types |
+| `src/data/offseason.js` | The 33 management card types (Transfer Market) |
+| `src/data/facilities.js` | The ten club areas: levels, effects, card plays per season |
 | `src/data/` | Demo club, league clubs, boosts, coach passives |
 | `src/ui/` | React screens and card components |

@@ -1,21 +1,20 @@
 import React from 'react';
 import { RARITIES } from '../engine/cards.js';
 import { OFFSEASON_CARDS, cardText } from '../data/offseason.js';
-import { effectiveCohesion, squadPopularity, cardPopularity, FACILITY_LABEL, academyInfo, seasonMods } from '../state/club.js';
+import { LEVEL_MULTIPLIER } from '../data/demo.js';
+import { AREAS, AREA_GROUPS, areaEffect } from '../data/facilities.js';
+import { effectiveCohesion, squadPopularity, cardPopularity, academyInfo, seasonMods, businessIncome } from '../state/club.js';
 import { Crest } from './Art.jsx';
 import { clubVars } from './clubTheme.js';
+import { CardPlays } from './Collection.jsx';
 
-const FACILITY_EFFECT = {
-  stadium: (l) => `Home gate ${[40, 70, 110, 160, 230, 320][l]} coins × division multiplier`,
-  merch: (l) => `Popularity × ${[0.5, 1, 1.5, 2, 2.5, 3][l]} × 2 coins per match`,
-  training: (l) => `Cohesion +${[4, 6, 8, 10, 12, 14][l]} per match, up to +${[4, 5, 6, 7, 8, 10][l]}% all stats`,
-  academy: (l) => {
-    const a = academyInfo(l);
-    return `${a.count} academy player${a.count > 1 ? 's' : ''} a year, up to ${RARITIES[a.best].label}`;
-  },
+const effect = (state, id, level) => {
+  const a = id === 'academy' ? academyInfo(level) : null;
+  return areaEffect(id, level, { m: LEVEL_MULTIPLIER[state.club.level] || 1, academy: a && { count: a.count, best: RARITIES[a.best].label } });
 };
 
-export default function ClubInfo({ state, onBack }) {
+// Club management: the ten club areas (Business and Sports), card plays, income and trophies.
+export default function ClubInfo({ state, onBack, onMarket }) {
   const fin = state.finance || { income: {}, spent: {} };
   const income = Object.entries(fin.income).sort((a, b) => b[1] - a[1]);
   const spent = Object.entries(fin.spent).sort((a, b) => b[1] - a[1]);
@@ -25,6 +24,9 @@ export default function ClubInfo({ state, onBack }) {
   const popular = [...state.squad].sort((a, b) => cardPopularity(b) - cardPopularity(a)).slice(0, 3);
   const mods = seasonMods(state);
   const ev = state.activeEvent;
+  const biz = businessIncome(state);
+  const bizMax = Math.max(1, ...biz.map((x) => x.coins));
+  const bizSeason = ['Gate', 'Hospitality', 'Store', 'Merchandise', 'Sponsor'].reduce((t, k) => t + (fin.income[k] || 0), 0);
 
   return (
     <div className="screen">
@@ -39,6 +41,48 @@ export default function ClubInfo({ state, onBack }) {
       </div>
 
       <section className="panel">
+        <h2 className="section-title">Club management</h2>
+        <CardPlays state={state} />
+        <p className="hint">Each area is raised by its own Club card from the Transfer Market, open all year. Card rarity sets the highest level it can build: Common up to 2, Uncommon 3, Rare 4, Epic 5, Legend +2 levels.</p>
+        {onMarket && <button type="button" className="btn btn--ghost btn--small" onClick={onMarket}>Transfer Market ›</button>}
+      </section>
+
+      {AREA_GROUPS.map((g) => (
+        <section key={g.id}>
+          <h2 className="section-title">{g.label}</h2>
+          <div className="facilities">
+            {g.ids.map((k) => {
+              const lvl = state.facilities?.[k] || 0;
+              return (
+                <div key={k} className="facility">
+                  <div className="facility__head">
+                    <b><span aria-hidden="true">{AREAS[k].icon}</span> {AREAS[k].label}</b>
+                    <span className="facility__dots" aria-label={`Level ${lvl} of 5`}>{[1, 2, 3, 4, 5].map((i) => <i key={i} className={i <= lvl ? 'on' : ''} />)}</span>
+                  </div>
+                  <span className="facility__now">L{lvl}: {effect(state, k, lvl)}</span>
+                  {lvl < 5 ? <span className="facility__next">Next, L{lvl + 1}: {effect(state, k, lvl + 1)}</span> : <span className="facility__next">Max level</span>}
+                  <span className="facility__card">Card: {OFFSEASON_CARDS[AREAS[k].card].name}</span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ))}
+
+      <section className="panel">
+        <h2 className="section-title">Income per match</h2>
+        <p className="hint">From the business areas at today's levels, on top of results and prizes.</p>
+        <ul className="money">
+          {biz.filter((it) => it.coins > 0).map((it) => <MoneyRow key={it.label} label={`${AREAS[it.area]?.label || it.label}${it.homeOnly ? ' (home)' : ''}`} value={it.coins} max={bizMax} kind="in" />)}
+        </ul>
+        <div className="money-totals">
+          <div><span>Home game</span><b className="is-up">◎ {biz.reduce((t, x) => t + x.coins, 0)}</b></div>
+          <div><span>Away game</span><b className="is-up">◎ {biz.filter((x) => !x.homeOnly).reduce((t, x) => t + x.coins, 0)}</b></div>
+          <div><span>This season</span><b>◎ {bizSeason}</b></div>
+        </div>
+      </section>
+
+      <section className="panel">
         <h2 className="section-title">Season finances</h2>
         <div className="money-totals">
           <div><span>In</span><b className="is-up">◎ {totalIn}</b></div>
@@ -50,23 +94,6 @@ export default function ClubInfo({ state, onBack }) {
           {income.map(([k, v]) => <MoneyRow key={k} label={k} value={v} max={max} kind="in" />)}
           {spent.map(([k, v]) => <MoneyRow key={k} label={k} value={v} max={max} kind="out" />)}
         </ul>
-      </section>
-
-      <section>
-        <h2 className="section-title">Facilities</h2>
-        <p className="hint">Upgrade them with Club cards from the off-season Transfer Market. Card rarity sets the highest level it can reach.</p>
-        <div className="facilities">
-          {Object.entries(state.facilities).map(([k, lvl]) => (
-            <div key={k} className="facility">
-              <div className="facility__head">
-                <b>{FACILITY_LABEL[k]}</b>
-                <span className="facility__dots">{[1, 2, 3, 4, 5].map((i) => <i key={i} className={i <= lvl ? 'on' : ''} />)}</span>
-              </div>
-              <span className="facility__now">L{lvl}: {FACILITY_EFFECT[k](lvl)}</span>
-              {lvl < 5 && <span className="facility__next">Next, L{lvl + 1}: {FACILITY_EFFECT[k](lvl + 1)}</span>}
-            </div>
-          ))}
-        </div>
       </section>
 
       <section className="panel">
@@ -86,7 +113,7 @@ export default function ClubInfo({ state, onBack }) {
         <h2 className="section-title">Season event</h2>
         {ev ? (
           <p><b>{OFFSEASON_CARDS[ev.type].name}</b> ({RARITIES[ev.rarity].label}): {cardText(ev.type, ev.rarity)}</p>
-        ) : <p className="hint">None this season. Pick one in the off-season.</p>}
+        ) : <p className="hint">None this season. Play one from Cards → Items: in the summer it lasts all season, mid-season until the season ends.</p>}
       </section>
 
       <section>

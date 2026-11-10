@@ -49,7 +49,7 @@ function Tie({ state, game, label }) {
   );
 }
 
-function DomesticCup({ state, cup }) {
+export function DomesticCup({ state, cup }) {
   if (!cup) return <p className="hint">This country has no cup.</p>;
   const names = cupRoundNames(cup);
   const inCup = cup.clubs.includes(state.club.id);
@@ -92,7 +92,7 @@ function GroupTable({ state, group, name }) {
   );
 }
 
-function Continental({ state, c, name }) {
+export function Continental({ state, c, name }) {
   return (
     <div className="bracket">
       {c.winner && <p className="promo is-up">🏆 {name} winner: {clubById(state.world, c.winner).name}</p>}
@@ -128,7 +128,7 @@ function Continental({ state, c, name }) {
   );
 }
 
-function ClubWorldCup({ state, cwc }) {
+export function ClubWorldCup({ state, cwc }) {
   if (!cwc) return <p className="hint">At the end of the season, the three continental champions meet at a neutral venue: each plays the other two, then the top two play the final.</p>;
   return (
     <div className="bracket">

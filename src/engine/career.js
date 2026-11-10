@@ -174,13 +174,13 @@ export function jobOffers(world, { reputation, currentClubId, sacked = false, go
   }));
 }
 
-// Facilities and treasury a club offers a new GM: by level, then by size within the level
+// Facilities (the ten club areas, data/facilities.js) and treasury a club offers a new GM: by level, then by size within the level
 // (a strong level-1 side like Sevilla is far richer than a promoted one; the giants are another world).
 export function clubStart(world, clubId) {
   const club = world.clubs[clubId];
   const level = DIVISION_BY_ID[club.divisionId].level;
   const base = CLUB_START[level];
-  if (TOP_CLUBS.includes(clubId)) return { coins: 9000, facilities: { stadium: 5, merch: 5, training: 4, academy: 4 }, coachRarity: 'epic' };
+  if (TOP_CLUBS.includes(clubId)) return { coins: 9000, facilities: { stadium: 5, hospitality: 4, store: 4, merch: 5, sponsor: 4, training: 4, gym: 3, spa: 3, academy: 4, analytics: 2 }, coachRarity: 'epic' };
   const peers = Object.values(world.clubs).filter((c) => DIVISION_BY_ID[c.divisionId].level === level);
   const share = peers.filter((c) => c.strength < club.strength).length / Math.max(1, peers.length - 1); // 0 smallest … 1 biggest
   const up = share > 0.66 ? 1 : 0;
@@ -190,7 +190,7 @@ export function clubStart(world, clubId) {
 }
 
 export const CLUB_START = {
-  1: { coins: 4000, facilities: { stadium: 4, merch: 4, training: 3, academy: 3 }, coachRarity: 'rare' },
-  2: { coins: 1500, facilities: { stadium: 2, merch: 2, training: 2, academy: 1 }, coachRarity: 'uncommon' },
-  3: { coins: 500, facilities: { stadium: 1, merch: 0, training: 1, academy: 0 }, coachRarity: 'common' },
+  1: { coins: 4000, facilities: { stadium: 4, hospitality: 2, store: 2, merch: 4, sponsor: 2, training: 3, gym: 2, spa: 1, academy: 3, analytics: 1 }, coachRarity: 'rare' },
+  2: { coins: 1500, facilities: { stadium: 2, hospitality: 1, store: 0, merch: 2, sponsor: 1, training: 2, gym: 1, spa: 0, academy: 1, analytics: 0 }, coachRarity: 'uncommon' },
+  3: { coins: 500, facilities: { stadium: 1, hospitality: 0, store: 0, merch: 0, sponsor: 0, training: 1, gym: 0, spa: 0, academy: 0, analytics: 0 }, coachRarity: 'common' },
 };

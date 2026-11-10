@@ -5,7 +5,7 @@ import { DIVISION_BY_ID, TOP_CLUBS } from '../data/world/structure.js';
 import { POOL_BY_ID } from '../state/club.js';
 import { Segmented } from './Home.jsx';
 import { Crest } from './Art.jsx';
-import { ClubLink, LeagueLink } from './nav.jsx';
+import { ClubLink, LeagueLink, PlayerLink, ManagerLink, useSticky } from './nav.jsx';
 import { Records } from './History.jsx';
 import { HallOfFame } from './Collection.jsx';
 import Stats from './Stats.jsx';
@@ -15,19 +15,19 @@ const nameOf = (id) => POOL_BY_ID[id]?.name;
 
 // The wider world: managers' rankings, the strongest clubs, all-time records and legends.
 export default function World({ state }) {
-  const [view, setView] = useState('stats');
+  const [view, setView] = useSticky('world.view', 'stats');
   return (
     <div className="screen">
       <Segmented
         small
         label="World"
         value={view}
-        options={[{ id: 'stats', label: 'Stats' }, { id: 'awards', label: 'Awards' }, { id: 'gms', label: 'Managers' }, { id: 'clubs', label: 'Clubs' }, { id: 'records', label: 'Records' }, { id: 'hof', label: 'Hall of Fame' }]}
+        options={[{ id: 'stats', label: 'Stats' }, { id: 'awards', label: 'Awards' }, { id: 'gms', label: 'Managers' }, { id: 'clubs', label: 'Clubs' }, { id: 'hof', label: 'Hall of Fame' }]}
         onChange={setView}
       />
       {view === 'gms' && <Managers state={state} />}
       {view === 'clubs' && <Clubs state={state} />}
-      {view === 'stats' && <Stats state={state} />}
+      {view === 'stats' && <Stats state={state} memoKey="world" />}
       {view === 'awards' && <Awards state={state} />}
       {view === 'records' && (state.archive?.length
         ? <Records state={state} archive={state.archive} divId={state.club.divisionId} initialScope="world" />
@@ -67,7 +67,7 @@ function Managers({ state }) {
               return (
                 <tr key={`${g.clubId}-${g.name}`} className={g.isUser ? 'is-user' : ''}>
                   <td>{all.indexOf(g) + 1}</td>
-                  <td className="table__club"><b>{g.name}</b></td>
+                  <td className="table__club"><b><ManagerLink mkey={g.isUser ? 'you' : `${g.clubId}|${g.name}`}>{g.name}</ManagerLink></b></td>
                   <td className="table__club"><ClubLink id={g.clubId} className="club-inline"><Crest colors={club.colors} short={club.short} size={16} id={g.clubId} /> <span>{club.short}</span></ClubLink></td>
                   <td><b>{g.rep}</b></td>
                   <td>{g.titles}</td>
@@ -77,7 +77,7 @@ function Managers({ state }) {
               );
             })}
             {!shown.some((g) => g.isUser) && (
-              <tr className="is-user"><td>{yourRank}</td><td className="table__club"><b>{you.name}</b></td><td className="table__club">{state.club.short}</td><td><b>{you.rep}</b></td><td>{you.titles}</td><td>{you.cups}</td><td>{you.seasons}</td></tr>
+              <tr className="is-user"><td>{yourRank}</td><td className="table__club"><b><ManagerLink mkey="you">{you.name}</ManagerLink></b></td><td className="table__club">{state.club.short}</td><td><b>{you.rep}</b></td><td>{you.titles}</td><td>{you.cups}</td><td>{you.seasons}</td></tr>
             )}
           </tbody>
         </table>
@@ -87,7 +87,7 @@ function Managers({ state }) {
         <section>
           <h3 className="sub-title">Former managers with titles</h3>
           <ul className="champions">
-            {former.map((g, i) => <li key={i}><span>{g.name} · {state.world.clubs[g.clubId]?.short} until S{g.until}</span><b>{g.titles} 🏆</b></li>)}
+            {former.map((g, i) => <li key={i}><span><ManagerLink mkey={`${g.clubId}|${g.name}`}>{g.name}</ManagerLink> · {state.world.clubs[g.clubId]?.short} until S{g.until}</span><b>{g.titles} 🏆</b></li>)}
           </ul>
         </section>
       )}
@@ -150,7 +150,7 @@ function Legends({ state }) {
             {greats.map((p, i) => (
               <li key={p.id}>
                 <span className="scorer-list__pos">{i + 1}</span>
-                <span className="scorer-list__name">{p.name}<em> · {Object.keys(p.clubs).map((id) => state.world.clubs[id]?.short).filter(Boolean).join(', ')}{p.mvp ? ` · ${p.mvp}× MVP` : ''}{p.boots ? ` · ${p.boots}× Golden Boot` : ''}</em></span>
+                <span className="scorer-list__name"><PlayerLink id={p.id} name={p.name} /><em> · {Object.keys(p.clubs).map((id) => state.world.clubs[id]?.short).filter(Boolean).join(', ')}{p.mvp ? ` · ${p.mvp}× MVP` : ''}{p.boots ? ` · ${p.boots}× Golden Boot` : ''}</em></span>
                 <b>{p.goals}</b>
               </li>
             ))}

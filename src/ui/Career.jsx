@@ -4,13 +4,19 @@ import { carryOptions, jobSecurity, SACK_LINE, LOOK_COST } from '../state/club.j
 import { standings } from '../engine/season.js';
 import { Crest } from './Art.jsx';
 import { ClubLink } from './nav.jsx';
+import { Segmented } from './Home.jsx';
+import { MyCareer } from './History.jsx';
+import { opinions, ownerLine, fanLine, unreadCount } from '../state/chronicle.js';
 import Sheet from './Sheet.jsx';
 
 const VERDICT = { met: 'Objective met', exceeded: 'Objective exceeded', missed: 'Objective missed' };
 
-export default function Career({ state, onAccept, onBack, onLook }) {
+export default function Career({ state, onAccept, onBack, onLook, onRead }) {
   const gm = state.gm;
   const [picking, setPicking] = useState(null); // offer being accepted
+  const unread = unreadCount(state);
+  const [tab, setTab] = useState(state.phase === 'offseason' && gm.offers.length ? 'offers' : unread ? 'inbox' : 'overview');
+  const op = opinions(state);
   const pos = standings(state.season, state.club.divisionId).findIndex((r) => r.id === state.club.id) + 1;
   const review = gm.review;
 
@@ -24,6 +30,36 @@ export default function Career({ state, onAccept, onBack, onLook }) {
         </div>
         <button type="button" className="btn btn--small btn--ghost" onClick={onBack}>Back</button>
       </div>
+      <Segmented
+        label="Career"
+        value={tab}
+        options={[
+          { id: 'inbox', label: `Inbox${unread ? ` · ${unread}` : ''}` },
+          { id: 'overview', label: 'Overview' },
+          { id: 'offers', label: state.phase === 'offseason' ? `Offers${gm.offers.length ? ` · ${gm.offers.length}` : ''}` : 'Offers' },
+          { id: 'history', label: 'History' },
+        ]}
+        onChange={setTab}
+      />
+
+      {tab === 'inbox' && <Inbox state={state} onRead={onRead} />}
+
+      {tab === 'overview' && (<>
+      <section className="opinions">
+        <div className="opinion">
+          <span className="opinion__who">Owners · {op.owners.value}</span>
+          <p>{ownerLine(op.owners)}</p>
+        </div>
+        <div className="opinion">
+          <span className="opinion__who">Fans · {op.fans.value}</span>
+          <p>{fanLine(op.fans)}</p>
+        </div>
+      </section>
+      <section className="panel contract">
+        <h2 className="section-title">Contract</h2>
+        <p className="objective"><b>{state.club.name}</b><span>{gm.contract ? `Season ${gm.contract.from} to ${gm.contract.until}${gm.contract.until <= state.season.year ? ' · expires this season' : ''}` : 'Rolling contract'}</span></p>
+        <p className="hint">At the end of a contract the owners renew it if job security is 35 or more. Otherwise you leave, with three offers to choose from.</p>
+      </section>
       <p className="hint">Reputation decides which clubs want you: small clubs from 0, second-tier clubs from about 30, top divisions from about 60, and the world's biggest clubs from 85.</p>
 
       {gm.sacked && (
@@ -54,7 +90,9 @@ export default function Career({ state, onAccept, onBack, onLook }) {
         </section>
       )}
 
-      {state.phase === 'offseason' && (
+      </>)}
+
+      {tab === 'offers' && (state.phase !== 'offseason' ? <p className="hint">Clubs only call in the summer. When the season ends, come back here to look for offers (you can do it once each summer).</p> : (
         <section>
           <h2 className="section-title">Job offers</h2>
           {!gm.sacked && (
@@ -86,16 +124,19 @@ export default function Career({ state, onAccept, onBack, onLook }) {
           )}
           {!gm.sacked && gm.offers.length > 0 && <p className="hint">Or stay where you are: just start the next season.</p>}
         </section>
-      )}
+      ))}
 
+      {tab === 'history' && (<>
       <section>
         <h2 className="section-title">Clubs managed</h2>
         <ul className="champions">
           {gm.career.map((c, i) => (
-            <li key={i}><span>{c.name}</span><b>Season {c.from}{c.to ? `–${c.to}` : ' – now'}</b></li>
+            <li key={i}><span><ClubLink id={c.clubId}>{c.name}</ClubLink></span><b>Season {c.from}{c.to ? `–${c.to}` : ' – now'}</b></li>
           ))}
         </ul>
       </section>
+      <MyCareer state={state} />
+      </>)}
 
       {picking && <CarrySheet state={state} offer={picking} onClose={() => setPicking(null)} onConfirm={(keys) => { onAccept(picking.clubId, keys); setPicking(null); }} />}
     </div>
@@ -154,5 +195,31 @@ export function Confidence({ state, compact }) {
       </div>
       {!compact && <p className="hint">{mood}. Security mixes owners (65%) and fans (35%). Wins, goals and cup runs lift them; defeats and missing the target drop them.</p>}
     </section>
+  );
+}
+
+const KIND_ICON = { title: '🏆', board: '🏢', fans: '📣', squad: '✍', club: '🏗', career: '💼', match: '🔥', award: '🏅' };
+
+// News from the club, newest first.
+function Inbox({ state, onRead }) {
+  const list = state.inbox || [];
+  const [open, setOpen] = useState(null);
+  if (!list.length) return <p className="hint">No messages yet. News about titles, the owners, the fans, signings and building works arrives here.</p>;
+  return (
+    <>
+      {list.some((m) => !m.read) && <button type="button" className="link-btn" onClick={() => onRead?.(null)}>Mark all as read</button>}
+      <ul className="inbox">
+        {list.map((m) => (
+          <li key={m.id} className={`inbox__item is-${m.kind}${m.read ? '' : ' is-unread'}${open === m.id ? ' is-open' : ''}`}>
+            <button type="button" onClick={() => { setOpen(open === m.id ? null : m.id); if (!m.read) onRead?.(m.id); }}>
+              <span className="inbox__icon" aria-hidden="true">{KIND_ICON[m.kind] || '✉'}</span>
+              <span className="inbox__title">{m.title}</span>
+              <span className="inbox__when">S{m.year}{m.md ? ` · MD ${m.md}` : ''}</span>
+            </button>
+            {open === m.id && m.body && <p className="inbox__body">{m.body}</p>}
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }

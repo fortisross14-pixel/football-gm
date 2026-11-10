@@ -3,16 +3,15 @@ import { standings, topScorers, clubById, MATCHDAYS, PROMOTION_SPOTS } from '../
 import { DIVISIONS, DIVISION_BY_ID, CONTINENT_LABEL } from '../data/world/structure.js';
 import { Crest } from './Art.jsx';
 import { Segmented } from './Home.jsx';
-import Cups from './Cups.jsx';
 import History from './History.jsx';
 import CompStats from './CompStats.jsx';
-import { ClubLink } from './nav.jsx';
+import { ClubLink, PlayerLink, useSticky } from './nav.jsx';
 
 const COUNTRIES = [...new Map(DIVISIONS.map((d) => [d.code, d])).values()];
 
-export default function League({ state, nav }) {
-  const [divId, setDivId] = useState(nav?.divId || state.club.divisionId);
-  const [tab, setTab] = useState(nav?.tab || 'table');
+export default function League({ state, nav, onBack }) {
+  const [divId, setDivId] = useSticky('league.div', nav?.divId || state.club.divisionId, nav?.k ?? null);
+  const [tab, setTab] = useSticky('league.tab', nav?.tab || 'table', nav?.k ?? null);
   const [picking, setPicking] = useState(false);
   const div = DIVISION_BY_ID[divId];
   const tiers = DIVISIONS.filter((d) => d.code === div.code);
@@ -22,6 +21,7 @@ export default function League({ state, nav }) {
   return (
     <div className="screen screen--league">
       <div className="league__controls">
+      {onBack && <button type="button" className="link-btn league__back" onClick={onBack}>‹ Competitions</button>}
       <button type="button" className="div-picker" onClick={() => setPicking(!picking)} aria-expanded={picking}>
         <span className="div-picker__label">{div.country} · {CONTINENT_LABEL[div.continent]} · Level {div.level}</span>
         <b>{div.name}</b>
@@ -50,7 +50,7 @@ export default function League({ state, nav }) {
         small
         label="View"
         value={tab}
-        options={[{ id: 'table', label: 'Table' }, { id: 'fixtures', label: 'Fixtures' }, { id: 'scorers', label: 'Stats' }, { id: 'cups', label: 'Cups' }, { id: 'history', label: 'History' }]}
+        options={[{ id: 'table', label: 'Table' }, { id: 'fixtures', label: 'Fixtures' }, { id: 'scorers', label: 'Stats' }, { id: 'history', label: 'History' }]}
         onChange={setTab}
       />
       </div>
@@ -59,7 +59,6 @@ export default function League({ state, nav }) {
       {tab === 'table' && <Table state={state} divId={divId} />}
       {tab === 'fixtures' && <Fixtures key={divId} state={state} divId={divId} />}
       {tab === 'scorers' && <CompStats state={state} comp={`L:${divId}`} />}
-      {tab === 'cups' && <Cups state={state} countryCode={div.code} />}
       {tab === 'history' && <History state={state} divId={divId} />}
       </div>
     </div>
@@ -176,7 +175,7 @@ function Scorers({ state, divId }) {
           <li key={s.id} className={s.clubId === state.club.id ? 'is-user' : ''}>
             <span className="scorer-list__pos">{i + 1}</span>
             <Crest colors={club.colors} short={club.short} size={20} id={s.clubId} />
-            <span className="scorer-list__name">{s.name}<em> · <ClubLink id={s.clubId}>{club.short}</ClubLink></em></span>
+            <span className="scorer-list__name"><PlayerLink id={s.id} name={s.name} /><em> · <ClubLink id={s.clubId}>{club.short}</ClubLink></em></span>
             <b>{s.goals}</b>
           </li>
         );

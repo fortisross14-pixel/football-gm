@@ -5,7 +5,9 @@ import {
   newClubState, starterOffers, nextUserGame, buildUserTeam, matchRewards, applyMatch, buyPack, pendingCard,
   duplicateOf, canMerge, keepPending, mergePending, discardPending, closeSeason, buyMarketCard, useOffseasonCard,
   startNextSeason, acceptOffer, carryOptions, seasonSummary, userStrength, canUseOffseason, POOL_BY_ID, isCoach, lookForOffers,
+  cardPlaysLeft, seeMarket,
 } from '../src/state/club.js';
+import { AREA_IDS } from '../src/data/facilities.js';
 import { aiTeamFor, clubById, standings } from '../src/engine/season.js';
 import { simulateMatch } from '../src/engine/match.js';
 import { overall, autoArrange, FORMATIONS, slotFit } from '../src/engine/cards.js';
@@ -120,35 +122,45 @@ function shop(state, seed, stats) {
   return s;
 }
 
-function offseason(state, seed) {
+// Management cards: the market is open all year and every card played uses one of the
+// season's card plays. Buy what helps (signings, then club areas, then one event) while
+// there are plays left, then play everything usable.
+const MARKET_ORDER = [
+  'worldSigning', 'nationalSigning', 'veteranSigning', 'stadiumEvolution', 'trainingGround', 'findSponsor', 'hospitality',
+  'merchExpansion', 'clubStore', 'spaRecovery', 'gymUpgrade', 'youthAcademy', 'analyticsDept', 'personalTrainer', 'careerExtension',
+];
+function manage(state, seed, { summer }) {
   let s = decide(state);
-  if (BOT === 'bad') return s;
-  // Buy what helps: signings first, then facilities, then one event.
-  const order = ['worldSigning', 'nationalSigning', 'veteranSigning', 'stadiumEvolution', 'trainingGround', 'merchExpansion', 'youthAcademy', 'personalTrainer', 'careerExtension'];
-  const offers = [...s.market.offers].sort((a, b) => {
+  if (BOT === 'bad' || !s.market) return s;
+  if (BOT === 'poor' && !summer) return s;
+  const order = BOT === 'poor' ? MARKET_ORDER.slice(0, 5) : MARKET_ORDER;
+  const offers = [...s.market.offers].filter((o) => !o.sold).sort((a, b) => {
     const ia = order.indexOf(a.type); const ib = order.indexOf(b.type);
     return (ia < 0 ? 50 : ia) - (ib < 0 ? 50 : ib);
   });
-  let eventBought = false;
-  for (const o of offers) {
-    const isEvent = OFFSEASON_CARDS[o.type].group === 'event';
-    if (isEvent && eventBought) continue;
-    if (s.coins - o.price < 400) continue;
-    if (!order.includes(o.type) && !isEvent) continue;
-    s = buyMarketCard(s, o.uid);
-    if (isEvent) eventBought = true;
-  }
-  // Use everything usable.
-  for (const item of [...s.inventory.offseason]) {
-    if (!canUseOffseason(s, item).ok) continue;
+  // In-season, only spare money: packs come first for a sensible player.
+  const reserve = summer ? 400 : 1500;
+  const play = (item) => {
+    if (!canUseOffseason(s, item).ok) return;
     const best = [...s.squad].sort((a, b) => overall(b) - overall(a))[0];
     const oldest = [...s.squad].filter((c) => c.matchesLeft != null).sort((a, b) => a.matchesLeft - b.matchesLeft)[0];
     const target = { playerId: item.type === 'careerExtension' ? oldest?.id : best.id, position: 'FWD', formation: s.coaches.coach.formation === '2-3-1' ? '2-2-2' : '2-3-1' };
     const r = useOffseasonCard(s, item.uid, target, seed++);
     s = decide(r.state);
+  };
+  // Cards already owned (season rewards) first, then buy and play straight away.
+  for (const item of [...s.inventory.offseason]) play(item);
+  for (const o of offers) {
+    if (!cardPlaysLeft(s)) break;
+    const def = OFFSEASON_CARDS[o.type];
+    if (def.group === 'event' ? s.activeEvent : !order.includes(o.type)) continue;
+    if (s.coins - o.price < reserve || !canUseOffseason(s, o).ok) continue;
+    s = buyMarketCard(s, o.uid);
+    play(o);
   }
-  return s;
+  return seeMarket(s);
 }
+const offseason = (state, seed) => manage(state, seed, { summer: true });
 
 function chooseOffer(state) {
   const looks = process.env.NO_LOOK !== '1' && (BOT !== 'poor' || state.season.year % 2 === 0);
@@ -195,7 +207,7 @@ function playNext(state, seed, stats) {
 const stats = {
   packs: {}, pulls: {}, goals: 0, matches: 0, byComp: {},
   upsets: { underdog: { n: 0, w: 0, d: 0 }, favourite: { n: 0, w: 0, d: 0 } },
-  bySeason: Array.from({ length: SEASONS }, () => ({ level: [], pos: [], coinsIn: [], strengthGap: [], rep: [], retired: 0, trophies: 0, continental: 0, cats: {}, verdicts: {} })),
+  bySeason: Array.from({ length: SEASONS }, () => ({ level: [], pos: [], coinsIn: [], strengthGap: [], rep: [], areas: [], plays: [], retired: 0, trophies: 0, continental: 0, cats: {}, verdicts: {} })),
   firstD2: [], firstD1: [], firstContinental: [], topClub: [], sacked: 0, moves: 0,
   worldNamed: [], contWinners: {}, cardSeasons: [],
 };
@@ -217,11 +229,14 @@ for (let c = 0; c < CAREERS; c += 1) {
     while (s.phase === 'season' && guard < 70) {
       s = playNext(s, seed++, stats);
       s = decide(s);
+      if (s.phase === 'season' && s.market?.fresh && !process.env.NO_MANAGE) s = manage(s, seed * 7 + 13, { summer: false }); // own seed: keeps match seeds comparable
       if (guard % 6 === 5) s = shop(s, seed++, stats);
       guard += 1;
     }
     const sum = seasonSummary(s);
     row.level.push(s.club.level);
+    row.areas.push(AREA_IDS.reduce((t, k) => t + (s.facilities[k] || 0), 0));
+    row.plays.push(s.cardPlays || 0);
     row.pos.push(sum.position);
     row.coinsIn.push(Object.values(s.finance?.income || {}).reduce((a, b) => a + b, 0));
     for (const [k, v] of Object.entries(s.finance?.income || {})) row.cats[k] = (row.cats[k] || 0) + v / CAREERS;
@@ -275,6 +290,8 @@ console.log('Season | avg level | avg finish | income | strength vs division | r
 stats.bySeason.forEach((r, i) => {
   console.log(`  ${String(i + 1).padStart(2)}   |   ${f1(avg(r.level))}     |    ${f1(avg(r.pos))}     | ${String(Math.round(avg(r.coinsIn))).padStart(6)} |       ${avg(r.strengthGap) >= 0 ? '+' : ''}${f1(avg(r.strengthGap))}          |    ${String(Math.round(avg(r.rep))).padStart(3)}     |    ${f1(r.retired / CAREERS)}      |   ${r.trophies}      |   ${r.continental}`);
 });
+console.log(`Club area levels (sum of all 10 areas, end of season): ${stats.bySeason.map((r) => f1(avg(r.areas))).join(' · ')}`);
+console.log(`Card plays used per season (summer + season): ${stats.bySeason.map((r) => f1(avg(r.plays))).join(' · ')}`);
 for (const i of [0, Math.floor(SEASONS / 2), SEASONS - 1]) {
   const cats = stats.bySeason[i].cats;
   console.log(`Income season ${i + 1}: ${Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${Math.round(v)}`).join(' · ')}`);
