@@ -1,7 +1,7 @@
 import React from 'react';
 import { playerBoard, emptyBook } from '../engine/statsbook.js';
 import { Crest } from './Art.jsx';
-import { ClubLink } from './nav.jsx';
+import { ClubLink, PlayerLink } from './nav.jsx';
 
 const BOARDS = [
   { key: 'goals', title: 'Top scorers', val: (p) => p.goals },
@@ -29,7 +29,7 @@ export default function CompStats({ state, comp }) {
                   <li key={p.id} className={p.clubId === state.club.id ? 'is-user' : ''}>
                     <span className="scorer-list__pos">{i + 1}</span>
                     {club && <Crest colors={club.colors} short={club.short} id={p.clubId} size={20} />}
-                    <span className="scorer-list__name">{p.name}<em> · {club ? <ClubLink id={p.clubId}>{club.short}</ClubLink> : ''} · {p.apps} apps</em></span>
+                    <span className="scorer-list__name"><PlayerLink id={p.id} name={p.name} /><em> · {club ? <ClubLink id={p.clubId}>{club.short}</ClubLink> : ''} · {p.apps} apps</em></span>
                     <b>{l.val(p)}</b>
                   </li>
                 );

@@ -6,13 +6,13 @@ import { Segmented } from './Home.jsx';
 import Cups from './Cups.jsx';
 import History from './History.jsx';
 import CompStats from './CompStats.jsx';
-import { ClubLink } from './nav.jsx';
+import { ClubLink, PlayerLink, useSticky } from './nav.jsx';
 
 const COUNTRIES = [...new Map(DIVISIONS.map((d) => [d.code, d])).values()];
 
 export default function League({ state, nav }) {
-  const [divId, setDivId] = useState(nav?.divId || state.club.divisionId);
-  const [tab, setTab] = useState(nav?.tab || 'table');
+  const [divId, setDivId] = useSticky('league.div', nav?.divId || state.club.divisionId, nav?.k ?? null);
+  const [tab, setTab] = useSticky('league.tab', nav?.tab || 'table', nav?.k ?? null);
   const [picking, setPicking] = useState(false);
   const div = DIVISION_BY_ID[divId];
   const tiers = DIVISIONS.filter((d) => d.code === div.code);
@@ -176,7 +176,7 @@ function Scorers({ state, divId }) {
           <li key={s.id} className={s.clubId === state.club.id ? 'is-user' : ''}>
             <span className="scorer-list__pos">{i + 1}</span>
             <Crest colors={club.colors} short={club.short} size={20} id={s.clubId} />
-            <span className="scorer-list__name">{s.name}<em> · <ClubLink id={s.clubId}>{club.short}</ClubLink></em></span>
+            <span className="scorer-list__name"><PlayerLink id={s.id} name={s.name} /><em> · <ClubLink id={s.clubId}>{club.short}</ClubLink></em></span>
             <b>{s.goals}</b>
           </li>
         );

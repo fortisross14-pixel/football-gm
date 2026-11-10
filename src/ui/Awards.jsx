@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Crest } from './Art.jsx';
-import { ClubLink } from './nav.jsx';
+import { ClubLink, PlayerLink } from './nav.jsx';
 
 const AWARDS = [
   { key: 'best', icon: '🏅', label: 'Best Player' },
@@ -17,7 +17,7 @@ export default function Awards({ state }) {
     for (const y of list) for (const a of AWARDS) {
       const w = y[a.key];
       if (!w) continue;
-      const row = t[w.id] || (t[w.id] = { name: w.name, clubId: w.clubId, n: 0, what: [] });
+      const row = t[w.id] || (t[w.id] = { id: w.id, name: w.name, clubId: w.clubId, n: 0, what: [] });
       row.n += 1;
       row.what.push(`${a.label} S${y.year}`);
     }
@@ -38,7 +38,7 @@ export default function Awards({ state }) {
                   <span className="award__label">{a.icon} {a.label}</span>
                   {w ? (
                     <>
-                      <b className="award__name">{w.name}</b>
+                      <b className="award__name"><PlayerLink id={w.id} name={w.name} /></b>
                       <span className="award__club">
                         {club(w.clubId) && <ClubLink id={w.clubId} className="club-inline"><Crest colors={club(w.clubId).colors} short={club(w.clubId).short} id={w.clubId} size={16} /> <span>{club(w.clubId).name}</span></ClubLink>}
                       </span>
@@ -58,7 +58,7 @@ export default function Awards({ state }) {
             {tally.map((t, i) => (
               <li key={t.name + i}>
                 <span className="scorer-list__pos">{i + 1}</span>
-                <span className="scorer-list__name">{t.name}<em> · {club(t.clubId)?.short} · {t.what.join(', ')}</em></span>
+                <span className="scorer-list__name"><PlayerLink id={t.id} name={t.name} /><em> · {club(t.clubId)?.short} · {t.what.join(', ')}</em></span>
                 <b>{t.n}</b>
               </li>
             ))}

@@ -1704,3 +1704,50 @@ html.reduce-motion .sealed, html.reduce-motion .flip, html.reduce-motion .pack__
 .load-list li.is-high .load-list__bar i { background: var(--warn); }
 .load-list li.is-low { color: var(--muted); }
 .load-list b { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---------------------------------------------------------------------
+   Player, manager and club profile pages (Player.jsx, Manager.jsx, Team.jsx)
+   --------------------------------------------------------------------- */
+.profile__pos-badge { flex: none; width: 56px; height: 56px; display: grid; place-items: center; background: var(--club-accent, var(--yellow)); color: var(--ink); font-family: var(--font-display); font-size: 20px; transform: skewX(calc(var(--slant) * -1)); }
+.profile__grid { display: flex; flex-direction: column; gap: 14px; }
+.profile__card { display: flex; justify-content: center; }
+.profile__facts { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.profile__facts .champions li b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile__rarity { color: var(--rc-t); text-transform: uppercase; letter-spacing: .06em; font-size: 12px; }
+.profile__award { background: var(--ink); color: #fff; }
+.profile__move { white-space: nowrap; }
+.profile__tile-club { font-size: 24px !important; }
+.profile .stat-tiles { grid-template-columns: repeat(3, 1fr); }
+@media (min-width: 720px) {
+  .profile__grid { display: grid; grid-template-columns: 270px 1fr; align-items: start; gap: 20px; }
+  .profile__grid:not(:has(.profile__card)) { grid-template-columns: 1fr; }
+}
+
+.timeline { list-style: none; margin: 0; padding: 0 0 0 4px; display: flex; flex-direction: column; gap: 2px; }
+.timeline li { position: relative; display: grid; grid-template-columns: 74px 1fr auto; align-items: center; gap: 10px; background: var(--surface); padding: 9px 12px 9px 16px; box-shadow: inset 5px 0 0 var(--rc, var(--line-2)); font-size: 13px; font-weight: 600; min-width: 0; }
+.timeline li.is-now { box-shadow: inset 5px 0 0 var(--rc, var(--line-2)), inset 0 0 0 2px var(--ink); }
+.timeline__years { font-family: var(--font-display); font-weight: 400; font-size: 16px; }
+.timeline small { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+.timeline .club-inline { min-width: 0; }
+
+.trophy-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.trophy-list li { display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 10px; background: var(--ink); color: #fff; padding: 10px 14px 10px 10px; }
+.trophy-list li.trophy-list__runnerUp { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-2); }
+.trophy-list__icon { font-size: 24px; text-align: center; }
+.trophy-list__body { display: flex; flex-direction: column; min-width: 0; }
+.trophy-list__body b { font-family: var(--font-display); font-weight: 400; font-size: 18px; text-transform: uppercase; line-height: 1.1; }
+.trophy-list__body small { font-size: 11.5px; opacity: .75; overflow-wrap: anywhere; }
+.trophy-list__n { font-family: var(--font-display); font-size: 30px; color: var(--yellow); line-height: 1; }
+.trophy-list__runnerUp .trophy-list__n { color: var(--muted); }
+
+.moves-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.moves-grid .news { display: flex; }
+@media (min-width: 720px) { .moves-grid { grid-template-columns: 1fr 1fr; } }
+
+.table--squad td.table__club { max-width: none; }
+.table--squad tr.is-bench td { background: transparent; color: var(--muted); box-shadow: inset 0 -1px 0 var(--line); }
+.table--squad .squad-list__skill, .table--squad .squad-list__tag { margin-left: 6px; }
+.table__rarity { font-style: normal; color: var(--rc-t); font-size: 11px; font-weight: 800; }
+.table--history.table--fit { min-width: 0; }
+.table--fit td.table__club { white-space: normal; }
+.table--squad .squad-list__skill { padding: 1px 4px; }

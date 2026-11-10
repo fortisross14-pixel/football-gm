@@ -1,5 +1,5 @@
 // Clicks through every tab and sub-tab with a saved game and reports page errors.
-// Usage: (serve the build on :4173) node scripts/smoke.cjs <save.json> [outDir] [width]
+// Usage: (serve the build on :4173, or set SMOKE_PORT) node scripts/smoke.cjs <save.json> [outDir] [width]
 const { chromium } = require('playwright');
 const fs = require('fs');
 
@@ -26,7 +26,7 @@ const fs = require('fs');
   const shot = (name) => page.screenshot({ path: `${out}/${name}.png`, fullPage: true });
   const step = async (name, fn) => { try { await fn(); await page.waitForTimeout(250); await shot(name); } catch (e) { errors.push(`${name}: ${e.message.split('\n')[0]}`); } };
 
-  await page.goto('http://localhost:4173/');
+  await page.goto(`http://localhost:${process.env.SMOKE_PORT || 4173}/`);
   await page.waitForTimeout(500);
   await page.click('.slot__main');
   await page.waitForTimeout(400);
@@ -41,7 +41,24 @@ const fs = require('fs');
   await step('league-history', () => page.click('text=History'));
   await step('league-records', () => page.click('text=Records'));
   await step('league-career', () => page.click('text=My career'));
-  await step('team', () => page.click('.tabbar button:nth-child(4)').then(() => page.click('.table .xlink >> nth=0')));
+  await step('team', () => page.click('.tabbar button:nth-child(4)').then(() => page.click('.league__controls >> text=Table')).then(() => page.click('.table .xlink >> nth=0')));
+  await step('team-squad', () => page.click('.team-page > .segmented >> text=Squad'));
+  await step('team-history', () => page.click('.team-page > .segmented >> text=History'));
+  await step('team-stats', () => page.click('.team-page > .segmented >> text=Stats'));
+  await step('team-honours', () => page.click('.team-page > .segmented >> text=Honours'));
+  await step('team-player', () => page.click('.team-page > .segmented >> text=Squad').then(() => page.click('.table--squad .xlink >> nth=0')));
+  await step('team-back', () => page.click('.club-head .btn--ghost'));
+  await step('world', () => page.click('.tabbar button:nth-child(5)'));
+  await step('player', () => page.click('.stats .table .xlink >> nth=0'));
+  await step('player-history', () => page.click('.profile > .segmented >> text=History'));
+  await step('player-stats', () => page.click('.profile > .segmented >> text=Stats'));
+  await step('player-club', () => page.click('.profile > .segmented >> text=Overview').then(() => page.click('.profile__facts .xlink >> nth=0')));
+  await step('player-back', () => page.click('.club-head .btn--ghost').then(() => page.click('.club-head .btn--ghost')));
+  await step('manager', () => page.click('.stats .segmented__opts >> text=Coaches').then(() => page.click('.stats .table .xlink >> nth=0')));
+  await step('manager-history', () => page.click('.profile > .segmented >> text=History'));
+  await step('manager-stats', () => page.click('.profile > .segmented >> text=Stats'));
+  await step('manager-back', () => page.click('.club-head .btn--ghost'));
+  await step('world-managers', () => page.click('.screen > .segmented >> text=Managers').then(() => page.click('.table .xlink >> nth=0')));
   await step('world', () => page.click('.tabbar button:nth-child(5)'));
   await step('world-stats-coaches', () => page.click('.stats .segmented__opts >> text=Coaches'));
   await step('world-awards', () => page.click('.screen > .segmented .segmented__opts button:nth-child(2), .screen .segmented__opts button:nth-child(2) >> nth=0'));
