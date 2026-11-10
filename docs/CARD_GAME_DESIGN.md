@@ -736,5 +736,27 @@ Two team meters, shown on Home and Squad → Starting 7.
 
 - **Cohesion** (0–100): +4 to +12 per match (training fields), −10 for each starter changed from the last match. Worth up to +4% to +9% to all stats (training fields). Tactical Continuity sets a floor.
 - **Shape** (0–100, Fresh ≥ 85 · OK ≥ 65 · Tired ≥ 45 · Exhausted): from **time on the field**. Each player's load is his share of the minutes over about the last 8 matches (moving average; subs count for their minutes). Loads above 65% wear the team down (goalkeepers at 30%). Shape sets kick-off stamina (75% + a quarter of shape) and, under 65, costs up to −7% stats. No injuries, no per-player tiredness. AI clubs don't track it.
-- Measured: the same 7 every match settles at about 58 (Tired, −1.4%); rotating one player a match stays about 71 (OK).
+- Measured with 12-card squads (v1.9, `LOAD_FREE` 0.55, `LOAD_COST` 15; it was 0.65 / 20 with 10 cards): the same 7 every match settles at about 57 (Tired, −1.6%); rotating one player a match stays about 81 (OK), two a match about 87 (Fresh).
 - **Sports Science** (club card): +8 / 12 / 16 / 22 / 30 shape by rarity until the season ends (all next season if played in the summer), even without rotating. The **Spa & recovery** area adds +3 per level permanently, and the **Gym** slows stamina drain by 4% per level.
+
+### World v1.9: 10-club divisions, 12-card squads
+
+44 divisions × 10 clubs, 18 league matchdays, 2 up / 2 down, cup and European preliminary rounds, squads of 12 (5 reserves, still 3 subs). To keep a season's economy and card careers where they were:
+
+- **Per-match pay** cut by about a quarter: league 45 / 20 / 8, cup 65 / 20 / 8, bonuses 15 (× multiplier); business income (gate, hospitality, store, merchandise, sponsor) × 0.8 per match. League prizes cover 10 places.
+- **Card wear:** every 5th appearance is free (4 of 5 cost a match), for players and coaches. AI cards still lose 14 matches a season.
+- **Confidence:** each match moves owners and fans 0.8× as much (18 games, not 14).
+- **Board objectives** for 10 clubs: win the league / top 3 / top 6 / avoid relegation (8th or better).
+- **Transfer Market** refreshes every 5 league matchdays (three times a season, as before).
+
+`BOT=… node scripts/career-sim.mjs 16 14`, before (8-club world, before the club-management merge) → after:
+
+| Bot | Season 1 finish | Level-1 club (median) | Sacked | Cards last | Income S1 / S8 / S14 |
+|---|---|---|---|---|---|
+| Great | 5.6 of 8 → 6.7 of 10 | season 5 → 5 (16/16) | 8% → 2% | 2.6 → 2.8 seasons | 856 / 8,892 / 11,774 → 981 / 7,455 / 13,284 |
+| Average | 6.8 of 8 → 9.4 of 10 | season 6 → 7 (16/16) | 9% → 8% | 2.9 → 2.9 | 753 / 5,788 / 9,857 → 780 / 6,335 / 9,701 |
+| Poor | 7.0 of 8 → 9.0 of 10 | season 11 (13/16) → 9 (9/16) | 26% → 18% | 3.4 → 3.0 | 816 / 2,899 / 3,908 → 960 / 4,316 / 5,133 |
+| Bad | 7.9 of 8 → 9.6 of 10 | 1/16 → 2/16 (season 14) | 51% → 31% | 2.9 → 3.1 | 745 / 1,326 / 1,284 → 730 / 1,139 / 1,022 |
+
+`scripts/grade-check.mjs` and `scripts/balance.mjs` give the same numbers as before (the match engine didn't change).
+
