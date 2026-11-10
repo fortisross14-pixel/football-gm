@@ -1,6 +1,6 @@
 // Save slots and settings in browser storage. Every call is wrapped so the game
 // still runs (without saving) when storage is blocked or full.
-import { SAVE_VERSION } from './club.js';
+import { SAVE_VERSION, migrateClubState } from './club.js';
 import { compressToUTF16, decompressFromUTF16 } from 'lz-string';
 import { managerEntry, makeCareerId } from './managers.js';
 
@@ -77,7 +77,7 @@ export function listSlots() {
 
 export function loadSlot(n) {
   const state = read(slotKey(n));
-  return state?.version === SAVE_VERSION ? state : null;
+  return state?.version === SAVE_VERSION ? migrateClubState(state) : null;
 }
 
 export function saveSlot(n, state) {
@@ -168,7 +168,7 @@ export function importSave(text) {
     if (state?.version !== SAVE_VERSION || !state.club || !state.world || !state.season) {
       return { ok: false, error: 'This doesn\'t look like a save from this version of the game.' };
     }
-    return { ok: true, state };
+    return { ok: true, state: migrateClubState(state) };
   } catch {
     return { ok: false, error: 'That text isn\'t a valid save.' };
   }

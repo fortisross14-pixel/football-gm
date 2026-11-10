@@ -1247,6 +1247,17 @@ button:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 .facility__dots i.on { background: var(--blue); }
 .facility__now { color: var(--ink); }
 .facility__next { color: var(--muted); }
+.facility__card { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; margin-top: auto; padding-top: 2px; }
+.facility__head b span { font-family: system-ui, sans-serif; }
+
+/* Card plays this season: 3 / 9 */
+.plays-line { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--surface); box-shadow: inset 4px 0 0 var(--blue), inset 0 0 0 1px var(--line-2); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin: 6px 0; }
+.plays-line > span:first-child { flex: 1; min-width: 0; }
+.plays-line__pips { display: flex; gap: 3px; }
+.plays-line__pips i { width: 7px; height: 12px; background: var(--grey-2); transform: skewX(calc(var(--slant) * -1)); }
+.plays-line__pips i.on { background: var(--blue); }
+.plays-line b { font-family: var(--font-display); font-weight: 400; font-size: 19px; white-space: nowrap; }
+.market-note { width: 100%; background: var(--ink); margin-top: 8px; }
 .trophies { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .trophies li { background: var(--ink) var(--hazard); color: #b7bcc6; padding: 12px 10px; display: flex; flex-direction: column; align-items: center; text-align: center; font-size: 12px; }
 .trophies b { color: #fff; font-family: var(--font-display); font-weight: 400; font-size: 16px; text-transform: uppercase; }
@@ -1491,7 +1502,7 @@ html.reduce-motion .sealed, html.reduce-motion .flip, html.reduce-motion .pack__
   .pack-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
   .pack-list > .hint { grid-column: 1 / -1; }
   .coaches { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
-  .facilities { grid-template-columns: repeat(4, 1fr); }
+  .facilities { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
   .trophies { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   .season-book { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
   .squad-list { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8px; }

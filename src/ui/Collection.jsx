@@ -7,7 +7,7 @@ import { BOOST_IDS } from '../data/boosts.js';
 import { OFFSEASON_CARDS, TIERS, cardValue } from '../data/offseason.js';
 import { COACH_PASSIVES } from '../data/coachPassives.js';
 import { PLAYER_POOL, COACH_POOL } from '../data/pool.js';
-import { canUseOffseason } from '../state/club.js';
+import { canUseOffseason, cardPlays } from '../state/club.js';
 import { PlayerLink, ProfileButton } from './nav.jsx';
 
 export default function Collection({ state, onOpenPack, onUseCard }) {
@@ -61,18 +61,18 @@ export default function Collection({ state, onOpenPack, onUseCard }) {
             </div>
           )}
 
-          <h3 className="sub-title">Off-season cards</h3>
-          {state.phase === 'offseason' && <p className="hint">Tap a card to use it. You can play one season event per season.</p>}
-          {state.phase !== 'offseason' && inv.offseason.length > 0 && <p className="hint">These can be played once the season ends.</p>}
+          <h3 className="sub-title">Management cards</h3>
+          <CardPlays state={state} />
+          <p className="hint">Tap a card to play it, any time of the year. One season event per season: played mid-season it lasts until the season ends.</p>
           {state.activeEvent && (
             <p className="hint hint--accent">Season event active: {OFFSEASON_CARDS[state.activeEvent.type].name} ({RARITIES[state.activeEvent.rarity].label}).</p>
           )}
-          {inv.offseason.length === 0 ? <p className="hint">None yet. Buy them in the Transfer Market after the season.</p> : (
+          {inv.offseason.length === 0 ? <p className="hint">None yet. Buy them in Shop → Market, open all year.</p> : (
             <div className="ocard-grid">
               {inv.offseason.map((item) => {
                 const check = canUseOffseason(state, item);
                 return (
-                  <OffseasonCard key={item.uid} item={item} onClick={() => setUsing(item)} footer={check.ok ? 'Use ›' : 'Locked'} />
+                  <OffseasonCard key={item.uid} item={item} onClick={() => setUsing(item)} footer={check.ok ? 'Use ›' : OFFSEASON_CARDS[item.type].summerOnly && state.phase !== 'offseason' ? 'Summer only' : 'Locked'} />
                 );
               })}
             </div>
@@ -103,6 +103,18 @@ export default function Collection({ state, onOpenPack, onUseCard }) {
           onUse={(target) => { onUseCard(using.uid, target); setUsing(null); }}
         />
       )}
+    </div>
+  );
+}
+
+// "Card plays this season: 3 / 9", with one pip per play.
+export function CardPlays({ state }) {
+  const { used, limit } = cardPlays(state);
+  return (
+    <div className="plays-line" aria-label={`Card plays: ${used} of ${limit} used`}>
+      <span>Card plays {state.phase === 'offseason' ? 'for next season' : 'this season'}</span>
+      <span className="plays-line__pips" aria-hidden="true">{Array.from({ length: limit }, (_, i) => <i key={i} className={i < used ? 'on' : ''} />)}</span>
+      <b>{used} / {limit}</b>
     </div>
   );
 }

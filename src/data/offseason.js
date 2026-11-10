@@ -1,10 +1,14 @@
-// Off-season cards: bought in the Transfer Market, played between seasons.
-// Each card has a rarity (index 0–4 = common…legend) that sets its strength.
+// Management cards ("off-season cards" in older saves): bought in the Transfer Market,
+// which is open all year, and played from Cards → Items at any time, within the season's
+// card-play limit (data/facilities.js). Each card has a rarity (index 0–4 = common…legend)
+// that sets its strength.
 //
-// group:  'transfer' — squad moves, played any number of times
-//         'club'     — facilities and club deals, played any number of times
-//         'event'    — season events, only 1 per season
+// group:  'transfer' — squad moves
+//         'club'     — club areas (facilities) and club deals
+//         'event'    — season events, only 1 per season; mid-season they last until it ends
 // target: what the player has to pick when using the card.
+// summerOnly: only playable in the off-season.
+import { AREAS, FACILITY_LABEL } from './facilities.js';
 
 export const TIERS = ['common', 'uncommon', 'rare', 'epic', 'legend'];
 export const tierIndex = (rarity) => Math.max(0, TIERS.indexOf(rarity));
@@ -19,6 +23,15 @@ const pct = (v) => `${v}%`;
 export const SIGNING_TIERS = [[1], [1, 2], [2], [3], [3, 4]];
 const TIER_LABEL = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legend'];
 const signingLabel = (t) => SIGNING_TIERS[t].map((i) => TIER_LABEL[i]).join(' or ');
+
+// A club-area card: +1 level up to the rarity's cap (Common 2 … Epic 5), Legend +2 levels.
+function areaCard(facility, name, base, blurb) {
+  return {
+    name, group: 'club', icon: AREAS[facility].icon, base, target: null, facility,
+    values: [2, 3, 4, 5, 5],
+    text: (v, r, t) => `${FACILITY_LABEL[facility]} ${t === 4 ? '+2 levels (max 5)' : `+1 level, up to level ${v}`}. ${blurb}`,
+  };
+}
 
 export const OFFSEASON_CARDS = {
   // ---------------------------------------------------------------- Transfers
@@ -74,35 +87,20 @@ export const OFFSEASON_CARDS = {
   },
 
   // --------------------------------------------------------------------- Club
-  stadiumEvolution: {
-    name: 'Stadium Evolution', group: 'club', icon: '🏟', base: 250, target: null, facility: 'stadium',
-    values: [2, 3, 4, 5, 5],
-    text: (v, r, t) => (t === 4 ? 'Stadium +2 levels (max 5). More income per home game.' : `Stadium +1 level, up to level ${v}. More income per home game.`),
-  },
-  merchExpansion: {
-    name: 'Merchandise Expansion', group: 'club', icon: '👕', base: 220, target: null, facility: 'merch',
-    values: [2, 3, 4, 5, 5],
-    text: (v, r, t) => (t === 4 ? 'Merchandise +2 levels (max 5).' : `Merchandise +1 level, up to level ${v}. Popular players sell more shirts.`),
-  },
-  trainingGround: {
-    name: 'Training Ground', group: 'club', icon: '🏋', base: 250, target: null, facility: 'training',
-    values: [2, 3, 4, 5, 5],
-    text: (v, r, t) => (t === 4 ? 'Training ground +2 levels (max 5).' : `Training ground +1 level, up to level ${v}. Faster, stronger cohesion.`),
-  },
-  youthAcademy: {
-    name: 'Youth Academy', group: 'club', icon: '🏫', base: 250, target: null, facility: 'academy',
-    values: [2, 3, 4, 5, 5],
-    text: (v, r, t) => (t === 4 ? 'Youth academy +2 levels (max 5).' : `Youth academy +1 level, up to level ${v}. More and better academy players each off-season.`),
-  },
-  shirtSponsor: {
-    name: 'Shirt Sponsor', group: 'club', icon: '🤝', base: 100, target: null,
-    values: [10, 18, 30, 50, 90],
-    text: (v) => `+${v} coins for every match next season.`,
-  },
+  stadiumEvolution: areaCard('stadium', 'Stadium Evolution', 220, 'More seats, a bigger home gate.'),
+  hospitality: areaCard('hospitality', 'Restaurant & Boxes', 200, 'Hospitality: more income every home game.'),
+  clubStore: areaCard('store', 'Club Store', 180, 'Store sales every match.'),
+  merchExpansion: areaCard('merch', 'Merchandise Line', 200, 'New products: kits, lifestyle, global. Popular players sell more.'),
+  findSponsor: areaCard('sponsor', 'Find a Sponsor', 170, 'A bigger sponsor, paid every match.'),
+  trainingGround: areaCard('training', 'Training Fields', 220, 'Faster, stronger cohesion.'),
+  gymUpgrade: areaCard('gym', 'Gym Upgrade', 180, 'Stamina drains slower in every match.'),
+  spaRecovery: areaCard('spa', 'Spa & Recovery', 180, 'Better team shape, even without rotating.'),
+  youthAcademy: areaCard('academy', 'Youth Academy', 220, 'More and better academy players each off-season.'),
+  analyticsDept: areaCard('analytics', 'Analytics Dept.', 200, 'Better pack odds; more card plays at levels 3 and 5.'),
   sportsScience: {
     name: 'Sports Science', group: 'club', icon: '🧪', base: 180, target: null,
     values: [8, 12, 16, 22, 30],
-    text: (v) => `+${v} team shape all next season, even without rotating.`,
+    text: (v) => `+${v} team shape until the season ends (all next season if played in the summer).`,
   },
   boostCrate: {
     name: 'Boost Crate', group: 'club', icon: '📦', base: 150, target: null,
@@ -137,7 +135,7 @@ export const OFFSEASON_CARDS = {
     text: (v) => `Cohesion never drops below ${v}.`,
   },
   preseasonCamp: {
-    name: 'Pre-season Camp', group: 'event', icon: '⛺', base: 250,
+    name: 'Pre-season Camp', group: 'event', icon: '⛺', base: 250, summerOnly: true,
     values: [3, 3, 4, 5, 6],
     bonus: [4, 5, 6, 7, 9],
     text: (v, r, t) => `+${[4, 5, 6, 7, 9][t]}% all stats in the first ${v} matchdays.`,
@@ -181,8 +179,15 @@ export function cardText(type, rarity) {
   return def.text(def.values[t], rarity, t);
 }
 
-export function cardPrice(type, rarity) {
-  return Math.round((OFFSEASON_CARDS[type].base * PRICE_MULT[tierIndex(rarity)]) / 10) * 10;
+// Area cards cost more the higher the area already is (level = its current level).
+export const LEVEL_PRICE = [0.8, 1, 1.25, 1.55, 1.9, 1.9];
+export function cardPrice(type, rarity, level = null) {
+  const def = OFFSEASON_CARDS[type];
+  const k = def.facility && level !== null ? LEVEL_PRICE[Math.min(5, level)] : 1;
+  return Math.round((def.base * PRICE_MULT[tierIndex(rarity)] * k) / 10) * 10;
 }
+
+// Cards from older saves that were replaced.
+export const RENAMED_CARDS = { shirtSponsor: 'findSponsor' };
 
 export const GROUP_LABEL = { transfer: 'Transfer', club: 'Club', event: 'Season event' };
