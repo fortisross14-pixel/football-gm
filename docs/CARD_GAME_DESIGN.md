@@ -768,3 +768,19 @@ Two team meters, shown on Home and Squad → Starting 7.
 | Great | 3.0 | season 4 | season 7 (12/12) | 1 of 144 seasons |
 | Average | 5.4 | season 5 | season 8 (12/12) | 1 of 144 |
 | Poor | 9.0 | season 9 (7/12) | 3/12 by season 12 | 27 of 144 |
+
+### Three tiers (v2.1)
+
+- **Tier 1 (level 1):** the top flights of Spain, England, Italy, Germany, France, Portugal, the Netherlands, Argentina and Brazil.
+- **Tier 2 (level 2):** second divisions of the big four, plus Turkey, Belgium, Mexico (Liga MX) and Saudi Arabia.
+- **Tier 3 (level 3):** third divisions of the big four, second divisions elsewhere, and every other league.
+- You always start at one of the weakest clubs of a tier-3 league, and job offers never skip a tier (from tier 3 the best is tier 2).
+- AI settled edge by level: 9 / 11 / 8%. Reputation gains are weighted 1 / 0.75 / 0.6 by level; tier-1 clubs ask 66–88 (giants 85+), tier 2 32–62.
+
+Measured (`BOT=… node scripts/career-sim.mjs 16 8`):
+
+| Bot | S1 | S2 | S3 | Tier-1 club (median) | Giant (median) | Sacked |
+|---|---|---|---|---|---|---|
+| Great | 5.8 | 2.6 | 1.4 | season 5 (16/16) | season 9 (15/16) | 0 of 128 seasons |
+| Average | 6.2 | 3.6 | 1.7 | season 7 (16/16) | season 9 (9/16) | 4 of 128 |
+| Poor | 9.4 | 6.9 | 7.8 | season 7 (6/16) | 2/16 | 36 of 128 |

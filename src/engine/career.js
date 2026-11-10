@@ -58,7 +58,7 @@ export function reputationChanges({ verdict, promoted, leagueTitle, trophies }) 
 }
 
 // Gains count for less in smaller leagues and get harder as reputation rises; losses count in full.
-const LEVEL_WEIGHT = { 1: 1, 2: 0.9, 3: 0.8 };
+const LEVEL_WEIGHT = { 1: 1, 2: 0.75, 3: 0.6 };
 export function weighReputation(items, level, rep) {
   return items.map((i) => (i.value > 0 ? { ...i, value: Math.max(1, Math.round(i.value * LEVEL_WEIGHT[level] * (1 - rep / 150))) } : i));
 }
@@ -127,7 +127,7 @@ export function requiredReputation(world, clubId) {
   const club = world.clubs[clubId];
   const level = DIVISION_BY_ID[club.divisionId].level;
   if (TOP_CLUBS.includes(clubId)) return 85 + Math.round((club.strength - 70) / 2);
-  const [lo, hi] = { 1: [60, 85], 2: [30, 60], 3: [0, 30] }[level];
+  const [lo, hi] = { 1: [66, 88], 2: [32, 62], 3: [0, 30] }[level];
   const peers = Object.values(world.clubs).filter((c) => DIVISION_BY_ID[c.divisionId].level === level && !TOP_CLUBS.includes(c.id));
   const below = peers.filter((c) => c.strength < club.strength).length;
   return Math.round(lo + (hi - lo) * (below / Math.max(1, peers.length - 1)));
@@ -153,10 +153,13 @@ export function jobOffers(world, { reputation, currentClubId, sacked = false, go
   } else {
     const stretch = rng.next() < 0.15 ? 8 : 0;
     // Clubs a step up from where you are now (offers to go sideways or down are rarely worth showing).
-    pool = all.filter((c) => c.req <= reputation + stretch && c.req >= Math.min(current, reputation - 25));
+    // No skipping a tier: from a tier-3 club the best you can get is a tier-2 club.
+    const myLevel = DIVISION_BY_ID[world.clubs[currentClubId].divisionId].level;
+    pool = all.filter((c) => c.req <= reputation + stretch && c.req >= Math.min(current, reputation - 25)
+      && DIVISION_BY_ID[world.clubs[c.id].divisionId].level >= myLevel - 1);
     count = passive ? (good && rng.next() < 0.35 ? 1 : 0) : good ? rng.int(2, 3) : rng.int(1, 2);
   }
-  if (!pool.length) pool = all.filter((c) => c.req <= Math.max(reputation, 30));
+  if (!pool.length) pool = all.filter((c) => c.req <= Math.max(reputation, 30) && DIVISION_BY_ID[world.clubs[c.id].divisionId].level >= DIVISION_BY_ID[world.clubs[currentClubId].divisionId].level - 1);
   // Prefer the biggest clubs that would have you.
   const picked = [];
   while (picked.length < count && pool.length) {

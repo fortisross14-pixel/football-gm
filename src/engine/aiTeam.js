@@ -23,7 +23,7 @@ const STAT_SHAPE = {
 export const FILLER_RATING = { 1: 60, 2: 58, 3: 56 };
 export const AI_SETTLED_BONUS = 0.1;
 // Higher divisions are tougher: their AI squads play with more of an edge.
-export const AI_SETTLED_BY_LEVEL = { 1: 0.08, 2: 0.07, 3: 0.08 };
+export const AI_SETTLED_BY_LEVEL = { 1: 0.09, 2: 0.11, 3: 0.08 };
 export const AI_FIT_BONUS = 0.02;
 
 export function genericName(rng, used = new Set()) {
