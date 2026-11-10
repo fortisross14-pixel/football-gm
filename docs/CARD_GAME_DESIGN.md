@@ -5,7 +5,7 @@
 
 **Changes in v1.9 (club management)**
 - **Ten club areas** (§4.5) in two groups: Business (stadium, hospitality, club store, merchandise, sponsorship) and Sports (training fields, gym, spa & recovery, youth academy, analytics). Each has its own Club card; steps are a bit smaller than the old four facilities.
-- **Cards any time** (§4.6): the Transfer Market is open all year (9 offers each summer, 6 fresh ones every 4 league matchdays) and management cards are played from Cards → Items whenever you like, within **8 card plays per season** (+1 at Analytics level 3 and 5).
+- **Cards any time** (§4.6): the Transfer Market is open all year (9 offers each summer, 6 fresh ones every 5 league matchdays) and management cards are played from Cards → Items whenever you like, within **8 card plays per season** (+1 at Analytics level 3 and 5).
 - The Club screen is now **Club management** (§9): areas with level pips, current and next effect, income per match.
 
 **Changes in v1.6**
@@ -66,7 +66,7 @@ Play match ─► earn coins (result + gate + merch)
 ```
 
 - **Per match:** pick the lineup, choose up to 3 boosts to bring, play, collect rewards.
-- **Per season:** 14 league matches, up to 4 cup matches, up to 6 continental matches and up to 3 Club World Cup matches.
+- **Per season:** 18 league matches, up to 5 cup matches, up to 7 continental matches and up to 3 Club World Cup matches.
 - **Long term:** build a GM career across clubs, replace retiring stars, fill the trophy cabinet and the Hall of Fame.
 
 ---
@@ -75,66 +75,68 @@ Play match ─► earn coins (result + gate + merch)
 
 ### 3.1 Leagues
 
-Every division has **8 clubs** and plays a double round-robin: **14 matchdays**.
+Every division has **10 clubs** and plays a double round-robin: **18 matchdays** (v1.9; it was 8 clubs and 14 matchdays before).
 
 | Group | Countries | Divisions | Clubs |
 |---|---|---|---|
-| Big 4 | England, Spain, Italy, Germany | 3 each | 96 |
-| Major | France, Portugal, Netherlands, Argentina, Brazil | 2 each | 80 |
-| Single-division | Turkey, Scotland, Austria, Greece, Europe Other, Mexico, USA, Colombia, South America Other, Japan, Asia Other, Saudi Arabia, Nigeria, Egypt, Africa Other, APAC Other | 1 each | 128 |
-| **Total** | | **38 divisions** | **304 clubs** |
+| Big 4 | England, Spain, Italy, Germany | 3 each | 120 |
+| Two divisions | France, Portugal, Netherlands, Argentina, Brazil, Mexico (Liga MX + Liga de Expansión), Japan (J1 + J2) | 2 each | 140 |
+| Single-division | Turkey, Belgium, Switzerland, Denmark, Scotland, Austria, Greece, Europe Other, USA, Colombia, Chile, South America Other, Asia Other, APAC Other, Saudi Arabia, Nigeria, Egypt, Africa Other | 1 each | 180 |
+| **Total** | | **44 divisions** | **440 clubs** |
 
-**"Other" divisions** take the **top 8 clubs from countries that don't have their own division**:
+v1.9 added two real clubs to every existing division, four leagues (**Belgium** Pro League, level 2; **Switzerland** Super League, **Denmark** Superliga and **Chile** Primera División, level 3) and two second divisions (**Mexico** Liga de Expansión, **Japan** J2). Club Brugge, FC Basel, FC Copenhagen, Colo-Colo and Universidad de Chile moved from the "Other" divisions into their new national leagues.
 
-| Division | Pool (examples) |
+**"Other" divisions** hold real clubs from countries that don't have their own division:
+
+| Division | Clubs |
 |---|---|
-| Europe Other | Belgium, Switzerland, Denmark, Russia, Ukraine, Czechia, Croatia, Serbia, Norway, Sweden… |
-| South America Other | Uruguay, Chile, Paraguay, Ecuador, Peru, Bolivia… |
-| Asia Other | West and Central Asia: Qatar, UAE, Iran, Uzbekistan… |
-| APAC Other | East Asia and Oceania: South Korea, China, Australia, Thailand… |
-| Africa Other | Morocco, Tunisia, Algeria, South Africa… |
+| Europe Other | Shakhtar Donetsk, Dynamo Kyiv, Bodø/Glimt, Red Star Belgrade, Slavia Prague, Sparta Prague, Dinamo Zagreb, Ferencváros, Malmö FF, Legia Warsaw |
+| South America Other | LDU Quito, Independiente del Valle, Barcelona SC, Peñarol, Nacional, Libertad, Cerro Porteño, Olimpia, Universitario, Alianza Lima |
+| Asia Other | Qatar, UAE, Iran (Persepolis, Tractor, Esteghlal), Uzbekistan (Pakhtakor) |
+| APAC Other | South Korea, China (incl. Guangzhou FC), Australia (Melbourne City, Sydney FC), Thailand |
+| Africa Other | South Africa (incl. Kaizer Chiefs), Morocco, Tunisia, Algeria, Sudan, DR Congo (TP Mazembe) |
 
-The top 8 clubs are picked by rating, so a country can have several clubs or none. Division names are generic ("England — Division 1"), not real competition brands.
+Every league has a name (LaLiga, Pro League, J2 League…); the "Other" divisions have invented ones.
 
-**Promotion/relegation:** 1 up and 1 down between adjacent divisions in the same country. Single-division leagues have none.
+**Promotion/relegation:** **2 up and 2 down** between adjacent divisions in the same country (the top two of the lower division swap with the bottom two above). Single-division leagues have none.
 
 ### 3.2 Strength levels (AI difficulty and reward multiplier)
 
 | Level | Divisions | AI team OVR | Reward multiplier |
 |---|---|---|---|
 | L1 | Big 4 Division 1 | 78–86 | ×1.75 |
-| L2 | Big 4 Division 2; Major Division 1; strongest single-division leagues (e.g. Turkey, Saudi Arabia, Mexico) | 70–78 | ×1.5 |
-| L3 | Big 4 Division 3; Major Division 2; other single-division leagues | 60–70 | ×1.0 |
+| L2 | Big 4 Division 2; France, Portugal, Netherlands, Argentina, Brazil and Mexico Division 1; Turkey, Belgium, Saudi Arabia | 70–78 | ×1.5 |
+| L3 | Big 4 Division 3; the other second divisions (Mexico's Liga de Expansión included); the other single-division leagues; Japan's J1 and J2 (J2 clubs are rated lower) | 60–70 | ×1.0 |
 
 **Strategy hook:** a small single-division league is easy to win and its champion goes straight to the continental tournament, but it pays less. A Big 4 Division 3 club pays the same but has to climb two divisions before it can reach Europe's top table.
 
 ### 3.3 Domestic cup
 
-Each cup is a quick **single-match knockout**. One loss and you're out.
+Each cup is a quick **single-match knockout**. One loss and you're out. The bracket is the largest power of two that fits; the **lowest-ranked clubs** (lower division first, then weakest) play a **preliminary round** for the last places.
 
 | Country type | Who plays | Size | Rounds |
 |---|---|---|---|
-| Single-division leagues (including "Other" divisions) | Division 1 | 8 clubs | QF → SF → Final (3) |
-| Major and Big 4 | Division 1 + Division 2 | 16 clubs | R16 → QF → SF → Final (4) |
+| Single-division leagues (including "Other" divisions) | Division 1 | 10 clubs | Preliminary (4 clubs) → QF → SF → Final (4) |
+| Two- and three-division countries | Division 1 + Division 2 | 20 clubs | Preliminary (8 clubs) → R16 → QF → SF → Final (5) |
 
 - Big 4 Division 3 clubs don't play the cup.
 - The draw is random, and the lower-division club plays at home. That gives giant-killing chances.
 
 ### 3.4 Continental tournaments
 
-Clubs qualify through **last season's** league results. For season 1, the seeded "previous champions" come from the data files.
+Clubs qualify through **last season's** league results. For season 1, the seeded "previous champions" come from club strength.
 
 **Europe (8 teams)**
 - Direct: champions of England, Spain, Italy and Germany (4).
-- Qualifying round: the other 8 European champions play 4 single-match ties, and the 4 winners go through. They are France, Portugal, Netherlands, Turkey, Scotland, Austria, Greece and Europe Other.
+- The other 11 European champions play for 4 places: France, Portugal, Netherlands, Turkey and Belgium go to the qualifying round; Scotland, Austria, Greece, Denmark, Switzerland and Europe Other first play a **preliminary round** (3 ties), and its winners join the qualifying round (8 clubs, 4 ties).
 
 **Americas (8 teams)**
-- Champions of Argentina, Brazil, Mexico, USA, Colombia and South America Other (6), plus the runners-up of Argentina and Brazil (2).
+- Champions of Argentina, Brazil, Mexico, USA, Colombia, Chile and South America Other (7), plus the better runner-up of Argentina and Brazil (by points).
 
 **Africa–APAC (8 teams)**
 - Champions of Japan, Asia Other, APAC Other, Saudi Arabia, Nigeria, Egypt and Africa Other (7), plus the best runner-up by points (1).
 
-**Format (all three):** 2 groups of 4 (single round-robin, 3 matches) → semi-finals → final. That's up to 5 matches, plus 1 for European qualifiers.
+**Format (all three):** 2 groups of 4 (single round-robin, 3 matches) → semi-finals → final. That's up to 5 matches, plus up to 2 for European qualifiers.
 
 ### 3.5 Club World Cup (every season, at the end)
 
@@ -146,18 +148,15 @@ Clubs qualify through **last season's** league results. For season 1, the seeded
 
 | Phase | Events |
 |---|---|
-| Off-season | **Summer Transfer Market** (9 fresh offers): sign players, upgrade club areas, pick a season event. The market stays open all season, with 6 new offers every 4 league matchdays |
-| Weeks 1–2 | League MD 1–2 · Europe qualifying |
-| Weeks 3–4 | League MD 3–4 · Continental group game 1 · Cup R16 (16-club cups) |
-| Weeks 5–6 | League MD 5–6 · Continental group game 2 · Cup QF |
-| Weeks 7–8 | League MD 7–8 · Continental group game 3 |
-| Weeks 9–10 | League MD 9–10 · Cup SF · Continental SF |
-| Weeks 11–14 | League MD 11–14 · Cup final (after MD 12) |
-| Finals week | Continental finals |
+| Off-season | **Summer Transfer Market** (9 fresh offers): sign players, upgrade club areas, pick a season event. The market stays open all season, with 6 new offers every 5 league matchdays |
+| MD 1–4 | European preliminary round (after MD 2) and qualifying (after MD 3) · Cup preliminary round (after MD 4) |
+| MD 5–9 | Continental group game 1 (after MD 5) · Cup R16 (after MD 6) · Group game 2 (after MD 8) · Cup QF (after MD 9) |
+| MD 10–14 | Group game 3 (after MD 11) · Cup SF (after MD 12) · Continental SF (after MD 14) |
+| MD 15–18 | Cup final (after MD 15) · Continental finals (after MD 18) |
 | Club World Cup | 3 continental champions |
 | Season end | Prizes, promotion/relegation, retirements, board review, **job offers** |
 
-- At most **27 matches** per season (14 + 4 + 6 + 3), and a typical club plays 16–20.
+- At most **33 matches** per season (18 + 5 + 7 + 3), and a typical club plays 20–24.
 - All AI-vs-AI matches are simulated instantly from team ratings.
 
 ---
@@ -278,7 +277,7 @@ Clubs start with levels that match their size (`clubStart`): a small level-3 clu
 
 ### 4.6 Management cards and the Transfer Market
 
-The **Transfer Market is open all year**. Each summer it has 9 fresh offers (3 transfer, 4 club, 2 events, always at least one signing); during the season it has 6 (2 transfer, 3 club, 1 event), replaced at the start of the season and every **4 league matchdays** (Home shows a line when there are new offers). Every card has a **rarity** that sets how strong it is, and **lower rarities appear more often** (Common 45%, Uncommon 28%, Rare 17%, Epic 8%, Legend 2%). Club cards are only offered at a rarity that can still raise that area. You also get 1 random card as a season reward.
+The **Transfer Market is open all year**. Each summer it has 9 fresh offers (3 transfer, 4 club, 2 events, always at least one signing); during the season it has 6 (2 transfer, 3 club, 1 event), replaced at the start of the season and every **5 league matchdays** (Home shows a line when there are new offers). Every card has a **rarity** that sets how strong it is, and **lower rarities appear more often** (Common 45%, Uncommon 28%, Rare 17%, Epic 8%, Legend 2%). Club cards are only offered at a rarity that can still raise that area. You also get 1 random card as a season reward.
 
 **Playing cards.** Cards are played from Cards → Items **at any time** (not during a match, not while a pack is open, not between the last match and collecting the season rewards).
 - **Card plays per season: 8** (+1 at Analytics level 3, +1 at level 5). Every card played counts, whatever its group. Shown as "Card plays this season: 3 / 8" in Items, the Market and Club management.
@@ -351,7 +350,7 @@ The pools hold 1,930 cards across 304 clubs, mostly Uncommon and Rare club figur
 
 - **Starting legends fit the league:** level-3 divisions start with at most Rare legends, level 2 at most Epic. Your Racing start draws two Uncommon legends. Better ones come later through the academy and signings.
 - **AI clubs get a settled-squad bonus (+10%)** to match your cohesion and coaching edges. Measured over 30 seasons with no packs, your first season averages 4th of 8 and about 1,950 coins.
-- **Named cards are Uncommon or better.** The rest of the 10-card squad is generic Common players with surname-only names. Their quality depends on the division, but they are always Common.
+- **Named cards are Uncommon or better.** The rest of the 12-card squad (7 starters, 5 reserves) is generic Common players with surname-only names. Their quality depends on the division, but they are always Common.
 - **One card, one club, always.** A card is held by at most one club or by you. If you get a card that an AI club holds (from a pack or a signing), it leaves that club.
 
 **Every off-season, for every club (yours included):**
@@ -458,15 +457,15 @@ AI clubs play their identity with a coach that fits it. Pre-match scouting shows
 
 | Source | Amount |
 |---|---|
-| League win / draw / loss | 60 / 25 / 10 × division multiplier |
-| Cup win / draw / loss | 80 / 25 / 10 × division multiplier |
+| League win / draw / loss | 45 / 20 / 8 × division multiplier (60 / 25 / 10 before v1.9's longer season) |
+| Cup win / draw / loss | 65 / 20 / 8 × division multiplier |
 | Continental win / draw / loss | 100 / 40 / 20 |
 | Club World Cup win / draw / loss | 150 / 60 / 30 |
-| Bonuses | Clean sheet +20, 3+ goals +20 (× multiplier) |
+| Bonuses | Clean sheet +15, 3+ goals +15 (× multiplier) |
 | Home game | Stadium gate + hospitality (§4.5) |
 | Every match | Club store + sponsorship (§4.5) |
 | Merchandise (every match) | Squad popularity × merchandise multiplier × 0.3 |
-| League prizes (1st → 8th) | 600 / 350 / 250 / 180 / 120 / 90 / 60 / 30 × multiplier |
+| League prizes (1st → 10th) | 600 / 380 / 280 / 210 / 160 / 120 / 90 / 60 / 40 / 20 × multiplier |
 | Trophy prizes | Cup 400 × multiplier, continental 1,500, Club World Cup 2,500; continental finalist 500; European qualifying 150 |
 
 Measured (career simulator): about 1,000 coins in the first season, 2,000–4,500 in seasons 2–5, and 5,000–7,500 a season once established in a top division.
@@ -652,7 +651,7 @@ The original plan, kept for reference:
 1. **Coins when switching clubs:** they stay with the old club. The 2 cards are everything you take.
 2. **Cup format:** single-match knockout (3 or 4 rounds).
 3. **Sacking:** miss the board objective 2 seasons in a row and you're fired.
-4. **Division size:** 8 clubs, 14 league matches.
+4. **Division size:** 10 clubs, 18 league matches (8 and 14 until v1.9).
 5. **Starting career:** a rookie GM picks from 3 offers from L3 clubs. Sandbox mode is a later stretch goal.
 6. **Asia Other / APAC Other:** West and Central Asia / East Asia and Oceania.
 7. **Rarities:** Common, Uncommon, Rare, Epic, Legend.

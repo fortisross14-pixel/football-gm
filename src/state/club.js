@@ -397,11 +397,11 @@ export function matchRewards(state, match, userSide, game = { competition: 'leag
   const k = pay.scaled ? m : 1;
   const items = [];
   const lostOnPens = match.result.shootout && winner !== userSide;
-  if (winner === userSide) items.push({ label: match.result.shootout ? 'Win on penalties' : 'Win', coins: pay.win * k });
-  else if (winner === null) items.push({ label: 'Draw', coins: pay.draw * k });
-  else items.push({ label: lostOnPens ? 'Lost on penalties' : 'Defeat', coins: pay.loss * k });
-  if (conceded === 0) items.push({ label: 'Clean sheet', coins: 15 * m });
-  if (own >= 3) items.push({ label: '3+ goals', coins: 15 * m });
+  if (winner === userSide) items.push({ label: match.result.shootout ? 'Win on penalties' : 'Win', coins: Math.round(pay.win * k) });
+  else if (winner === null) items.push({ label: 'Draw', coins: Math.round(pay.draw * k) });
+  else items.push({ label: lostOnPens ? 'Lost on penalties' : 'Defeat', coins: Math.round(pay.loss * k) });
+  if (conceded === 0) items.push({ label: 'Clean sheet', coins: Math.round(15 * m) });
+  if (own >= 3) items.push({ label: '3+ goals', coins: Math.round(15 * m) });
   for (const it of businessIncome(state)) if (it.coins > 0 && (!it.homeOnly || match.teams[userSide].isHome)) items.push({ label: it.label, coins: it.coins });
   const final = game.label?.endsWith('Final');
   if (game.competition === 'cup' && state.activeEvent?.type === 'cupRun') items[0].coins = Math.round(items[0].coins * 1.5);
@@ -767,7 +767,7 @@ export function seasonSummary(state) {
   const div = DIVISION_BY_ID[divId];
   const table = standings(state.season, divId);
   const position = table.findIndex((r) => r.id === state.club.id) + 1;
-  const prize = (PRIZES[position - 1] || 0) * mult(state);
+  const prize = Math.round((PRIZES[position - 1] || 0) * mult(state));
   const upper = DIVISIONS.find((d) => d.code === div.code && d.tier === div.tier - 1);
   const lower = DIVISIONS.find((d) => d.code === div.code && d.tier === div.tier + 1);
   const promoted = position <= PROMOTION_SPOTS && !!upper;
