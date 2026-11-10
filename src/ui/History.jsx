@@ -22,7 +22,7 @@ export default function History({ state, divId }) {
         small
         label="History"
         value={view}
-        options={[{ id: 'seasons', label: 'By season' }, { id: 'stats', label: 'Stats' }, { id: 'records', label: 'Records' }, { id: 'career', label: 'My career' }, { id: 'summer', label: 'Last summer' }]}
+        options={[{ id: 'seasons', label: 'By season' }, { id: 'career', label: 'My career' }, { id: 'summer', label: 'Last summer' }]}
         onChange={setView}
       />
       {view === 'seasons' && <Seasons state={state} archive={archive} divId={divId} />}

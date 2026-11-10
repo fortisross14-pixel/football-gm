@@ -22,7 +22,7 @@ export default function World({ state }) {
         small
         label="World"
         value={view}
-        options={[{ id: 'stats', label: 'Stats' }, { id: 'awards', label: 'Awards' }, { id: 'gms', label: 'Managers' }, { id: 'clubs', label: 'Clubs' }, { id: 'records', label: 'Records' }, { id: 'hof', label: 'Hall of Fame' }]}
+        options={[{ id: 'stats', label: 'Stats' }, { id: 'awards', label: 'Awards' }, { id: 'gms', label: 'Managers' }, { id: 'clubs', label: 'Clubs' }, { id: 'hof', label: 'Hall of Fame' }]}
         onChange={setView}
       />
       {view === 'gms' && <Managers state={state} />}
