@@ -3,6 +3,8 @@ import { PlayerCard, BoostCard } from './Card.jsx';
 import { BOOSTS } from '../data/boosts.js';
 import { RARITIES } from '../engine/cards.js';
 import { Crest, kitColors } from './Art.jsx';
+import { PlayerLink } from './nav.jsx';
+import { POOL_BY_ID } from '../state/club.js';
 
 export default function Result({ match, userSide, rewards, retired, boostReward, coinsAfter, onDone }) {
   const { result } = match;
@@ -64,7 +66,7 @@ export default function Result({ match, userSide, rewards, retired, boostReward,
         <div className="motm">
           <PlayerCard card={motm.card} colors={kits[result.motm.side]} size="medium" />
           <div className="motm__info">
-            <b>{motm.card.name}</b>
+            <b>{result.motm.side === userSide || POOL_BY_ID[motm.card.id] ? <PlayerLink id={motm.card.id} name={motm.card.name} /> : motm.card.name}</b>
             <span>{motmTeam.name}</span>
             <span className="rating">{motm.rating.toFixed(1)}</span>
             <span>{plural(motm.goals, 'goal')} · {plural(motm.assists, 'assist')}{motm.saves ? ` · ${plural(motm.saves, 'save')}` : ''}</span>
@@ -78,7 +80,7 @@ export default function Result({ match, userSide, rewards, retired, boostReward,
           {appeared.map((p) => (
             <li key={p.card.id}>
               <span className={`rating rating--${p.rating >= 7.5 ? 'hi' : p.rating < 6 ? 'lo' : 'mid'}`}>{p.rating.toFixed(1)}</span>
-              <span className="ratings__name">{p.card.name}</span>
+              <span className="ratings__name"><PlayerLink id={p.card.id} name={p.card.name} /></span>
               <span className="ratings__line">
                 {p.goals > 0 && `⚽ ${p.goals} `}{p.assists > 0 && `🅰 ${p.assists} `}{p.minutes < 90 ? `${p.minutes}'` : ''}
               </span>

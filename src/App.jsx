@@ -23,8 +23,10 @@ import NewCareer from './ui/NewCareer.jsx';
 import Tip from './ui/Tip.jsx';
 import Team, { HouseRules } from './ui/Team.jsx';
 import World from './ui/World.jsx';
+import Player from './ui/Player.jsx';
+import Manager from './ui/Manager.jsx';
 import CardsHub from './ui/CardsHub.jsx';
-import { NavContext, LeagueLink } from './ui/nav.jsx';
+import { NavContext, LeagueLink, resetSticky } from './ui/nav.jsx';
 import Sheet from './ui/Sheet.jsx';
 import { loadSlot, saveSlot, loadSettings, saveSettings } from './state/storage.js';
 
@@ -100,15 +102,32 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
   const [live, setLive] = useState(null);
   const [outcome, setOutcome] = useState(null);
   const [toast, setToast] = useState(null);
-  const [teamId, setTeamId] = useState(null);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [leagueNav, setLeagueNav] = useState(null);
-  const [compNav, setCompNav] = useState(null);
-  const backTo = useRef('home');
+  // Detail pages (club, player, manager) stack up: Back returns to where you came from.
+  const [detail, setDetail] = useState({});
+  const backStack = useRef([]);
+  const openDetail = (name, d) => {
+    backStack.current = [...backStack.current, { screen, detail, y: window.scrollY }].slice(-30);
+    setDetail(d);
+    setScreen(name);
+    window.scrollTo(0, 0);
+  };
+  const goBack = () => {
+    const prev = backStack.current.pop();
+    if (!prev) { setScreen('home'); return; }
+    setDetail(prev.detail);
+    setScreen(prev.screen);
+    requestAnimationFrame(() => window.scrollTo(0, prev.y || 0));
+  };
+  const setTab = (tab) => setDetail((d) => ({ ...d, tab }));
+  const teamId = screen === 'team' ? detail.teamId : null;
   const nav = {
-    openClub: (id) => { if (screen !== 'team') backTo.current = screen; setTeamId(id); setScreen('team'); window.scrollTo(0, 0); },
-    openLeague: (divId, tab = 'table') => { setCompNav({ comp: { type: 'league', id: divId }, tab, k: Date.now() }); setScreen('comp'); },
-    openComp: (comp, tab) => { setCompNav({ comp, tab, k: Date.now() }); setScreen('comp'); },
+    openClub: (id, tab) => openDetail('team', { teamId: id, tab }),
+    openPlayer: (id, name) => openDetail('player', { playerId: id, name }),
+    openManager: (key) => openDetail('manager', { mkey: key }),
+    openLeague: (divId, tab = 'table') => openDetail('comp', { comp: { type: 'league', id: divId }, tab, k: Date.now() }),
+    openComp: (comp, tab) => openDetail('comp', { comp, tab, k: Date.now() }),
   };
 
   // Save shortly after every change (and right away when leaving).
@@ -120,7 +139,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
   const exit = () => { clearTimeout(saveTimer.current); saveSlot(slot, state); onExit(); };
   const seeTip = (id) => setState((s) => ({ ...s, seenTips: [...(s.seenTips || []), id] }));
   const tip = (id) => settings.tips && !(state.seenTips || []).includes(id) ? id : null;
-  useEffect(() => { window.scrollTo(0, 0); }, [screen]);
+  useEffect(() => { if (!['team', 'player', 'manager'].includes(screen)) window.scrollTo(0, 0); }, [screen]);
   useEffect(() => {
     if (!toast) return undefined;
     const t = setTimeout(() => setToast(null), 3800);
@@ -158,7 +177,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
     setToast({ text: r.message, tone: r.success === false ? 'bad' : 'good' });
   };
 
-  const isTab = TABS.some((t) => t.id === screen) || ['club', 'career', 'team', 'shop', 'comp'].includes(screen);
+  const isTab = TABS.some((t) => t.id === screen) || ['club', 'career', 'team', 'player', 'manager', 'shop', 'comp'].includes(screen);
 
   return (
     <NavContext.Provider value={nav}>
@@ -204,8 +223,10 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
         )}
         {screen === 'world' && <World state={state} />}
         {screen === 'league' && <Competitions state={state} />}
-        {screen === 'comp' && compNav && <Competition key={compNav.k} state={state} comp={compNav.comp} tab={compNav.tab} onBack={() => setScreen('league')} />}
-        {screen === 'team' && teamId && state.world.clubs[teamId] && <Team key={teamId} state={state} clubId={teamId} onBack={() => setScreen(backTo.current)} onCurse={(id) => setState((s) => toggleCurse(s, id))} />}
+        {screen === 'comp' && detail.comp && <Competition key={detail.k} state={state} comp={detail.comp} tab={detail.tab} onBack={goBack} />}
+        {screen === 'team' && teamId && state.world.clubs[teamId] && <Team key={teamId} state={state} clubId={teamId} tab={detail.tab} onTab={setTab} onBack={goBack} onCurse={(id) => setState((s) => toggleCurse(s, id))} />}
+        {screen === 'player' && detail.playerId && <Player key={detail.playerId} state={state} playerId={detail.playerId} fallbackName={detail.name} tab={detail.tab} onTab={setTab} onBack={goBack} />}
+        {screen === 'manager' && detail.mkey && <Manager key={detail.mkey} state={state} mkey={detail.mkey} tab={detail.tab} onTab={setTab} onBack={goBack} />}
         {screen === 'club' && <ClubInfo state={state} onBack={() => setScreen('home')} />}
         {screen === 'career' && (
           <Career
@@ -237,7 +258,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
       {isTab && (
         <nav className="tabbar" aria-label="Main">
           {TABS.map((t) => (
-            <button key={t.id} type="button" className={screen === t.id || (t.id === 'cards' && screen === 'shop') || (t.id === 'league' && screen === 'comp') ? 'is-on' : ''} onClick={() => { if (t.id === 'league') setLeagueNav(null); setScreen(t.id); }}>
+            <button key={t.id} type="button" className={screen === t.id || (t.id === 'cards' && screen === 'shop') || (t.id === 'league' && screen === 'comp') ? 'is-on' : ''} onClick={() => { if (t.id === 'league') setLeagueNav(null); backStack.current = []; resetSticky(); setScreen(t.id); }}>
               <span className="tabbar__icon" aria-hidden="true">{t.icon}</span>
               <span>{t.label}</span>
               {t.id === 'cards' && (state.inventory.packs.length > 0 || state.phase === 'offseason') && <i className="tabbar__dot" />}

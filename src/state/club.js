@@ -13,6 +13,7 @@ import { makeRng } from '../engine/rng.js';
 import { archiveSeason, foldRecords, compactEntry } from '../engine/history.js';
 import { ensureGms, updateGms } from '../engine/gms.js';
 import { decideAwards } from '../engine/awards.js';
+import { foldSeason, recordMove, holders, diffMoves } from '../engine/careers.js';
 import { newStats, emptyBook, recordGame as recordStats, recordTitle, coachKey } from '../engine/statsbook.js';
 import { styleDistance, clubIdentity } from '../data/philosophies.js';
 import { isDerby, derbyName } from '../data/rivals.js';
@@ -444,6 +445,7 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
   const rng = makeRng(seed);
   for (const card of retired) {
     next.hallOfFame.push({ card, stats: next.playerStats[card.id], season: next.season?.year });
+    logMove(next, card.id, next.club.id, null, 'x');
     if (next.world) next.world.resting = { ...(next.world.resting || {}), [card.id]: 3 };
     const replacement = academyPlayer(next, rng, card.pos);
     replaceInSquad(next, card.id, replacement);
@@ -642,6 +644,8 @@ export function keepPending(state, { replaceId, role }) {
     next.coins += quickSell(old);
     track(next, 'income', 'Card sales', quickSell(old));
     replaceInSquad(next, replaceId, fresh);
+    logMove(next, card.id, holderOf(state, card.id)?.id || null, next.club.id, sourceMove(state.pendingOpen.source));
+    logMove(next, old.id, next.club.id, null, 'r');
   }
   if (POOL_BY_ID[card.id] && !next.album.includes(card.id)) next.album.push(card.id);
   removeFromRivals(next, card.id);
@@ -778,6 +782,13 @@ export function closeSeason(state, seed) {
     const card = a && next.squad.find((c) => c.id === a.id);
     if (card) addFame(card, 2);
   }
+  // Careers: every player's and manager's season, before the season page resets.
+  const known = (id) => !!CARD_BY_ID[id];
+  if (!next.careers && next.stats.lastSeason && next.archive.length > 1) {
+    const y = state.season.year - 1; // older saves: last season is still in the book
+    foldSeason(next, next.stats.lastSeason, { year: y, awards: (next.awards || []).find((a) => a.year === y), entry: next.archive.find((e) => e.year === y), known });
+  }
+  foldSeason(next, next.stats.season, { year: state.season.year, awards, entry, known });
   next.stats.lastSeason = next.stats.season;
   next.stats.season = emptyBook();
   next.stats.year = state.season.year + 1;
@@ -796,6 +807,12 @@ export function closeSeason(state, seed) {
   next.world = off.world;
   refreshStrengths(next.world, POOL_BY_ID);
   applyCurses(next.world, next.houseRules?.cursed || [], POOL_BY_ID);
+  // Every named card that changed club this summer, in the career log.
+  const squadIds = next.squad.map((c) => c.id);
+  next.moves = diffMoves(next.moves || {}, holders(end.world, next.club.id, squadIds), holders(next.world, next.club.id, squadIds), state.season.year + 1, (id, from, to) => {
+    if (to) return off.joined?.[id] === 'academy' ? 'a' : 's';
+    return next.world.resting?.[id] && !end.world.resting?.[id] ? 'x' : 'r';
+  });
   const userMove = end.moves.find((m) => m.clubId === next.club.id) || null;
   next.club = clubInfo(next.club, next.world.clubs[next.club.id].divisionId);
   next.lastSeason = {
@@ -821,7 +838,10 @@ export function closeSeason(state, seed) {
     next.gm.missedInRow = verdict === 'missed' ? next.gm.missedInRow + 1 : 0;
     next.gm.confidence = seasonConfidence(next.gm.confidence, verdict, summary.promoted);
     next.gm.securityEnd = security(next.gm.confidence);
-    next.gm.sacked = next.gm.securityEnd < SACK_LINE || (next.gm.missedInRow >= 2 && next.gm.securityEnd < WARNING_LINE);
+    // A first season at a club is a free pass: the owners give a new manager time.
+    const stint = next.gm.career?.[next.gm.career.length - 1];
+    const firstSeason = !stint || state.season.year <= stint.from;
+    next.gm.sacked = !firstSeason && (next.gm.securityEnd < SACK_LINE || (next.gm.missedInRow >= 2 && next.gm.securityEnd < WARNING_LINE));
     if (next.gm.sacked) items.push({ label: 'Sacked by the board', value: -15 });
     next.gm.reputation = applyReputation(before, items);
     next.gm.review = { season: state.season.year, objective, position, verdict, items, before, after: next.gm.reputation, sacked: next.gm.sacked };
@@ -936,6 +956,10 @@ export function acceptOffer(state, clubId, carryKeys = [], seed = 1) {
   const oldDiv = DIVISION_BY_ID[world.clubs[oldId].divisionId];
   world.clubs[oldId].keyPlayers = leftNamed.sort((a, b) => overall(b) - overall(a)).slice(0, namedCap(oldId, oldDiv)).map((c) => c.id);
   for (const c of leftNamed) world.cardLeft[c.id] = c.matchesLeft ?? 150;
+  for (const c of next.squad) {
+    if (carriedPlayers.includes(c.id)) logMove(next, c.id, oldId, clubId, 'c');
+    else if (!world.clubs[oldId].keyPlayers.includes(c.id)) logMove(next, c.id, oldId, null, 'r');
+  }
 
   // 2. The new club's squad: its named cards plus generic commons, then your carried players.
   const newClub = world.clubs[clubId];
@@ -1213,6 +1237,17 @@ function youthPlayer(state, rng, pos, tier) {
   card.youth = true;
   if (rng.next() < 0.5) card.trait = rng.pick(Object.keys(TRAITS).filter((k) => k !== 'shotStopper' || pos === 'GK'));
   return card;
+}
+
+// ---------------------------------------------------------------------------
+// Career log: moves of the players you sign, release, retire or take with you (engine/careers.js).
+
+const trackedPlayer = (state, id) => !!POOL_BY_ID[id] || !!state.playerStats?.[id] || !!state.careers?.[id];
+const sourceMove = (source = '') => (/academy|youth|golden/i.test(source) ? 'a' : /signed|free agent|veteran/i.test(source) ? 's' : 'p');
+function logMove(next, id, from, to, type) {
+  if (!trackedPlayer(next, id)) return;
+  const year = next.phase === 'offseason' ? (next.season?.year || 0) + 1 : (next.season?.year || 1);
+  next.moves = recordMove(next.moves || {}, id, year, from, to, type);
 }
 
 // ---------------------------------------------------------------------------

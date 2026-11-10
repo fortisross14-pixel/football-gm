@@ -8,6 +8,7 @@ import { OFFSEASON_CARDS, TIERS, cardValue } from '../data/offseason.js';
 import { COACH_PASSIVES } from '../data/coachPassives.js';
 import { PLAYER_POOL, COACH_POOL } from '../data/pool.js';
 import { canUseOffseason } from '../state/club.js';
+import { PlayerLink, ProfileButton } from './nav.jsx';
 
 export default function Collection({ state, onOpenPack, onUseCard }) {
   const [tab, setTab] = useState('squad');
@@ -91,6 +92,7 @@ export default function Collection({ state, onOpenPack, onUseCard }) {
           <div className="sheet-card">
             <PlayerCard card={viewing} colors={state.club.colors} stats={state.playerStats[viewing.id] || { apps: 0, goals: 0, assists: 0, motm: 0 }} />
           </div>
+          <ProfileButton id={viewing.id} name={viewing.name} onDone={() => setViewing(null)} />
         </Sheet>
       )}
       {using && (
@@ -260,7 +262,7 @@ export function HallOfFame({ state }) {
     <ul className="hof">
       {[...state.hallOfFame].reverse().map((h, i) => (
         <li key={i} className={`r-${h.card.rarity}`}>
-          <b>{h.card.name}</b>
+          <b>{h.card.pos ? <PlayerLink id={h.card.id} name={h.card.name} /> : h.card.name}</b>
           <span>{RARITIES[h.card.rarity]?.label} · {h.card.pos || 'Coach'} · retired in season {h.season ?? 1}</span>
           {h.stats && <span>{h.stats.apps} apps · {h.stats.goals} goals · {h.stats.assists} assists · {h.stats.motm} MOTM{h.stats.cs ? ` · ${h.stats.cs} clean sheets` : ''}</span>}
         </li>

@@ -5,6 +5,7 @@ import Sheet from './Sheet.jsx';
 import Tactics from './Tactics.jsx';
 import { effectiveCohesion, cohesionBonus, teamShape, shapeLabel, shapeStamina, shapePenalty, loadOf } from '../state/club.js';
 import { Segmented } from './Home.jsx';
+import { ProfileButton } from './nav.jsx';
 
 export default function Squad({ state, setState }) {
   const [view, setView] = useState('xi');
@@ -121,6 +122,7 @@ function Lineup({ state, setState }) {
           <div className="sheet-card">
             <PlayerCard card={viewing} colors={colors} stats={state.playerStats[viewing.id] || { apps: 0, goals: 0, assists: 0, motm: 0 }} />
           </div>
+          <ProfileButton id={viewing.id} name={viewing.name} onDone={() => setViewing(null)} />
         </Sheet>
       )}
     </div>

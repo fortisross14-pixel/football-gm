@@ -8,13 +8,13 @@ import { POOL_BY_ID, seasonLeaders } from '../state/club.js';
 import { Segmented } from './Home.jsx';
 import Stats from './Stats.jsx';
 import { Crest } from './Art.jsx';
-import { ClubLink, LeagueLink } from './nav.jsx';
+import { ClubLink, LeagueLink, PlayerLink, useSticky } from './nav.jsx';
 
 const nameOf = (id) => POOL_BY_ID[id]?.name;
 
 // The history book: by season, all-time records, and your own career.
 export default function History({ state, divId }) {
-  const [view, setView] = useState('seasons');
+  const [view, setView] = useSticky('history.view', 'seasons');
   const archive = state.archive || [];
   return (
     <div className="history">
@@ -26,7 +26,7 @@ export default function History({ state, divId }) {
         onChange={setView}
       />
       {view === 'seasons' && <Seasons state={state} archive={archive} divId={divId} />}
-      {view === 'stats' && <Stats state={state} initialScope={`L:${divId}`} key={divId} />}
+      {view === 'stats' && <Stats state={state} initialScope={`L:${divId}`} key={divId} memoKey={`league.${divId}`} />}
       {view === 'records' && <Records state={state} archive={archive} divId={divId} />}
       {view === 'career' && <MyCareer state={state} />}
       {view === 'summer' && <LastSummer state={state} />}
@@ -69,9 +69,9 @@ function Seasons({ state, archive, divId }) {
               <dt>🏆 Champion</dt><dd><ClubName state={state} id={lg.table[0][0]} /> <small>{lg.table[0][1]} pts</small></dd>
               <dt>Runner-up</dt><dd><ClubName state={state} id={lg.table[1]?.[0]} /> <small>{lg.table[1]?.[1]} pts</small></dd>
               <dt>Relegated</dt><dd>{DIVISIONS.some((d) => d.code === div.code && d.tier === div.tier + 1) ? <ClubName state={state} id={lg.table.at(-1)[0]} /> : <span className="muted">—</span>}</dd>
-              <dt>⚽ Top scorer</dt><dd>{top ? <>{top.name} <small>{state.world.clubs[top.clubId]?.short} · {top.goals}</small></> : '—'}</dd>
-              <dt>⭐ MVP</dt><dd>{mvp ? <>{mvp.name} <small>{state.world.clubs[mvp.clubId]?.short}</small></> : '—'}</dd>
-              <dt>🧤 Golden Glove</dt><dd>{glove ? <>{glove.name || `${state.world.clubs[glove.clubId]?.short} keeper`} <small>{glove.ga} conceded · {glove.cs} clean sheets</small></> : '—'}</dd>
+              <dt>⚽ Top scorer</dt><dd>{top ? <><PlayerLink id={top.id} name={top.name} /> <small>{state.world.clubs[top.clubId]?.short} · {top.goals}</small></> : '—'}</dd>
+              <dt>⭐ MVP</dt><dd>{mvp ? <><PlayerLink id={mvp.id} name={mvp.name} /> <small>{state.world.clubs[mvp.clubId]?.short}</small></> : '—'}</dd>
+              <dt>🧤 Golden Glove</dt><dd>{glove ? <>{glove.name ? <PlayerLink id={glove.id} name={glove.name} /> : `${state.world.clubs[glove.clubId]?.short} keeper`} <small>{glove.ga} conceded · {glove.cs} clean sheets</small></> : '—'}</dd>
               {cup && <><dt>🥇 {CUP_NAME_FOR(div.code)}</dt><dd><ClubName state={state} id={cup.winner} />{cup.runnerUp && <small> beat {state.world.clubs[cup.runnerUp]?.short}</small>}</dd></>}
               {cont?.winner && <><dt>🌍 {CONTINENTAL_NAME[div.continent]}</dt><dd><ClubName state={state} id={cont.winner} />{cont.runnerUp && <small> beat {state.world.clubs[cont.runnerUp]?.short}</small>}</dd></>}
             </dl>
@@ -139,7 +139,7 @@ export function Records({ state, archive, divId, initialScope = 'league' }) {
             {players.map((p, i) => (
               <li key={p.id}>
                 <span className="scorer-list__pos">{i + 1}</span>
-                <span className="scorer-list__name">{p.name}<em> · {state.world.clubs[p.last]?.short || ''}{board !== 'goals' ? ` · ${p.goals} goals` : ''}</em></span>
+                <span className="scorer-list__name"><PlayerLink id={p.id} name={p.name} /><em> · {state.world.clubs[p.last]?.short || ''}{board !== 'goals' ? ` · ${p.goals} goals` : ''}</em></span>
                 <b>{p[board]}{b.unit}</b>
               </li>
             ))}
@@ -153,7 +153,7 @@ export function Records({ state, archive, divId, initialScope = 'league' }) {
           {best.map((s, i) => (
             <li key={`${s.id}-${s.year}`}>
               <span className="scorer-list__pos">{i + 1}</span>
-              <span className="scorer-list__name">{s.name || nameOf(s.id) || '?'}<em> · {state.world.clubs[s.clubId]?.short} · S{s.year}{divIds ? '' : ` · ${DIVISION_BY_ID[s.divId].name}`}</em></span>
+              <span className="scorer-list__name"><PlayerLink id={s.id} name={s.name || nameOf(s.id) || '?'} /><em> · {state.world.clubs[s.clubId]?.short} · S{s.year}{divIds ? '' : ` · ${DIVISION_BY_ID[s.divId].name}`}</em></span>
               <b>{s.goals}</b>
             </li>
           ))}
@@ -211,7 +211,7 @@ function MyCareer({ state }) {
                 {rows.map((r, i) => (
                   <tr key={r.id} className={state.squad.some((c) => c.id === r.id) ? 'is-user' : ''}>
                     <td>{i + 1}</td>
-                    <td className={`table__club r-${r.rarity || 'common'}`}><span className="dot-r" /> {r.name}</td>
+                    <td className={`table__club r-${r.rarity || 'common'}`}><span className="dot-r" /> <PlayerLink id={r.id} name={r.name} /></td>
                     <td>{r.pos || ''}</td><td>{r.apps}</td><td>{r.goals}</td><td>{r.assists}</td><td>{r.motm}</td><td>{r.cs || 0}</td><td>{r.avg.toFixed(2)}</td>
                   </tr>
                 ))}
@@ -260,7 +260,7 @@ function LastSummer({ state }) {
           <ul className="news">
             {last.news.slice(0, 16).map((n) => (
               <li key={`${n.clubId}-${n.cardId}`} className={`r-${n.rarity}`}>
-                <b>{n.name}</b>
+                <b><PlayerLink id={n.cardId} name={n.name} /></b>
                 <span>{n.type === 'academy' ? 'comes through the academy at' : 'signs for'} <ClubLink id={n.clubId}>{n.club}</ClubLink></span>
               </li>
             ))}
