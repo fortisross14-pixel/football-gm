@@ -43,8 +43,6 @@ const fs = require('fs');
   await step('comp-cup-history', () => page.click('.comp-screen .segmented__opts button:nth-child(3)'));
   await step('comp-league', () => page.click('.tabbar button:nth-child(4)').then(() => page.click('.comp-card--league')));
   await step('league-history', () => page.click('.league__controls >> text=History'));
-  await step('league-records', () => page.click('text=Records'));
-  await step('league-career', () => page.click('text=My career'));
   await step('team', () => page.click('.tabbar button:nth-child(4)').then(() => page.click('.comp-card--league')).then(() => page.click('.table .xlink >> nth=0')));
   await step('team-squad', () => page.click('.team-page > .segmented >> text=Squad'));
   await step('team-history', () => page.click('.team-page > .segmented >> text=History'));

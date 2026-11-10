@@ -21,6 +21,7 @@ import Career from './ui/Career.jsx';
 import Menu, { SettingsSheet } from './ui/Menu.jsx';
 import NewCareer from './ui/NewCareer.jsx';
 import Tip from './ui/Tip.jsx';
+import { markRead, pushInbox } from './state/chronicle.js';
 import Team, { HouseRules } from './ui/Team.jsx';
 import World from './ui/World.jsx';
 import Player from './ui/Player.jsx';
@@ -173,6 +174,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
 
   const useCard = (itemUid, target) => {
     const r = useOffseasonCard(state, itemUid, target, randomSeed());
+    if (r.success !== false && r.message && r.state !== state) pushInbox(r.state, 'club', r.message.split(':')[0], r.message);
     setState(r.state);
     setToast({ text: r.message, tone: r.success === false ? 'bad' : 'good' });
   };
@@ -233,6 +235,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
             state={state}
             onBack={() => setScreen('home')}
             onLook={() => setState((s) => lookForOffers(s, randomSeed()))}
+            onRead={(id) => setState((s) => markRead(s, id))}
             onAccept={(clubId, keys) => {
               setState((s) => acceptOffer(s, clubId, keys, randomSeed()));
               setToast({ text: 'New club, new challenge. Your squad is ready.', tone: 'good' });

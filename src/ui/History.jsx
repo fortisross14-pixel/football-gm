@@ -168,7 +168,7 @@ const STAT_BOARDS = [
   { key: 'motm', label: 'MOTM' }, { key: 'cs', label: 'Clean sheets' }, { key: 'avg', label: 'Avg rating' },
 ];
 
-function MyCareer({ state }) {
+export function MyCareer({ state }) {
   const [period, setPeriod] = useState('all');
   const [stat, setStat] = useState('goals');
   const log = state.careerLog || [];

@@ -12,6 +12,7 @@ import { makeGenericCard, FILLER_RATING, squadStrength } from '../engine/aiTeam.
 import { makeRng } from '../engine/rng.js';
 import { archiveSeason, foldRecords, compactEntry } from '../engine/history.js';
 import { ensureGms, updateGms } from '../engine/gms.js';
+import { pushInbox, moodNews, newContract } from './chronicle.js';
 import { decideAwards } from '../engine/awards.js';
 import { foldSeason, recordMove, holders, diffMoves } from '../engine/careers.js';
 import { newStats, emptyBook, recordGame as recordStats, recordTitle, coachKey } from '../engine/statsbook.js';
@@ -155,7 +156,8 @@ export function newClubState(seed = 12345, { clubId = USER_CLUB.id, gmName = 'Yo
   state.world = buildWorld(CLUBS_BY_DIVISION, CLUB_POOLS, POOL_BY_ID, ownedIds(state), seed + 3);
   state.world.clubs[state.club.id].keyPlayers = [];
   ensureGms(state.world, seed + 5, 1, state.club.id);
-  state.gm = { reputation: START_REPUTATION, confidence: { ...START_CONFIDENCE }, objective: null, missedInRow: 0, sacked: false, offers: [], review: null, career: [{ clubId: state.club.id, name: state.club.name, from: 1, to: null }] };
+  state.gm = { reputation: START_REPUTATION, confidence: { ...START_CONFIDENCE }, objective: null, missedInRow: 0, sacked: false, offers: [], review: null, career: [{ clubId: state.club.id, name: state.club.name, from: 1, to: null }], contract: newContract(1, state.club.level) };
+  pushInbox(state, 'career', `Welcome to ${state.club.name}`, `The owners hand you the keys: a ${state.gm.contract.until - state.gm.contract.from + 1}-season contract. Your coach is ${state.coaches.coach.name}. Good luck.`);
   state.qualification = qualifiers(tablesByStrength(state.world));
   state.season = newSeason(state, 1, seed);
   setObjective(state);
@@ -524,13 +526,21 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
     const competition = game?.competition || 'league';
     const pos = standings(next.season, next.club.divisionId).findIndex((r) => r.id === next.club.id) + 1;
     const trophyNow = (next.season.userTrophies || []).length > (state.season?.userTrophies || []).length;
+    const moodBefore = { ...(next.gm.confidence || {}) };
     next.gm.confidence = matchConfidence(next.gm.confidence, {
       outcome: winner === userSide ? 'W' : winner === null ? 'D' : 'L', gf: own, ga: conceded, competition, pos,
       derby: isDerby(next.club.id, opponent.id),
       styleDist: styleDistance(normalizeTactics(state.tactics), clubIdentity(next.world.clubs[next.club.id])),
       target: next.gm.objective?.target, eliminated: !!game?.knockout && winner !== userSide && !trophyNow, trophy: trophyNow, level: next.club.level,
     });
+    moodNews(moodBefore, next.gm.confidence, next);
+    if (isDerby(next.club.id, opponent.id)) {
+      const w = winner === userSide; const d = winner === null;
+      pushInbox(next, 'match', w ? `Derby won: ${own}–${conceded} against ${opponent.name}` : d ? `Derby draw with ${opponent.name}` : `Derby lost to ${opponent.name}`,
+        w ? 'The city is yours this week. The fans will remember this one.' : d ? 'Honours even. Nobody is happy, nobody is sad.' : 'A painful afternoon. The fans expect a reaction next time.');
+    }
   }
+  for (const c of [...retired, ...retiredCoaches]) pushInbox(next, 'squad', `${c.name} retires`, `${c.name} has played his last match and joins your Hall of Fame.`);
   return { state: next, retired: [...retired, ...retiredCoaches], boostReward };
 }
 
@@ -547,6 +557,7 @@ function awardTrophy(next, entry) {
   next.inventory.packs.push(...trophy.packs);
   for (const c of next.squad) addFame(c, 1.5);
   next.season.userTrophies = [...(next.season.userTrophies || []), trophy.competition];
+  pushInbox(next, 'title', `🏆 You won the ${trophy.competition}!`, `A night to remember for ${next.club.name}. Reward: ${trophy.packs.length} ${trophy.packs.join(' and ')} pack${trophy.packs.length > 1 ? 's' : ''} and a fame boost for the whole squad.`);
 }
 
 function academyPlayer(state, rng, pos) {
@@ -646,6 +657,7 @@ export function keepPending(state, { replaceId, role }) {
     replaceInSquad(next, replaceId, fresh);
     logMove(next, card.id, holderOf(state, card.id)?.id || null, next.club.id, sourceMove(state.pendingOpen.source));
     logMove(next, old.id, next.club.id, null, 'r');
+    pushInbox(next, 'squad', `${card.name} signs`, `${card.name} (${card.pos}, ${RARITIES[card.rarity]?.label || ''}) joins from ${state.pendingOpen.source}. ${old.name} leaves the club.`);
   }
   if (POOL_BY_ID[card.id] && !next.album.includes(card.id)) next.album.push(card.id);
   removeFromRivals(next, card.id);
@@ -778,6 +790,10 @@ export function closeSeason(state, seed) {
   };
   const awards = decideAwards(next.stats.season, entry, { year: state.season.year, matchesLeftOf: leftOf });
   next.awards = [...(next.awards || []), awards];
+  for (const [k, label] of [['best', 'Best Player'], ['scorer', 'Top Scorer'], ['gk', 'Best Goalkeeper'], ['young', 'Best Young Player']]) {
+    const a = awards[k];
+    if (a && next.squad.some((c) => c.id === a.id)) pushInbox(next, 'award', `${a.name} is the ${label} of season ${state.season.year}`, 'One of yours takes a yearly award.');
+  }
   for (const a of [awards.best, awards.gk, awards.young, awards.scorer]) {
     const card = a && next.squad.find((c) => c.id === a.id);
     if (card) addFame(card, 2);
@@ -842,9 +858,26 @@ export function closeSeason(state, seed) {
     const stint = next.gm.career?.[next.gm.career.length - 1];
     const firstSeason = !stint || state.season.year <= stint.from;
     next.gm.sacked = !firstSeason && (next.gm.securityEnd < SACK_LINE || (next.gm.missedInRow >= 2 && next.gm.securityEnd < WARNING_LINE));
-    if (next.gm.sacked) items.push({ label: 'Sacked by the board', value: -15 });
+    // Contract: renewed at expiry if the owners are reasonably happy; otherwise you're out of contract.
+    next.gm.contract = next.gm.contract || newContract(stint?.from || 1, state.club.level);
+    if (!next.gm.sacked && next.gm.contract.until <= state.season.year) {
+      if (verdict !== 'missed' || next.gm.securityEnd >= 35) {
+        next.gm.contract = { from: next.gm.contract.from, until: state.season.year + 2 };
+        pushInbox(next, 'career', 'Contract extended', `The owners extend your contract until the end of season ${state.season.year + 2}.`);
+      } else {
+        next.gm.sacked = true;
+        next.gm.outOfContract = true;
+        pushInbox(next, 'career', 'Contract not renewed', 'The owners let your contract run out. Three clubs have called about you: pick one in Career.');
+      }
+    }
+    if (next.gm.sacked && !next.gm.outOfContract) {
+      items.push({ label: 'Sacked by the board', value: -15 });
+      pushInbox(next, 'career', 'You have been sacked', 'The owners have decided to make a change. Three clubs have already called: pick one in Career.');
+    }
     next.gm.reputation = applyReputation(before, items);
     next.gm.review = { season: state.season.year, objective, position, verdict, items, before, after: next.gm.reputation, sacked: next.gm.sacked };
+    pushInbox(next, 'board', `Season ${state.season.year} review: objective ${verdict}`, `${objective.text}: you finished ${position}${['th', 'st', 'nd', 'rd'][position % 10 > 3 || [11, 12, 13].includes(position % 100) ? 0 : position % 10]}. Reputation ${before} → ${next.gm.reputation}.`);
+    if (position === 1) pushInbox(next, 'title', `🏆 Champions of ${state.club.division}!`, `${state.club.name} win the league. The whole city is out in the streets.`);
     next.gm.searched = false;
     next.gm.offers = jobOffers(next.world, {
       passive: !next.gm.sacked,
@@ -1024,6 +1057,9 @@ export function acceptOffer(state, clubId, carryKeys = [], seed = 1) {
   next.gm.offers = [];
   next.gm.confidence = { ...START_CONFIDENCE };
   next.gm.newJob = true;
+  next.gm.outOfContract = false;
+  next.gm.contract = newContract(year + 1, DIVISION_BY_ID[newClub.divisionId].level);
+  pushInbox(next, 'career', `You sign for ${newClub.name}`, `A ${next.gm.contract.until - next.gm.contract.from + 1}-season contract, until the end of season ${next.gm.contract.until}.`);
   return next;
 }
 

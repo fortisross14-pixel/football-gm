@@ -10,6 +10,7 @@ import { PACKS } from '../engine/packs.js';
 import { ClubLink, LeagueLink, CompLink } from './nav.jsx';
 import { compOfGame } from './Competitions.jsx';
 import { Confidence } from './Career.jsx';
+import { opinions, ownerLine, fanLine, unreadCount } from '../state/chronicle.js';
 import { isDerby, derbyName } from '../data/rivals.js';
 
 export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo }) {
@@ -22,10 +23,11 @@ export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo
       {phase === 'seasonEnd' && <SeasonEnd state={state} onClose={onCloseSeason} />}
       {phase === 'offseason' && <Offseason state={state} goTo={goTo} onStart={onStartSeason} />}
 
+      <Opinions state={state} goTo={goTo} />
       <StatusRow state={state} goTo={goTo} />
       <div className="cta-row cta-row--tight">
         <button type="button" className="btn btn--ghost" onClick={() => goTo('club')}>Finances &amp; trophies ›</button>
-        <button type="button" className="btn btn--ghost" onClick={() => goTo('career')}>Career ›</button>
+        <button type="button" className={`btn btn--ghost${unreadCount(state) ? ' has-badge' : ''}`} onClick={() => goTo('career')}>Career{unreadCount(state) ? ` · ✉ ${unreadCount(state)}` : ''} ›</button>
       </div>
       </div>
 
@@ -257,5 +259,17 @@ export function DerbyAlert({ state, compact }) {
       {!compact && <span className="derby-alert__name">{derbyName(state.club.id, opp.id)} · {state.club.short} vs {opp.short}</span>}
       <span className="derby-alert__meta">Double gate and prize money · fans feel it twice as much{past.length ? ` · your record: ${rec.W}W ${rec.D}D ${rec.L}L` : ''}</span>
     </section>
+  );
+}
+
+// What the owners and fans think, in a sentence each.
+function Opinions({ state, goTo }) {
+  if (!state.gm) return null;
+  const op = opinions(state);
+  return (
+    <button type="button" className="opinions opinions--home" onClick={() => goTo('career')}>
+      <span className="opinion"><span className="opinion__who">Owners · {op.owners.value}</span><span>{ownerLine(op.owners)}</span></span>
+      <span className="opinion"><span className="opinion__who">Fans · {op.fans.value}</span><span>{fanLine(op.fans)}</span></span>
+    </button>
   );
 }
