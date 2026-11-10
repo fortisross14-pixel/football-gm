@@ -2,7 +2,7 @@ import React, { createContext, useContext } from 'react';
 
 // Links between screens: any club name opens that club's page, any league name
 // opens its table in the League section.
-export const NavContext = createContext({ openClub: () => {}, openLeague: () => {} });
+export const NavContext = createContext({ openClub: () => {}, openLeague: () => {}, openComp: () => {} });
 export const useNav = () => useContext(NavContext);
 
 export function ClubLink({ id, children, className = '' }) {
@@ -19,6 +19,17 @@ export function LeagueLink({ divId, tab = 'table', children, className = '' }) {
   const { openLeague } = useNav();
   return (
     <button type="button" className={`xlink ${className}`} onClick={(e) => { e.stopPropagation(); openLeague(divId, tab); }}>
+      {children}
+    </button>
+  );
+}
+
+// Any competition: { type: 'league' | 'cup' | 'cont' | 'cwc', id }.
+export function CompLink({ comp, tab, children, className = '' }) {
+  const { openComp } = useNav();
+  if (!comp) return <span className={className}>{children}</span>;
+  return (
+    <button type="button" className={`xlink ${className}`} onClick={(e) => { e.stopPropagation(); openComp(comp, tab); }}>
       {children}
     </button>
   );

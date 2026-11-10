@@ -468,6 +468,9 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
   next.history.unshift({
     opponentId: opponent.id,
     opponent: opponent.name,
+    comp: !game || game.competition === 'league' ? { type: 'league', id: next.club.divisionId }
+      : game.competition === 'cup' ? { type: 'cup', id: DIVISION_BY_ID[next.club.divisionId].code }
+        : game.competition === 'continental' ? { type: 'cont', id: DIVISION_BY_ID[next.club.divisionId].continent } : { type: 'cwc', id: 'cwc' },
     derby: isDerby(next.club.id, opponent.id),
     opponentShort: opponent.short,
     score: [own, conceded],

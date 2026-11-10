@@ -14,7 +14,7 @@ import Squad from './ui/Squad.jsx';
 import PreMatch from './ui/PreMatch.jsx';
 import Match from './ui/Match.jsx';
 import Result from './ui/Result.jsx';
-import League from './ui/League.jsx';
+import Competitions, { Competition } from './ui/Competitions.jsx';
 import PackOpening from './ui/PackOpening.jsx';
 import ClubInfo from './ui/ClubInfo.jsx';
 import Career from './ui/Career.jsx';
@@ -44,7 +44,7 @@ const TABS = [
   { id: 'home', label: 'Club', icon: '⌂' },
   { id: 'squad', label: 'Squad', icon: '◫' },
   { id: 'cards', label: 'Cards', icon: '▤' },
-  { id: 'league', label: 'League', icon: '≡' },
+  { id: 'league', label: 'Competitions', icon: '≡' },
   { id: 'world', label: 'World', icon: '◍' },
 ];
 
@@ -103,10 +103,12 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
   const [teamId, setTeamId] = useState(null);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [leagueNav, setLeagueNav] = useState(null);
+  const [compNav, setCompNav] = useState(null);
   const backTo = useRef('home');
   const nav = {
     openClub: (id) => { if (screen !== 'team') backTo.current = screen; setTeamId(id); setScreen('team'); window.scrollTo(0, 0); },
-    openLeague: (divId, tab = 'table') => { setLeagueNav({ divId, tab, k: Date.now() }); setScreen('league'); },
+    openLeague: (divId, tab = 'table') => { setCompNav({ comp: { type: 'league', id: divId }, tab, k: Date.now() }); setScreen('comp'); },
+    openComp: (comp, tab) => { setCompNav({ comp, tab, k: Date.now() }); setScreen('comp'); },
   };
 
   // Save shortly after every change (and right away when leaving).
@@ -156,7 +158,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
     setToast({ text: r.message, tone: r.success === false ? 'bad' : 'good' });
   };
 
-  const isTab = TABS.some((t) => t.id === screen) || ['club', 'career', 'team', 'shop'].includes(screen);
+  const isTab = TABS.some((t) => t.id === screen) || ['club', 'career', 'team', 'shop', 'comp'].includes(screen);
 
   return (
     <NavContext.Provider value={nav}>
@@ -201,7 +203,8 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
           />
         )}
         {screen === 'world' && <World state={state} />}
-        {screen === 'league' && <League key={leagueNav?.k || 'league'} state={state} nav={leagueNav} />}
+        {screen === 'league' && <Competitions state={state} />}
+        {screen === 'comp' && compNav && <Competition key={compNav.k} state={state} comp={compNav.comp} tab={compNav.tab} onBack={() => setScreen('league')} />}
         {screen === 'team' && teamId && state.world.clubs[teamId] && <Team key={teamId} state={state} clubId={teamId} onBack={() => setScreen(backTo.current)} onCurse={(id) => setState((s) => toggleCurse(s, id))} />}
         {screen === 'club' && <ClubInfo state={state} onBack={() => setScreen('home')} />}
         {screen === 'career' && (
@@ -234,7 +237,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
       {isTab && (
         <nav className="tabbar" aria-label="Main">
           {TABS.map((t) => (
-            <button key={t.id} type="button" className={screen === t.id || (t.id === 'cards' && screen === 'shop') ? 'is-on' : ''} onClick={() => { if (t.id === 'league') setLeagueNav(null); setScreen(t.id); }}>
+            <button key={t.id} type="button" className={screen === t.id || (t.id === 'cards' && screen === 'shop') || (t.id === 'league' && screen === 'comp') ? 'is-on' : ''} onClick={() => { if (t.id === 'league') setLeagueNav(null); setScreen(t.id); }}>
               <span className="tabbar__icon" aria-hidden="true">{t.icon}</span>
               <span>{t.label}</span>
               {t.id === 'cards' && (state.inventory.packs.length > 0 || state.phase === 'offseason') && <i className="tabbar__dot" />}

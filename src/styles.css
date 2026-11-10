@@ -1704,3 +1704,32 @@ html.reduce-motion .sealed, html.reduce-motion .flip, html.reduce-motion .pack__
 .load-list li.is-high .load-list__bar i { background: var(--warn); }
 .load-list li.is-low { color: var(--muted); }
 .load-list b { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---- Competitions hub and screens ---- */
+.comps-hub { display: flex; flex-direction: column; gap: 18px; }
+.comp-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.comp-card { display: flex; flex-direction: column; gap: 2px; padding: 12px; text-decoration: none; text-align: left; background: var(--ink); color: #fff; clip-path: polygon(0 0, 100% 0, calc(100% - var(--cut)) 100%, 0 100%); min-height: 84px; }
+.comp-card--cup { background: var(--blue); }
+.comp-card--cont { background: #6a1fd1; }
+.comp-card--cwc { background: var(--red); }
+.comp-card__type { font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--yellow); }
+.comp-card b { font-family: var(--font-display); font-weight: 400; font-size: 20px; text-transform: uppercase; line-height: 1.05; }
+.comp-card small { font-size: 12px; opacity: .85; }
+.league-grid { display: grid; gap: 10px; }
+.league-grid__country { display: flex; flex-direction: column; gap: 4px; }
+.league-grid__name { font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.chip-btn--cup { background: var(--blue-soft); }
+a.chip-btn, button.xlink.chip-btn { text-decoration: none; }
+.comp-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: var(--ink); color: #fff; padding: 12px 14px; }
+.comp-head__type { font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--yellow); }
+.comp-head__name { display: block; font-family: var(--font-display); font-weight: 400; font-size: 28px; text-transform: uppercase; line-height: 1; }
+.comp-head .btn--ghost { color: #fff; border-color: #fff; }
+.comp-screen { display: flex; flex-direction: column; gap: 12px; }
+.league__back { align-self: flex-start; }
+@media (min-width: 720px) {
+  .comp-cards { grid-template-columns: repeat(4, 1fr); }
+  .league-grid { grid-template-columns: repeat(3, 1fr); }
+}
+.tabbar button span:last-child { white-space: nowrap; }
+.xlink.chip-btn { padding: 8px 14px; text-decoration: none; }
+.xlink.comp-card { padding: 12px; }
