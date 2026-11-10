@@ -22,6 +22,7 @@ import { attrs } from '../src/engine/attributes.js';
 import { OPPONENTS } from '../src/data/demo.js';
 import { DIVISION_BY_ID } from '../src/data/world/structure.js';
 import { startingDraw, aiOffseason } from '../src/engine/transfers.js';
+import { careerLines, playerSeasons, playerMoves, clubSpells, clubMoves, managerSeasons, clubManagers, clubRecord, clubPlayersAllTime } from '../src/engine/careers.js';
 import { CLUB_POOLS, PLAYER_CARDS } from '../src/data/world/index.js';
 import {
   newClubState, buildUserTeam, matchRewards, applyMatch, buyPack, keepPending, mergePending, discardPending,
@@ -559,6 +560,53 @@ test('shape: the same 7 every week lowers it, rotating keeps it up, Sports Scien
   assert.ok(teamShape({ ...same, perks: { shape: 30 } }) >= teamShape(same) + 25);
   assert.equal(shapeLabel(90), 'Fresh');
   assert.equal(shapeLabel(40), 'Exhausted');
+});
+
+test('careers: two seasons fold per player, moves are logged, club pages read them', () => {
+  let s = closeSeason(playFull(fresh()), 21);
+  const oneId = Object.keys(s.careers).find((id) => POOL_BY_ID[id] && s.careers[id].length === 1);
+  assert.ok(oneId, 'season 1 lines');
+  assert.ok(Object.keys(s.coachCareers).length > 290, 'every manager has a line');
+  assert.ok(s.coachCareers.you?.length === 1);
+  // A named card that the AI moved this summer (academy, signing, release or retirement).
+  const moved = Object.keys(s.moves).filter((id) => POOL_BY_ID[id]);
+  assert.ok(moved.length > 20, `moves ${moved.length}`);
+  s = resolve(s);
+  const star = s.squad.find((c) => POOL_BY_ID[c.id]);
+  s.gm.offers = [{ clubId: 'sporting', required: 0, name: 'Sporting Gijón', division: 'x', level: 3 }];
+  s = acceptOffer(s, 'sporting', [`player:${star.id}`], 3);
+  assert.deepEqual(playerMoves(s, star.id).at(-1), { year: 2, from: 'racing', to: 'sporting', type: 'c' });
+  s = closeSeason(playFull(startNextSeason(s, 5)), 22);
+  // Two seasons for the same player, the second at the new club.
+  const lines = careerLines(s.careers[star.id]);
+  assert.equal(lines.length, 2);
+  assert.deepEqual(lines.map((l) => [l.year, l.clubId]), [[1, 'racing'], [2, 'sporting']]);
+  assert.ok(lines.every((l) => l.apps > 0 && l.avg > 3 && l.avg < 10));
+  const seasons = playerSeasons(s, star.id);
+  assert.ok(seasons[0].divId && seasons[0].level, 'league and level from the archive');
+  assert.deepEqual(clubSpells(seasons, playerMoves(s, star.id)).map((x) => x.clubId), ['racing', 'sporting']);
+  assert.ok(clubMoves(s, 'sporting').some((m) => m.id === star.id && m.dir === 'in'));
+  const two = Object.values(s.careers).filter((l) => l.length === 2).length;
+  assert.ok(two > 300, `players with 2 seasons: ${two}`);
+  // Size per season stays small.
+  assert.ok(JSON.stringify(s.careers).length < 120000, `careers ${JSON.stringify(s.careers).length}`);
+  // Managers and club books.
+  const you = managerSeasons(s, 'you');
+  assert.deepEqual(you.map((x) => x.clubId), ['sporting', 'racing']);
+  assert.ok(clubManagers(s, 'racing').some((m) => m.key === 'you'));
+  const rec = clubRecord(s, 'racing').all;
+  assert.ok(Object.values(rec).reduce((n, r) => n + r[0], 0) >= 14);
+  assert.ok(clubPlayersAllTime(s, 'sporting').some((p) => p.id === star.id));
+});
+
+test('old saves without careers still load and start their log at season end', () => {
+  let s = playFull(startNextSeason(resolve(closeSeason(playFull(fresh()), 31)), 32));
+  for (const k of ['careers', 'careerNames', 'moves', 'coachCareers', 'clubRecords']) delete s[k];
+  assert.deepEqual(playerSeasons(s, s.squad[0].id).filter((r) => !r.live), []);
+  assert.deepEqual(clubMoves(s, 'racing'), []);
+  s = closeSeason(s, 33);
+  const id = Object.keys(s.careers).find((x) => POOL_BY_ID[x] && s.careers[x].length === 2);
+  assert.ok(id, 'last season is backfilled from the stats book');
 });
 
 console.log(`\n${passed} tests passed`);
