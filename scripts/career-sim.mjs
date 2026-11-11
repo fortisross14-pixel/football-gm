@@ -6,6 +6,7 @@ import {
   duplicateOf, canMerge, keepPending, mergePending, discardPending, closeSeason, buyMarketCard, useOffseasonCard,
   startNextSeason, acceptOffer, carryOptions, seasonSummary, userStrength, canUseOffseason, POOL_BY_ID, isCoach, lookForOffers,
   cardPlaysLeft, seeMarket, buyClubPack, pickClubCard, seasonDealOptions, pickSeasonCard, redrawSeasonCards, redrawCost,
+  signSponsor, sponsorOffers, setTicketPrice, activeSponsor,
 } from '../src/state/club.js';
 import { CLUB_PACKS } from '../src/data/clubPacks.js';
 import { GM_STYLE_IDS, drawGmTrait } from '../src/engine/gmTraits.js';
@@ -212,6 +213,30 @@ function seasonDeal(state, seed) {
   return decide(pickSeasonCard(s, pick.key, seed + 1));
 }
 
+// Business choices (v2.2): the summer sponsor contract and ticket prices.
+//   average: Performance when clearly stronger than the division, else Steady; Normal tickets
+//   great:   Glory when a title or promotion is likely, Performance when strong, High tickets
+//            while the fans are happy (Low when they turn)
+//   poor/bad: never choose (Steady by default, Normal tickets)
+function divisionGap(state) {
+  const div = state.world.divisions[state.club.divisionId].filter((id) => id !== state.club.id).map((id) => state.world.clubs[id].strength);
+  return userStrength(state) - div.reduce((a, b) => a + b, 0) / div.length;
+}
+function business(state) {
+  let s = state;
+  if (BOT === 'great' || BOT === 'average') {
+    const gap = divisionGap(s);
+    const pick = BOT === 'great' ? (gap >= 6 ? 'glory' : gap >= 1 ? 'performance' : 'steady') : gap >= 4 ? 'performance' : 'steady';
+    if (sponsorOffers(s).length && process.env.SPONSOR !== 'off') s = signSponsor(s, process.env.SPONSOR || pick).state;
+  }
+  return tickets(s);
+}
+function tickets(state) {
+  if (BOT !== 'great' || process.env.TICKETS === 'off') return state;
+  const fans = state.gm?.confidence?.fans ?? 55;
+  return setTicketPrice(state, fans >= 60 ? 'high' : fans < 40 ? 'low' : 'normal');
+}
+
 function chooseOffer(state) {
   const looks = process.env.NO_LOOK !== '1' && (BOT !== 'poor' || state.season.year % 2 === 0);
   if (looks) state = lookForOffers(state, 4242 + state.season.year);
@@ -248,6 +273,9 @@ function playNext(state, seed, stats) {
   stats.matches += 1;
   stats.byComp[game.competition] = (stats.byComp[game.competition] || 0) + 1;
   const rewards = matchRewards(state, m, side, game);
+  // What the sponsor and ticket choices earned against the defaults (Steady, Normal) on the same match.
+  const plain = matchRewards({ ...state, sponsor: { type: 'steady', brand: activeSponsor(state).brand }, ticketPrice: 'normal' }, m, side, game);
+  stats.bySeason[(state.season.year - 1) % SEASONS].choice += (rewards.total - plain.total) / CAREERS;
   return applyMatch(state, m, side, opp, rewards, seed, game).state;
 }
 
@@ -257,7 +285,7 @@ function playNext(state, seed, stats) {
 const stats = {
   packs: {}, pulls: {}, goals: 0, matches: 0, byComp: {}, clubPacks: {}, clubPicks: {},
   upsets: { underdog: { n: 0, w: 0, d: 0 }, favourite: { n: 0, w: 0, d: 0 } },
-  bySeason: Array.from({ length: SEASONS }, () => ({ level: [], pos: [], coinsIn: [], strengthGap: [], rep: [], areas: [], plays: [], retired: 0, trophies: 0, continental: 0, cats: {}, spent: {}, verdicts: {} })),
+  bySeason: Array.from({ length: SEASONS }, () => ({ level: [], pos: [], coinsIn: [], strengthGap: [], rep: [], areas: [], plays: [], retired: 0, trophies: 0, continental: 0, cats: {}, spent: {}, verdicts: {}, choice: 0 })),
   redraws: 0, traits: {},
   firstD2: [], firstD1: [], firstContinental: [], topClub: [], sacked: 0, moves: 0,
   worldNamed: [], contWinners: {}, cardSeasons: [],
@@ -283,12 +311,13 @@ for (let c = 0; c < CAREERS; c += 1) {
     let guard = 0;
     while (s.phase === 'season' && guard < 70) {
       s = playNext(s, seed++, stats);
-      s = decide(s);
+      s = tickets(decide(s));
       if (s.phase === 'season' && s.market?.fresh && !process.env.NO_MANAGE) s = manage(s, seed * 7 + 13, { summer: false }); // own seed: keeps match seeds comparable
       if (guard % 6 === 5) s = shop(s, seed++, stats);
       guard += 1;
     }
     const sum = seasonSummary(s);
+    if (sum.position === 1 || sum.promoted) row.choice += Math.max(0, activeSponsor(s).perTrophy - 0) / CAREERS; // Glory season bonus
     row.level.push(s.club.level);
     row.areas.push(AREA_IDS.reduce((t, k) => t + (s.facilities[k] || 0), 0));
     row.plays.push(s.cardPlays || 0);
@@ -320,7 +349,7 @@ for (let c = 0; c < CAREERS; c += 1) {
     if (s.club.level <= 2 && reached.d2 === null) reached.d2 = y + 2;
     if (s.club.level === 1 && reached.d1 === null) reached.d1 = y + 2;
     if (TOP_CLUBS.includes(s.club.id) && reached.top === null) reached.top = y + 2;
-    s = decide(s);
+    s = business(decide(s));
     s = startNextSeason(s, seed++);
     if (s.phase !== 'season') { s = decide(s); s = startNextSeason(s, seed++); }
   }
@@ -354,6 +383,7 @@ for (const i of [0, Math.floor(SEASONS / 2), SEASONS - 1]) {
   console.log(`  spent: ${Object.entries(stats.bySeason[i].spent).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${Math.round(v)}`).join(' · ')}`);
 }
 console.log(`Club packs bought: ${JSON.stringify(stats.clubPacks)} · kept: ${JSON.stringify(stats.clubPicks)}`);
+console.log(`Sponsor and ticket choices vs Steady/Normal (coins a season): ${stats.bySeason.map((r) => `${Math.round(r.choice)} (${Math.round((100 * r.choice) / Math.max(1, avg(r.coinsIn)))}%)`).join(' · ')}`);
 console.log(`Board verdicts: ${['exceeded', 'met', 'missed'].map((v) => `${v} ${stats.bySeason.reduce((a, r) => a + (r.verdicts[v] || 0), 0)}`).join(' · ')}`);
 console.log(`\nReached a level-2 club: ${reachedPct(stats.firstD2)} · level-1 club: ${reachedPct(stats.firstD1)} · continental: ${reachedPct(stats.firstContinental)} · top club: ${reachedPct(stats.topClub)}`);
 console.log(`Moves: ${stats.moves} · sackings: ${stats.sacked} · season-deal redraws: ${stats.redraws}`);

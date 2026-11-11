@@ -54,13 +54,13 @@ export function fullFacilities(fac = {}) {
 // Short text of what an area does at a level. m is the division multiplier; academy needs
 // the intake tables, passed in by the caller to keep this file free of engine imports.
 export function areaEffect(id, level, { m = 1, academy = null } = {}) {
-  const c = (v) => Math.round(v * m);
+  const c = (v) => Math.round(Math.round(v * m) * 0.8); // as paid: × division, × 0.8 per match since v1.9
   switch (id) {
     case 'stadium': return `Home gate ◎ ${c(STADIUM_INCOME[level])} a home game`;
     case 'hospitality': return level ? `Restaurant and boxes ◎ ${c(HOSPITALITY_INCOME[level])} a home game` : 'No restaurant yet';
     case 'store': return level ? `Store sales ◎ ${c(STORE_INCOME[level])} a match` : 'No club store yet';
     case 'merch': return `${MERCH_LINES[level]}: popularity × ${MERCH_MULT[level]} × 0.3 a match`;
-    case 'sponsor': return level ? `${SPONSOR_NAMES[level]}: ◎ ${c(SPONSOR_INCOME[level])} a match` : 'No sponsor yet';
+    case 'sponsor': return `${level ? SPONSOR_NAMES[level] : 'Local shop'} deals: steady ◎ ${c(STEADY_INCOME[level])} a match`;
     case 'training': return `Cohesion +${COHESION_GAIN[level]} a match, worth up to +${Math.round(COHESION_MAX_BONUS[level] * 100)}% stats`;
     case 'gym': return level ? `Stamina drains ${GYM_DRAIN[level]}% slower` : 'No gym yet';
     case 'spa': return level ? `+${SPA_SHAPE[level]} team shape` : 'No spa yet';
@@ -72,3 +72,34 @@ export function areaEffect(id, level, { m = 1, academy = null } = {}) {
     default: return '';
   }
 }
+
+// ---------------------------------------------------------------------------
+// Building works (v2.2): a level is no longer instant. A project takes 2 + target level
+// league matchdays; summer builds finish by the first matchday. One project per area.
+export const BUILD_BASE = 2;
+export const buildMatchdays = (toLevel) => BUILD_BASE + toLevel;
+
+// Ticket prices: High earns more at the gate and in hospitality but the fans grumble;
+// Low fills the stands (happier fans, a small home boost) for less gate money.
+export const TICKET_PRICES = {
+  low: { label: 'Low', gate: 0.8, hospitality: 1, fans: 0.6, home: 0.01, text: '−20% gate · fans +0.6 a home match · +1% team stats at home' },
+  normal: { label: 'Normal', gate: 1, hospitality: 1, fans: 0, home: 0, text: 'Standard prices' },
+  high: { label: 'High', gate: 1.25, hospitality: 1.25, fans: -0.6, home: 0, text: '+25% gate and hospitality · fans −0.6 a home match' },
+};
+export const TICKET_IDS = Object.keys(TICKET_PRICES);
+
+// Sponsor contracts, offered every summer (one of each kind). Amounts are live: they grow
+// with the Sponsorship area level and the division multiplier. STEADY_INCOME is the base
+// per match (the old SPONSOR_INCOME, plus a small deal at level 0).
+export const STEADY_INCOME = [3, 6, 11, 17, 24, 32];
+export const SPONSOR_DEALS = {
+  steady: { label: 'Steady', icon: '🤝', perMatch: 1, perWin: 0, perTrophy: 0, text: 'Fixed coins every match.' },
+  performance: { label: 'Performance', icon: '📈', perMatch: 0, perWin: 2.2, perTrophy: 0, text: 'Coins for every win, nothing for draws or defeats.' },
+  glory: { label: 'Glory', icon: '🏆', perMatch: 0.4, perWin: 0, perTrophy: 14, text: 'A little every match, a big bonus for each trophy and for promotion.' },
+};
+export const SPONSOR_DEAL_IDS = Object.keys(SPONSOR_DEALS);
+export const SPONSOR_BRANDS = {
+  steady: ['Harbour Bank', 'Northgate Insurance', 'Civic Water', 'Lindqvist Logistics'],
+  performance: ['Volt Energy', 'Sprintline Sports', 'Apex Motors', 'Kickstart Telecom'],
+  glory: ['Crown Airways', 'Goldleaf Holdings', 'Summit Group', 'Laurel Watches'],
+};

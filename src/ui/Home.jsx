@@ -154,6 +154,12 @@ function Offseason({ state, goTo, onStart, onPickSeason, onRedrawSeason }) {
           </button>
         );
       })()}
+      {state.sponsorOffers?.offers?.length > 0 && (
+        <button type="button" className="career-link" onClick={() => goTo('club')}>
+          <span>🤝 {state.sponsorOffers.signed ? `Sponsor signed for season ${state.sponsorOffers.year}: ${state.sponsor?.brand}` : `3 sponsor offers for season ${state.sponsorOffers.year}: Steady, Performance or Glory. Pick one before the season starts.`}</span>
+          <b>Sponsor ›</b>
+        </button>
+      )}
       <SeasonDeal state={state} onPick={onPickSeason} onRedraw={onRedrawSeason} />
       <b className="offseason__title">Summer Transfer Market</b>
       <p className="hint">Fresh transfer cards in the market, club packs in Shop → Club. Play them from the Cards tab: sign players, upgrade the club's areas. Summer plays count towards next season ({cardPlays(state).used} / {cardPlays(state).limit} used).</p>

@@ -55,7 +55,7 @@ function ownerReason(state) {
   for (const [k, c] of Object.entries(comps?.continental || {})) {
     if (c.entrants?.includes(state.club.id) && !c.winner && played) reasons.push([6, `especially for the run in the ${CONTINENT_NAME[k]}`]);
   }
-  if (played && obj) {
+  if (played && obj && pos > 0 && state.phase === 'season') {
     if (pos <= obj.target) reasons.push([pos === 1 ? 8 : 5, `especially for your ${ordinal(pos)} place in ${div.name}`]);
     else reasons.push([7, `worried about ${ordinal(pos)} place in ${div.name} when they asked you to ${obj.text.toLowerCase()}`]);
   }

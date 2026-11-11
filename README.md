@@ -46,7 +46,8 @@ npm run build      # static build in dist/
 - **Main menu:** 3 save slots, new career (your name, country and GM style, a GM card reveal, then one of three small-club job offers), back up / restore, settings (match speed, auto-play, reduced motion, tips).
 - **GM card:** one permanent card from your GM style (12 cards, Common to Epic): Money Man, Dealmaker, Tactics Connoisseur, Game Reader, Fitness Freak, Iron Squad, Dressing-room Leader, Continuity, CEO's Friend, Fan Favourite, Coach Tamer, Media Darling.
 - **GM career:** reputation, board objectives, owners and fans confidence, job offers, moving clubs with 2 cards, getting sacked (3 offers, a level lower if a top-flight club fires you).
-- **Club management:** ten club areas, levels 0–5, each raised by its own card. Business: stadium, hospitality, club store, merchandise, sponsorship (income every match). Sports: training fields, gym, spa & recovery, youth academy, analytics. Plus income per match, finances, popularity and the trophy cabinet.
+- **Club tab:** Overview (what the owners want, owners and fans, objective, contract, budget, this vs last season), Infrastructure (ten club areas, levels 0–5; an infrastructure card starts **building works** that take 2 + the new level league matchdays, summer works are ready for matchday 1, one project per area), Finance (income per match by source, season money in/out, **season-by-season history**, **ticket prices** Low / Normal / High, the **summer sponsor contract**: Steady, Performance or Glory), Effects (temporary club cards in play) and Trophies.
+- **Tabs:** Home, Squad, Club, Cards, Competitions, World.
 
 Progress is saved in the browser, automatically.
 
@@ -78,6 +79,7 @@ Progress is saved in the browser, automatically.
 | `src/state/managers.js` | Managers book: every career you have played, ranked (main menu → Managers) |
 | `src/data/offseason.js` | The 42 management card types: transfer (Transfer Market), club (infrastructure + temporary), season events, plus the season-only cards |
 | `src/data/clubPacks.js` | Club packs: prices, odds, pick 1 of 3 |
-| `src/data/facilities.js` | The ten club areas: levels, effects, card plays per season |
+| `src/data/facilities.js` | The ten club areas: levels, effects, card plays per season, build times, ticket prices, sponsor deals |
+| `src/state/business.js` | Building works, ticket prices, sponsor contracts, season finance history |
 | `src/data/` | Demo club, league clubs, boosts, coach passives |
 | `src/ui/` | React screens and card components |

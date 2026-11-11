@@ -6,6 +6,7 @@ import {
   newClubState, buildUserTeam, matchRewards, applyMatch,
   buyPack, buyBoostPack, openOwnedPack, keepPending, mergePending, discardPending, closeSeason, buyMarketCard,
   startNextSeason, useOffseasonCard, seeMarket, POOL_BY_ID, nextUserGame, acceptOffer, discardCommons, lookForOffers, toggleCurse,
+  setTicketPrice, signSponsor,
   pickSeasonCard, redrawSeasonCards,
   buyClubPack, openOwnedClubPack, pickClubCard,
 } from './state/club.js';
@@ -19,7 +20,7 @@ import Result from './ui/Result.jsx';
 import Competitions, { Competition } from './ui/Competitions.jsx';
 import PackOpening from './ui/PackOpening.jsx';
 import ClubPackOpening from './ui/ClubPackOpening.jsx';
-import ClubInfo from './ui/ClubInfo.jsx';
+import Club from './ui/Club.jsx';
 import Career from './ui/Career.jsx';
 import Menu, { SettingsSheet } from './ui/Menu.jsx';
 import NewCareer from './ui/NewCareer.jsx';
@@ -41,16 +42,18 @@ const TIPS = {
   cards: 'Owned: your players, items and the album. Shop: player packs, boost packs and, after the season, the Transfer Market.',
   league: 'Every league in the world plays each matchday. Tap any club to see its page, and open History for champions, top scorers, MVPs and Golden Gloves by season.',
   world: 'The wider world: manager rankings, the strongest clubs, all-time records and the Hall of Fame.',
-  club: 'Facilities, money in and out, and your trophy cabinet. Facilities are upgraded with off-season Club cards.',
+  club: 'Your club: what the owners want, the ten areas and their building works, money in and out, the sponsor and ticket prices, and the trophy cabinet.',
   career: 'Your reputation decides which clubs will hire you. Keep the owners and fans happy: if job security ends a season under 30, or you miss the objective twice, you are sacked.',
   opening: 'New card! Keep it (pick who it replaces), merge a duplicate for +1★, or discard it for coins.',
 };
 
+// short: the label on the phone tab bar and the tablet rail; label: the laptop sidebar.
 const TABS = [
-  { id: 'home', label: 'Club', icon: '⌂' },
+  { id: 'home', label: 'Home', icon: '⌂' },
   { id: 'squad', label: 'Squad', icon: '◫' },
+  { id: 'club', label: 'Club', icon: '♜' },
   { id: 'cards', label: 'Cards', icon: '▤' },
-  { id: 'league', label: 'Competitions', icon: '≡' },
+  { id: 'league', label: 'Competitions', short: 'Comps', icon: '≡' },
   { id: 'world', label: 'World', icon: '◍' },
 ];
 
@@ -244,7 +247,18 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
         {screen === 'team' && teamId && state.world.clubs[teamId] && <Team key={teamId} state={state} clubId={teamId} tab={detail.tab} onTab={setTab} onBack={goBack} onCurse={(id) => setState((s) => toggleCurse(s, id))} />}
         {screen === 'player' && detail.playerId && <Player key={detail.playerId} state={state} playerId={detail.playerId} fallbackName={detail.name} tab={detail.tab} onTab={setTab} onBack={goBack} />}
         {screen === 'manager' && detail.mkey && <Manager key={detail.mkey} state={state} mkey={detail.mkey} tab={detail.tab} onTab={setTab} onBack={goBack} />}
-        {screen === 'club' && <ClubInfo state={state} onBack={() => setScreen('home')} onMarket={() => setScreen('shop')} />}
+        {screen === 'club' && (
+          <Club
+            state={state}
+            onMarket={() => setScreen('shop')}
+            onTicket={(id) => setState((s) => setTicketPrice(s, id))}
+            onSignSponsor={(type) => {
+              const r = signSponsor(state, type);
+              setState(r.state);
+              setToast({ text: r.message, tone: r.success ? 'good' : 'bad' });
+            }}
+          />
+        )}
         {screen === 'career' && (
           <Career
             state={state}
@@ -278,8 +292,9 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
           {TABS.map((t) => (
             <button key={t.id} type="button" className={screen === t.id || (t.id === 'cards' && screen === 'shop') || (t.id === 'league' && screen === 'comp') ? 'is-on' : ''} onClick={() => { if (t.id === 'league') setLeagueNav(null); backStack.current = []; resetSticky(); setScreen(t.id); }}>
               <span className="tabbar__icon" aria-hidden="true">{t.icon}</span>
-              <span>{t.label}</span>
+              <span className="tabbar__label">{t.short ? <><span className="tabbar__short">{t.short}</span><span className="tabbar__full">{t.label}</span></> : t.label}</span>
               {t.id === 'cards' && (state.inventory.packs.length > 0 || (state.inventory.clubPacks || []).length > 0 || state.phase === 'offseason') && <i className="tabbar__dot" />}
+              {t.id === 'club' && state.phase === 'offseason' && state.sponsorOffers?.offers?.length > 0 && !state.sponsorOffers.signed && <i className="tabbar__dot" />}
             </button>
           ))}
         </nav>
@@ -318,7 +333,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
           <div className="menu-sheet">
             <p className="hint">{state.gmName} · {state.club.name} · saved automatically in slot {slot}.</p>
             <button type="button" className="btn btn--ghost btn--block" onClick={() => { setMenuOpen(false); setScreen('career'); }}>Career</button>
-            <button type="button" className="btn btn--ghost btn--block" onClick={() => { setMenuOpen(false); setScreen('club'); }}>Club management &amp; trophies</button>
+            <button type="button" className="btn btn--ghost btn--block" onClick={() => { setMenuOpen(false); setScreen('club'); }}>Club &amp; trophies</button>
             <button type="button" className="btn btn--ghost btn--block" onClick={() => { setMenuOpen(false); setSettingsOpen(true); }}>Settings</button>
             <button type="button" className="btn btn--ghost btn--block" onClick={() => { setMenuOpen(false); setRulesOpen(true); }}>House rules</button>
             <button type="button" className="btn btn--ghost btn--block" onClick={() => setState((s) => ({ ...s, seenTips: [] }))}>Show tips again</button>

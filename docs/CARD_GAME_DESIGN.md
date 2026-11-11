@@ -3,6 +3,13 @@
 > Replaces the old management-sim design (`GAME_DESIGN_DOCUMENT.md`), which is kept for reference only.
 > Language: English. Platform: web (React + Vite), mobile-first.
 
+**Changes in v2.2 (Club tab)**
+- Season and GM cards stack with these: Packed House adds a % of the ticket-priced gate, Sponsor's Favourite pays on top of the sponsor contract, Money Man takes its % of everything.
+- Six tabs: **Home** (was "Club"), Squad, **Club** (new), Cards, Competitions, World.
+- **Club tab** (§9): Overview, Infrastructure, Finance, Effects, Trophies.
+- **Building works** (§4.5): an infrastructure card no longer raises a level at once; it starts a project.
+- **Ticket prices** and a **summer sponsor contract** (§6.3); a season-by-season finance history.
+
 **Changes in v2.2 (GM cards, season cards, card lifespans)**
 - **GM creation** (§7.6): name, **country of origin** and a **GM style** (Financial, Tactical, Physical, Cohesion, Personal). You're dealt one **GM card** of that style at random (Common to Epic), permanent for the career (§7.7). Shown in Career, on your manager page and in the main-menu Managers ranking. Older careers show "No card".
 - **Season cards** (§4.7): at the end of every season you're dealt **3 season cards** and pick 1; it is next season's active event. Redraw the 3 for 200, then 400, then 800 coins each summer. Season events are no longer sold in the Transfer Market; event cards already in an old save's inventory show up in the deal as free picks.
@@ -274,6 +281,8 @@ Club packs only deal an infrastructure card at a rarity that can still raise tha
 | Sports | 🧖 **Spa & recovery** · Spa & Recovery | Team shape +0 / 3 / 6 / 9 / 12 / 15 |
 | Sports | 🏫 **Youth academy** · Youth Academy | Academy fill-ins rated 48–58, intake 1–3 players a year up to Uncommon…Legend |
 | Sports | 📊 **Analytics** · Analytics Dept. | Pack odds +0 / 1 / 2 / 3 / 4 / 6 points from Common to higher; +1 card play a season at level 3 and level 5 |
+
+**Building works (v2.2).** Playing an infrastructure card starts a project instead of raising the level at once. It takes **2 + the new level** league matchdays (L1 3, L5 7; a Legend card's +2 counts the final level) and finishes after that many league matchdays; works started in the summer, or still open when the season ends, are ready for the first matchday. One project per area at a time (another card for that area waits). An inbox message "🏗 Construction finished: …" arrives when it's done. Changing clubs leaves open works behind.
 
 There are no injuries, so there's no medical area: the gym and spa work on stamina and team shape instead.
 
@@ -568,6 +577,28 @@ Odds are per card. The guarantee upgrades one card if none of the three meets it
 | Continental title | Elite |
 | Club World Cup | 2 × Elite |
 
+### 6.3 Ticket prices and sponsor contracts (v2.2)
+
+**Ticket prices** (Club → Finance), changeable any time:
+
+| Price | Gate | Hospitality | Fans | Home |
+|---|---|---|---|---|
+| Low | −20% | — | +0.6 a home match | +1% all stats at home |
+| Normal | — | — | — | — |
+| High | +25% | +25% | −0.6 a home match | — |
+
+**Sponsor contract.** When the season closes the club gets three offers for next season, one of each kind; you sign one in Club → Finance before the season starts (no choice: the Steady one). Amounts are live: they grow with the Sponsorship area (base 3 / 6 / 11 / 17 / 24 / 32 at levels 0–5) × the division multiplier × 0.8.
+
+| Contract | Pays |
+|---|---|
+| 🤝 Steady | the base every match |
+| 📈 Performance | 2.2 × the base for every win, nothing otherwise |
+| 🏆 Glory | 0.4 × the base every match, plus 14 × the base for each cup / continental / Club World Cup trophy and for promotion or the league title |
+
+Performance beats Steady above a 45% win rate; Glory beats it with one trophy or promotion. Measured (`BOT=… node scripts/career-sim.mjs 12 6`): the average bot (Performance when 4+ stronger than its division, Normal tickets) earns about what it did (+1–2% a season); the great bot (Glory when 6+ stronger, Performance when 1+ stronger, High tickets while fans ≥ 60, Low under 40) earns about 5–7% more a season from these choices, which is 20–25% more on the gate, hospitality and sponsor lines they touch.
+
+**Finance history:** every season keeps a compact entry (income by category, spending, closing balance), written when the season closes and brought up to date with the summer's money when the next one starts.
+
 ---
 
 ## 7. GM career (you)
@@ -697,7 +728,7 @@ The original plan, kept for reference:
 7. **Competitions:** league table, fixtures, top scorers, cup bracket, continental groups and bracket, Club World Cup.
 8. **Career:** reputation, board objective, job offers, "take 2 cards" picker, GM history.
 9. **History:** club timeline, trophy cabinet, Hall of Fame, world records, past winners.
-10. **Club management:** card plays, the ten areas grouped Business / Sports with level pips, current and next-level effect and the card that raises each, income per match, season finances, squad, season event, trophies.
+10. **Club (tab, v2.2):** Overview (owners' philosophy, owners and fans, objective, contract, budget, income per match, this vs last season); Infrastructure (card plays, building works with progress bars, the ten areas with level pips, current and next effect); Finance (sponsor offers / contract, ticket prices, income per match by source, season money in and out, season-by-season history); Effects (season event and temporary club cards with matches left, squad cohesion and popularity); Trophies.
 
 **Visual direction**
 - Dark pitch-green UI with bright rarity frames: grey, teal, blue, purple, gold.

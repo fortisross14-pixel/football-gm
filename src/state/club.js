@@ -10,7 +10,7 @@ import { BOOST_IDS, BOOSTS, BOOST_PACKS, openBoostPack, drawBoost } from '../dat
 import { OFFSEASON_CARDS, OFFSEASON_IDS, MARKET_WEIGHTS, TIERS, tierIndex, cardValue, cardPrice, SIGNING_TIERS, RENAMED_CARDS, cardGames, cardText, effectText, isClubCard } from '../data/offseason.js';
 import { CLUB_PACKS, drawClubCards } from '../data/clubPacks.js';
 import {
-  STADIUM_INCOME, HOSPITALITY_INCOME, STORE_INCOME, MERCH_MULT, SPONSOR_INCOME, SPONSOR_NAMES, COHESION_GAIN, COHESION_MAX_BONUS,
+  STADIUM_INCOME, HOSPITALITY_INCOME, STORE_INCOME, MERCH_MULT, COHESION_GAIN, COHESION_MAX_BONUS,
   GYM_DRAIN, SPA_SHAPE, ANALYTICS_ODDS, FACILITY_LABEL, fullFacilities, cardPlayLimit,
 } from '../data/facilities.js';
 import { makeGenericCard, FILLER_RATING, squadStrength } from '../engine/aiTeam.js';
@@ -18,6 +18,10 @@ import { makeRng } from '../engine/rng.js';
 import { archiveSeason, foldRecords, compactEntry } from '../engine/history.js';
 import { ensureGms, updateGms } from '../engine/gms.js';
 import { pushInbox, moodNews, newContract } from './chronicle.js';
+import {
+  queueConstruction, constructionOf, advanceConstructionInto, ticketOf, ticketMoodInto, activeSponsor, offerSponsorsInto, settleSponsorInto,
+  sponsorSeasonBonusInto, recordFinanceInto, migrateBusinessInto,
+} from './business.js';
 import { decideAwards } from '../engine/awards.js';
 import { foldSeason, recordMove, holders, diffMoves } from '../engine/careers.js';
 import { newStats, emptyBook, recordGame as recordStats, recordTitle, coachKey } from '../engine/statsbook.js';
@@ -49,6 +53,9 @@ export const PRIZES = [600, 380, 280, 210, 160, 120, 90, 60, 40, 20];
 export const START_DIVISION = 'esp-3';
 
 export { FACILITY_LABEL };
+export {
+  startConstruction, constructionOf, constructionList, constructionProgress, setTicketPrice, ticketOf, signSponsor, sponsorOffers, sponsorTerms, activeSponsor,
+} from './business.js';
 // An area's level, 0 when an older save doesn't have it yet.
 const lvl = (state, key) => Math.max(0, Math.min(5, state.facilities?.[key] || 0));
 
@@ -291,12 +298,12 @@ export function cohesionBonus(state) {
 }
 
 export function seasonMods(state) {
-  const mods = { all: cohesionBonus(state) + shapePenalty(teamShape(state)), home: 0, comeback: 0, drain: GYM_DRAIN[lvl(state, 'gym')] / 100 + drainBonus(gmTrait(state)), finishing: 0, underdog: 0, cup: 0, continental: 0 };
+  const mods = { all: cohesionBonus(state) + shapePenalty(teamShape(state)), home: ticketOf(state).home, comeback: 0, drain: GYM_DRAIN[lvl(state, 'gym')] / 100 + drainBonus(gmTrait(state)), finishing: 0, underdog: 0, cup: 0, continental: 0 };
   const ev = state.activeEvent;
   if (!ev) return mods;
   const v = cardValue(ev.type, ev.rarity);
   switch (ev.type) {
-    case 'fortressSeason': mods.home = v / 100; break;
+    case 'fortressSeason': mods.home += v / 100; break;
     case 'indomitableSpirit': mods.comeback = v / 100; break;
     case 'underdogMentality': mods.underdog = v / 100; break;
     case 'shootingDrills': mods.finishing = v / 100; break;
@@ -396,13 +403,13 @@ export function businessIncome(state) {
   const f = (k) => lvl(state, k);
   let merch = squadPopularity(state) * MERCH_MULT[f('merch')] * 0.3;
   if (state.activeEvent?.type === 'marketingTour') merch *= cardValue('marketingTour', state.activeEvent.rarity) / 100;
-  const gate = Math.round(STADIUM_INCOME[f('stadium')] * m);
+  const ticket = ticketOf(state); // v2.2 ticket prices: gate and hospitality
+  const gate = Math.round(STADIUM_INCOME[f('stadium')] * m * ticket.gate);
   const items = [
     { area: 'stadium', label: `Home gate (stadium L${f('stadium')})`, coins: gate, homeOnly: true },
-    { area: 'hospitality', label: `Hospitality (L${f('hospitality')})`, coins: Math.round(HOSPITALITY_INCOME[f('hospitality')] * m), homeOnly: true },
+    { area: 'hospitality', label: `Hospitality (L${f('hospitality')})`, coins: Math.round(HOSPITALITY_INCOME[f('hospitality')] * m * ticket.hospitality), homeOnly: true },
     { area: 'store', label: `Club store (L${f('store')})`, coins: Math.round(STORE_INCOME[f('store')] * m) },
     { area: 'merch', label: `Merchandise (L${f('merch')})`, coins: Math.round(merch) },
-    { area: 'sponsor', label: `Sponsor · ${SPONSOR_NAMES[f('sponsor')]}`, coins: Math.round(SPONSOR_INCOME[f('sponsor')] * m) },
   ];
   // Temporary club cards: extra gate (High Season, Ticket Promo) and merchandise (Viral Merchandise).
   for (const e of state.clubEffects || []) {
@@ -412,6 +419,9 @@ export function businessIncome(state) {
   }
   // v1.9: 18 league games a season (14 before): each match pays a little less.
   for (const it of items) it.coins = Math.round(it.coins * MATCH_PACE);
+  // v2.2: the sponsor contract signed in the summer (sized by the Sponsorship area, already per match).
+  const sp = activeSponsor(state);
+  items.push({ area: 'sponsor', label: `Sponsor · ${sp.brand}`, coins: sp.perMatch, perWin: sp.perWin, perTrophy: sp.perTrophy, deal: sp.type });
   if (state.perks?.shirtSponsor) items.push({ area: null, label: 'Shirt sponsor', coins: state.perks.shirtSponsor }); // older saves
   return items;
 }
@@ -431,24 +441,29 @@ export function matchRewards(state, match, userSide, game = { competition: 'leag
   if (conceded === 0) items.push({ label: 'Clean sheet', coins: Math.round(15 * m) });
   if (own >= 3) items.push({ label: '3+ goals', coins: Math.round(15 * m) });
   for (const it of businessIncome(state)) if (it.coins > 0 && (!it.homeOnly || match.teams[userSide].isHome)) items.push({ label: it.label, coins: it.coins });
+  const sponsor = activeSponsor(state);
+  if (winner === userSide && sponsor.perWin) items.push({ label: `Sponsor win bonus · ${sponsor.brand}`, coins: sponsor.perWin });
   const final = game.label?.endsWith('Final');
   if (game.competition === 'cup' && state.activeEvent?.type === 'cupRun') items[0].coins = Math.round(items[0].coins * 1.5);
   if (winner === userSide && final) {
     const prize = { cup: { coins: 400 * m, pack: 'silver' }, continental: { coins: 1500, pack: 'elite' }, cwc: { coins: 2500, pack: 'elite' } }[game.competition];
     if (prize) items.push({ label: 'Trophy prize', coins: Math.round(prize.coins * (game.competition === 'cup' && state.activeEvent?.type === 'cupRun' ? 1.5 : 1)) });
+    if (prize && sponsor.perTrophy) items.push({ label: `Sponsor trophy bonus · ${sponsor.brand}`, coins: sponsor.perTrophy });
   } else if (final && game.competition === 'continental') items.push({ label: 'Finalist prize', coins: 500 });
   if (game.label?.endsWith('Qualifying') && winner === userSide) items.push({ label: 'Qualified for the group stage', coins: 150 });
   // Derby day: double revenue from the game itself (trophy prizes aside).
   const oppId = match.teams[1 - userSide].id;
   if (isDerby(state.club.id, oppId)) {
-    const base = items.filter((i) => !/prize|Qualified/i.test(i.label)).reduce((s, i) => s + i.coins, 0);
+    const base = items.filter((i) => !/prize|Qualified|bonus/i.test(i.label)).reduce((s, i) => s + i.coins, 0);
     items.push({ label: `Derby day · ${derbyName(state.club.id, oppId)}`, coins: base });
   }
   items.push(...bonusIncome(state, items, match.teams[userSide].isHome));
   return { items, total: items.reduce((s, i) => s + i.coins, 0) };
 }
 
-// Season card and GM card extras on top of a match's income.
+// Season card and GM card extras on top of a match's income. They stack with the v2.2 business
+// choices: Packed House is a % of the ticket-priced gate, Sponsor's Favourite is paid on top of
+// the sponsor contract, and Money Man takes its % of everything, sponsor bonuses included.
 function bonusIncome(state, items, isHome) {
   const out = [];
   const ev = state.activeEvent;
@@ -578,6 +593,7 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
     });
     const statsArgs = { world: next.world, poolById: POOL_BY_ID, homeId, awayId, score: match.score, goals: goalsFromMatch(match), detail: { side: userSide, lines }, userClubId: next.club.id, userName: next.coaches.coach?.name || next.gmName || 'You' };
     if (slot === 'L') {
+      advanceConstructionInto(next); // building works: one league matchday of work
       recordStats(next.stats, { ...statsArgs, comp: `L:${next.club.divisionId}` });
       const userGame = { divisionId: next.club.divisionId, homeId, awayId, score: match.score, goals: goalsFromMatch(match) };
       next.season = playMatchday(next.season, next.world, userGame, POOL_BY_ID, seed + 7, next.stats, next.club.id);
@@ -615,6 +631,7 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
       styleDist: styleDistance(normalizeTactics(state.tactics), clubIdentity(next.world.clubs[next.club.id])),
       target: next.gm.objective?.target, eliminated: !!game?.knockout && winner !== userSide && !trophyNow, trophy: trophyNow, level: next.club.level,
     }), gmTrait(next));
+    ticketMoodInto(next, team.isHome); // ticket prices: the fans react after a home game
     moodNews(moodBefore, next.gm.confidence, next);
     if (isDerby(next.club.id, opponent.id)) {
       const w = winner === userSide; const d = winner === null;
@@ -782,11 +799,10 @@ function tickClubEffects(next, isHome) {
   next.clubEffects = left;
 }
 
-// Raises a club area. Building works (startConstruction) can replace this one helper.
+// Raises a club area: since v2.2 it starts building works (state/business.js), which finish
+// after 2 + the new level league matchdays (summer works by matchday 1). Returns the message.
 function raiseArea(next, area, levels) {
-  next.facilities = { ...fullFacilities(next.facilities) };
-  next.facilities[area] = Math.min(5, next.facilities[area] + levels);
-  return `${FACILITY_LABEL[area]} is now level ${next.facilities[area]}.`;
+  return queueConstruction(next, area, levels).message;
 }
 
 // ---------------------------------------------------------------------------
@@ -937,13 +953,16 @@ export function seasonLeaders(stats) {
 export function closeSeason(state, seed) {
   if (state.phase !== 'seasonEnd') return state;
   const next = structuredClone(state);
-  const { position, prize, packs, table } = seasonSummary(state);
+  const { position, prize, packs, table, promoted } = seasonSummary(state);
   track(next, 'income', 'Prizes', prize);
   if (position === 1) for (const c of next.squad) addFame(c, 1);
   // Next season's continental places come from this season's final tables.
   const final = tablesFromSeason(state.season);
   next.qualification = qualifiers(final.tables, final.points);
   next.coins += prize;
+  sponsorSeasonBonusInto(next, state, { position, promoted }); // Glory contract: promotion or title
+  recordFinanceInto(next, state.season.year); // season finance history (updated again when the next season starts)
+  offerSponsorsInto(next, seed + 53); // three sponsor offers for next season
   next.inventory.packs.push(...packs);
   const champion = next.world.clubs[table[0].id];
   next.trophies.push({ season: next.season.year, competition: state.club.division, position, champion: champion.name });
@@ -1193,7 +1212,8 @@ function rollRarity(rng) {
 const canRaise = (state, type, rarity) => {
   const def = OFFSEASON_CARDS[type];
   if (!def.facility) return true;
-  const level = lvl(state, def.facility);
+  // Works under way count as done: no card for a level that's already being built.
+  const level = Math.max(lvl(state, def.facility), constructionOf(state, def.facility)?.to ?? 0);
   const t = tierIndex(rarity);
   return level < 5 && (t === 4 || level < def.values[t]);
 };
@@ -1267,6 +1287,9 @@ export function startNextSeason(state, seed) {
     if (auto) return startNextSeason(pickSeasonCard(state, auto.key, seed), seed);
   }
   const next = structuredClone(state);
+  recordFinanceInto(next, state.season.year); // the summer's money belongs to the season just ended
+  advanceConstructionInto(next, { all: true }); // summer building works are ready for matchday 1
+  settleSponsorInto(next); // no contract chosen → the steady offer
   next.seasonDeal = null;
   if (next.seasonCard) next.activeEvent = eventOf(next.seasonCard);
   next.season = newSeason(next, state.season.year + 1, seed);
@@ -1374,6 +1397,7 @@ export function acceptOffer(state, clubId, carryKeys = [], seed = 1) {
   next.inventory = inventory;
   next.coins = start.coins;
   next.facilities = fullFacilities(start.facilities);
+  next.construction = []; // building works belong to the old club
   next.activeEvent = eventOf(next.seasonCard); // the season card is the GM's: it moves with you
   next.perks = { shape: 0 };
   next.clubEffects = []; // temporary club cards stay with the old club
@@ -1469,6 +1493,7 @@ export function canUseOffseason(state, item) {
     const t = tierIndex(item.rarity);
     const cap = def.values[t];
     if (level >= 5) return { ok: false, reason: 'Already at max level.' };
+    if (constructionOf(state, def.facility)) return { ok: false, reason: 'Building works are already under way in this area.' };
     if (t < 4 && level >= cap) return { ok: false, reason: `This rarity only builds up to level ${cap}. You're at ${level}.` };
   }
   if (def.scope && !signingCandidates(state, SIGNING_TIERS[tierIndex(item.rarity)], def.scope).length) {
@@ -1685,6 +1710,7 @@ export function migrateClubState(state) {
   const next = { ...state };
   next.facilities = fullFacilities(state.facilities);
   if (typeof next.cardPlays !== 'number') next.cardPlays = 0;
+  migrateBusinessInto(next); // v2.2: building works, ticket prices, sponsor contract, finance history
   if (!Array.isArray(next.clubEffects)) next.clubEffects = [];
   // Club cards became their own family (inventory.club, from club packs). Event cards stay in
   // inventory.offseason, for the season-card draw to pick up.

@@ -1912,3 +1912,71 @@ a.chip-btn, button.xlink.chip-btn { text-decoration: none; }
 /* Five reserves in one row on phones. */
 .bench { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; justify-items: center; }
 .bench .mini { width: 100%; max-width: 80px; }
+
+/* ---- Club tab (v2.2): six tabs, building works, sponsor deals, finance history ---- */
+@media (max-width: 719px) {
+  .tabbar { grid-template-columns: repeat(6, 1fr); padding: 0 2px env(safe-area-inset-bottom); }
+  .tabbar button { font-size: 10px; letter-spacing: .06em; min-width: 0; }
+}
+.tabbar__label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tabbar__full { display: none; }
+.tabbar button::before { left: 14%; right: 14%; }
+@media (min-width: 1100px) {
+  .tabbar__short { display: none; }
+  .tabbar__full { display: inline; }
+}
+.screen--club > .segmented .segmented__label { width: auto; }
+.club-id__style { display: flex; flex-direction: column; margin: 4px 0 0; }
+.club-id__style span { font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.club-id__style b { font-family: var(--font-display); font-weight: 400; font-size: 26px; text-transform: uppercase; line-height: 1.1; }
+.club-id .opinions { margin-top: 10px; }
+.club-id .opinion { background: var(--paper); }
+.money-totals--two { grid-template-columns: 1fr 1fr; }
+.money-totals small { font-size: 11px; font-weight: 700; }
+.facility--building { box-shadow: inset 0 0 0 1px var(--line-2), inset 0 3px 0 var(--yellow); }
+.facility__dots i.soon { background: repeating-linear-gradient(135deg, var(--yellow) 0 3px, var(--ink) 3px 5px); }
+.build { display: flex; flex-direction: column; gap: 3px; }
+.build__bar { display: block; height: 8px; background: var(--grey-2); overflow: hidden; }
+.build__bar i { display: block; height: 100%; background: repeating-linear-gradient(135deg, var(--yellow) 0 6px, #f2c200 6px 12px); transition: width var(--t-move) var(--ease-out); }
+.build__text { font-size: 11px; font-weight: 700; color: var(--warn-text); letter-spacing: .04em; text-transform: uppercase; }
+.works { list-style: none; margin: 10px 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.works li { background: var(--paper); padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.works b { font-family: var(--font-display); font-weight: 400; font-size: 16px; text-transform: uppercase; }
+.works b span, .deal__kind span, .deal-now span { font-family: system-ui, sans-serif; }
+.deals { display: grid; gap: 8px; margin-top: 10px; }
+.deal {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; font: inherit; color: inherit;
+  background: var(--paper); border: 0; box-shadow: inset 0 0 0 1.5px var(--line-2); padding: 12px; min-height: 44px; cursor: pointer;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+  transition: box-shadow var(--t-quick) var(--ease-out), transform var(--t-instant) var(--ease-out);
+}
+.deal:active { transform: scale(.98); }
+.deal.is-on { box-shadow: inset 0 0 0 2.5px var(--blue); background: var(--blue-soft); cursor: default; }
+.deal__kind { font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.deal b { font-family: var(--font-display); font-weight: 400; font-size: 20px; text-transform: uppercase; line-height: 1.1; }
+.deal__pay { font-size: 14px; font-weight: 800; color: var(--good-text); }
+.deal__text { font-size: 12.5px; color: var(--muted); }
+.deal__cta { margin-top: 4px; font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--blue); }
+.deal.is-on .deal__cta { color: var(--ink); }
+.deal-now { margin: 6px 0 0; font-size: 15px; }
+.deal-now b { font-family: var(--font-display); font-weight: 400; font-size: 20px; text-transform: uppercase; }
+.screen--club .panel > .segmented { margin-top: 6px; }
+.effects { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.effects li { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center; background: var(--paper); padding: 10px; font-size: 13px; }
+.effects__icon { font-size: 20px; text-align: center; }
+.effects em { font-style: normal; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--blue); white-space: nowrap; }
+.effects small { color: var(--muted); }
+.fin-history { margin-top: 8px; }
+.fin-history td.fin-history__club { text-align: left; }
+.fin-history tr:has(+ .fin-history__detail) td { border-bottom: 0; padding-bottom: 2px; }
+.fin-history__detail td { text-align: left !important; font-family: inherit !important; font-size: 11px !important; font-weight: 600; color: var(--muted) !important; padding: 0 8px 8px; }
+.fin-history .num { text-align: right; padding-right: 8px; white-space: nowrap; }
+@media (min-width: 720px) {
+  .deals { grid-template-columns: repeat(3, 1fr); }
+  .screen--club .panel { max-width: none; }
+}
+@media (hover: hover) and (pointer: fine) {
+  .deal:not(.is-on):hover { box-shadow: inset 0 0 0 2px var(--ink); }
+}
+/* Club sub-tabs wrap onto two rows on phones instead of scrolling out of sight. */
+.screen--club > .segmented .segmented__opts { flex-wrap: wrap; overflow: visible; }
