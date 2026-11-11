@@ -2,7 +2,8 @@
 // Two books with the same shape: `season` (reset every summer) and `all` (forever).
 //   players[id] = { n: name, c: last club, p: pos, s: { [comp]: [apps, goals, motm, cleanSheets, ratingSum] } }
 //   coaches[key] = { n: name, c: club, s: { [comp]: [played, won, drawn, lost] }, t: titles }
-// comp keys: 'L:<divisionId>' league, 'C:<countryCode>' domestic cup, 'K:<continent>' continental, 'W' Club World Cup.
+// comp keys (engine/competitions.js): 'L:<divisionId>' league, 'C:<code>' domestic cup, 'S:<code>' super cup,
+// 'K:<conf>' continental, 'K2:<conf>' second continental trophy, 'KS:<conf>' continental super cup, 'W' Club World Cup.
 // AI games are quick-simmed: their named players get appearances, goals and a rating
 // derived from the result; your games use the real match data.
 

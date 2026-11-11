@@ -1,7 +1,8 @@
-// The world: 44 divisions of 10 clubs. Club lists live in the region files.
+// The world: 46 divisions of 10 clubs. Club lists live in the region files.
 //
 // level sets AI strength and the reward multiplier (L1 ×3, L2 ×2, L3 ×1).
-// continent decides which continental tournament a champion goes to.
+// continent is the confederation (europe, southamerica, northamerica, africa, asia, oceania):
+// it decides which continental tournaments the clubs play (engine/competitions.js).
 
 const big4 = (code, country) => [1, 2, 3].map((tier) => ({
   id: `${code}-${tier}`, country, code: code.toUpperCase(), tier, level: tier, continent: 'europe',
@@ -33,6 +34,7 @@ const LEAGUE_NAMES = {
   'bel-1': 'Pro League', 'sui-1': 'Swiss Super League', 'den-1': 'Danish Superliga',
   'mex-1': 'Liga MX', 'mex-2': 'Liga de Expansión MX', 'chi-1': 'Primera División de Chile', 'usa-1': 'MLS', 'col-1': 'Liga Colombiana', 'sam-1': 'Copa Andina League',
   'jpn-1': 'J1 League', 'jpn-2': 'J2 League', 'asi-1': 'Asian Super League', 'apc-1': 'Pacific Rim League', 'sau-1': 'Saudi Pro League',
+  'nao-1': 'Liga Norte', 'oce-1': 'Oceania Premier League',
   'nga-1': 'Nigeria Premier League', 'egy-1': 'Egyptian Premier League', 'afr-1': 'Pan-African League',
 };
 
@@ -44,8 +46,8 @@ export const DIVISIONS = [
   ...top5('fra', 'France', 'europe'),
   ...top5('por', 'Portugal', 'europe'),
   ...top5('ned', 'Netherlands', 'europe'),
-  ...top5('arg', 'Argentina', 'americas'),
-  ...top5('bra', 'Brazil', 'americas'),
+  ...top5('arg', 'Argentina', 'southamerica'),
+  ...top5('bra', 'Brazil', 'southamerica'),
   ...single('tur', 'Turkey', 2, 'europe'),
   ...single('bel', 'Belgium', 2, 'europe'),
   ...single('sui', 'Switzerland', 3, 'europe'),
@@ -54,19 +56,24 @@ export const DIVISIONS = [
   ...single('aut', 'Austria', 3, 'europe'),
   ...single('gre', 'Greece', 3, 'europe'),
   ...single('eur', 'Europe Other', 3, 'europe'),
-  ...major('mex', 'Mexico', 'americas'),
-  ...single('usa', 'USA', 3, 'americas'),
-  ...single('col', 'Colombia', 3, 'americas'),
-  ...single('chi', 'Chile', 3, 'americas'),
-  ...single('sam', 'South America Other', 3, 'americas'),
-  // J1 and J2 are both level 3: J2 clubs are rated lower, and only J1's champion goes to the continent.
-  ...[1, 2].map((tier) => ({ id: `jpn-${tier}`, country: 'Japan', code: 'JPN', tier, level: 3, continent: 'afap' })),
-  ...single('asi', 'Asia Other', 3, 'afap'),
-  ...single('apc', 'APAC Other', 3, 'afap'),
-  ...single('sau', 'Saudi Arabia', 2, 'afap'),
-  ...single('nga', 'Nigeria', 3, 'afap'),
-  ...single('egy', 'Egypt', 3, 'afap'),
-  ...single('afr', 'Africa Other', 3, 'afap'),
+  ...major('mex', 'Mexico', 'northamerica'),
+  ...single('usa', 'USA', 3, 'northamerica'),
+  // Costa Rica, Honduras, Guatemala and Canada (v2.3).
+  ...single('nao', 'North America Other', 3, 'northamerica'),
+  ...single('col', 'Colombia', 3, 'southamerica'),
+  ...single('chi', 'Chile', 3, 'southamerica'),
+  ...single('sam', 'South America Other', 3, 'southamerica'),
+  // J1 and J2 are both level 3: J2 clubs are rated lower, and only J1's clubs go to the continent.
+  ...[1, 2].map((tier) => ({ id: `jpn-${tier}`, country: 'Japan', code: 'JPN', tier, level: 3, continent: 'asia' })),
+  ...single('asi', 'Asia Other', 3, 'asia'),
+  // East Asia: South Korea, China, Thailand (Australia's clubs moved to Oceania in v2.3).
+  ...single('apc', 'East Asia Other', 3, 'asia'),
+  ...single('sau', 'Saudi Arabia', 2, 'asia'),
+  ...single('nga', 'Nigeria', 3, 'africa'),
+  ...single('egy', 'Egypt', 3, 'africa'),
+  ...single('afr', 'Africa Other', 3, 'africa'),
+  // Australia and New Zealand (v2.3).
+  ...single('oce', 'Oceania', 3, 'oceania'),
 ];
 
 // Every division has this many clubs (a double round-robin of DIVISION_SIZE − 1 rounds each way).
@@ -90,7 +97,10 @@ export function keyPlayerTarget(div) {
   return 1;
 }
 
-export const CONTINENT_LABEL = { europe: 'Europe', americas: 'Americas', afap: 'Africa–APAC' };
+// The six confederations, in display order.
+export const CONTINENT_LABEL = {
+  europe: 'Europe', southamerica: 'South America', northamerica: 'North America', africa: 'Africa', asia: 'Asia', oceania: 'Oceania',
+};
 
 // The world's biggest clubs get the most named (Uncommon+) cards in their squad.
 export const TOP_CLUBS = [

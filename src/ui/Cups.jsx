@@ -1,36 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { clubById } from '../engine/season.js';
-import { CONTINENTS, CONTINENT_NAME, cupRoundNames, groupStandings } from '../engine/competitions.js';
+import { cupRoundNames, groupStandings } from '../engine/competitions.js';
 import { Crest } from './Art.jsx';
 import { ClubLink } from './nav.jsx';
-import CompStats from './CompStats.jsx';
-import { Segmented } from './Home.jsx';
-
-export default function Cups({ state, countryCode }) {
-  const [view, setView] = useState('domestic');
-  const [cont, setCont] = useState('europe');
-  const comps = state.season.comps;
-  return (
-    <div className="cups">
-      <Segmented
-        small
-        label="Competition"
-        value={view}
-        options={[{ id: 'domestic', label: 'Domestic cup' }, { id: 'continental', label: 'Continental' }, { id: 'cwc', label: 'Club World Cup' }]}
-        onChange={setView}
-      />
-      {view === 'domestic' && <><DomesticCup state={state} cup={comps.cups[countryCode]} /><CompStats state={state} comp={`C:${countryCode}`} /></>}
-      {view === 'continental' && (
-        <>
-          <Segmented small label="Continent" value={cont} options={CONTINENTS.map((k) => ({ id: k, label: CONTINENT_NAME[k].replace(' Cup', '') }))} onChange={setCont} />
-          <Continental state={state} c={comps.continental[cont]} name={CONTINENT_NAME[cont]} />
-          <CompStats state={state} comp={`K:${cont}`} />
-        </>
-      )}
-      {view === 'cwc' && <><ClubWorldCup state={state} cwc={comps.cwc} /><CompStats state={state} comp="W" /></>}
-    </div>
-  );
-}
 
 function Tie({ state, game, label }) {
   const h = clubById(state.world, game.home);
@@ -68,7 +40,23 @@ export function DomesticCup({ state, cup }) {
   );
 }
 
-function GroupTable({ state, group, name }) {
+// A one-match super cup: the domestic one (league champion vs cup winner) or the continental one.
+export function SuperCup({ state, sc, name, kind }) {
+  const text = kind === 'csuper'
+    ? 'Last season\'s continental cup winner against the winner of the second continental trophy: one match at a neutral venue, at the start of the season, penalties if level.'
+    : 'Last season\'s league champion against the cup winner (the cup runner-up if the champion did the double): one match at a neutral venue before the first league matchday, penalties if level.';
+  if (!sc) return <p className="hint">No {name} this season. {text}</p>;
+  return (
+    <div className="bracket">
+      <p className="hint">{text}</p>
+      {sc.winner && <p className="promo is-up">🏆 {name} winner: {clubById(state.world, sc.winner).name}</p>}
+      <h4 className="sub-title">{sc.winner ? 'Result' : 'The match'} · neutral venue</h4>
+      <Tie state={state} game={sc.game} />
+    </div>
+  );
+}
+
+function GroupTable({ state, group, name, through = 2 }) {
   const rows = groupStandings(group);
   return (
     <>
@@ -79,7 +67,7 @@ function GroupTable({ state, group, name }) {
         {rows.map((r, i) => {
           const club = clubById(state.world, r.id);
           return (
-            <tr key={r.id} className={`${r.id === state.club.id ? 'is-user' : ''}${i < 2 ? ' is-up' : ''}`}>
+            <tr key={r.id} className={`${r.id === state.club.id ? 'is-user' : ''}${i < through ? ' is-up' : ''}`}>
               <td>{i + 1}</td>
               <td className="table__club"><ClubLink id={r.id} className="club-inline"><Crest colors={club.colors} short={club.short} size={18} id={r.id} /> <span>{club.name}</span></ClubLink></td>
               <td>{r.p}</td><td>{r.gd > 0 ? `+${r.gd}` : r.gd}</td><td><b>{r.pts}</b></td>
@@ -92,24 +80,34 @@ function GroupTable({ state, group, name }) {
   );
 }
 
+const ROUNDS = [
+  ['prelim', 'Preliminary round'], ['qualifying', 'Qualifying round'],
+];
+
+// A continental tournament: preliminary and qualifying rounds, groups, then the knockouts.
 export function Continental({ state, c, name }) {
+  if (!c) return <p className="hint">Not played this season.</p>;
+  const next = c.nGroups === 1 ? 'top 2 play the final' : 'top 2 go through';
+  const shape = c.nGroups === 4 ? '4 groups of 4 → quarter-finals → semi-finals → final' : c.nGroups === 2 ? '2 groups of 4 → semi-finals → final' : 'one group of 4 → final';
   return (
     <div className="bracket">
+      <p className="hint">{name} · {c.entrants.length} clubs · {c.prelim ? 'preliminary round → ' : ''}{c.qualifying || c.prelim ? 'qualifying → ' : ''}{shape}.</p>
       {c.winner && <p className="promo is-up">🏆 {name} winner: {clubById(state.world, c.winner).name}</p>}
-      {c.prelim && (
-        <>
-          <h4 className="sub-title">Preliminary round</h4>
-          {c.prelim.map((g, i) => <Tie key={i} state={state} game={g} />)}
-        </>
+      {ROUNDS.map(([key, title]) => c[key] && (
+        <div key={key}>
+          <h4 className="sub-title">{title}</h4>
+          {c[key].map((g, i) => <Tie key={i} state={state} game={g} />)}
+        </div>
+      ))}
+      {c.prelim && !c.qualifying && <p className="hint">The qualifying round is drawn after the preliminary round.</p>}
+      {c.groups ? c.groups.map((g, i) => <GroupTable key={i} state={state} group={g} name={`Group ${'ABCD'[i]} · ${next}`} />) : (
+        <p className="hint">Groups are drawn after the qualifying round. Straight in: {c.direct.map((id) => clubById(state.world, id).short).join(', ')}.</p>
       )}
-      {c.qualifying && (
+      {c.quarters && (
         <>
-          <h4 className="sub-title">Qualifying round</h4>
-          {c.qualifying.map((g, i) => <Tie key={i} state={state} game={g} />)}
+          <h4 className="sub-title">Quarter-finals</h4>
+          {c.quarters.map((g, i) => <Tie key={i} state={state} game={g} />)}
         </>
-      )}
-      {c.groups ? c.groups.map((g, i) => <GroupTable key={i} state={state} group={g} name={`Group ${'AB'[i]} · top 2 go through`} />) : (
-        <p className="hint">Groups are drawn after the qualifying round.</p>
       )}
       {c.semis && (
         <>
@@ -123,18 +121,21 @@ export function Continental({ state, c, name }) {
           <Tie state={state} game={c.final} />
         </>
       )}
-      {!c.prelim && !c.qualifying && !c.groups && <p className="hint">Entrants: {c.entrants.map((id) => clubById(state.world, id).name).join(', ')}</p>}
     </div>
   );
 }
 
 export function ClubWorldCup({ state, cwc }) {
-  if (!cwc) return <p className="hint">At the end of the season, the three continental champions meet at a neutral venue: each plays the other two, then the top two play the final.</p>;
+  if (!cwc) return <p className="hint">At the end of the season, the six continental champions meet at a neutral venue: two groups of three (each club plays the other two), then the group winners play the final.</p>;
   return (
     <div className="bracket">
       {cwc.winner && <p className="promo is-up">🏆 Club World Cup winner: {clubById(state.world, cwc.winner).name}</p>}
-      <GroupTable state={state} group={cwc} name="Mini-league · top 2 play the final" />
-      {cwc.fixtures.map((g, i) => <Tie key={i} state={state} game={g} />)}
+      {cwc.groups.map((g, i) => (
+        <div key={i}>
+          <GroupTable state={state} group={g} name={`Group ${'AB'[i]} · the winner plays the final`} through={1} />
+          {g.fixtures.flat().map((x, j) => <Tie key={j} state={state} game={x} />)}
+        </div>
+      ))}
       {cwc.final && (
         <>
           <h4 className="sub-title">Final</h4>
