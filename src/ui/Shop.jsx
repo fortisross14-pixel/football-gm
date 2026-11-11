@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { PACKS, PACK_IDS, packOdds } from '../engine/packs.js';
 import { BOOSTS, BOOST_IDS, BOOST_PACKS } from '../data/boosts.js';
 import { TIERS, OFFSEASON_CARDS } from '../data/offseason.js';
-import { packShift, marketRefreshIn } from '../state/club.js';
+import { packShift, marketRefreshIn, packPrice, boostPackPrice } from '../state/club.js';
 import { CardPlays } from './Collection.jsx';
 import { RARITIES } from '../engine/cards.js';
 import { PackArt, BoostCard, OffseasonCard } from './Card.jsx';
@@ -51,8 +51,8 @@ export default function Shop({ state, onBuyPack, onBuyBoostPack, onBuyOffer, onS
                   <div className="odds__legend">
                     {odds.map((o, i) => (o > 0 ? <span key={i} className={`r-${TIERS[i]}`}>{RARITIES[TIERS[i]].label[0]} {Math.round((o / total) * 100)}%</span> : null))}
                   </div>
-                  <button type="button" className="btn btn--primary btn--small" disabled={state.coins < pack.price || !!state.pendingOpen} onClick={() => onBuyPack(id)}>
-                    ◎ {pack.price}
+                  <button type="button" className="btn btn--primary btn--small" disabled={state.coins < packPrice(state, id) || !!state.pendingOpen} onClick={() => onBuyPack(id)}>
+                    ◎ {packPrice(state, id)}{packPrice(state, id) < pack.price && <s className="price-was"> {pack.price}</s>}
                   </button>
                 </div>
               </div>
@@ -72,7 +72,7 @@ export default function Shop({ state, onBuyPack, onBuyBoostPack, onBuyOffer, onS
                 <div className="pack-row__body">
                   <b>{pack.name}</b>
                   <span className="hint">{pack.text}</span>
-                  <button type="button" className="btn btn--primary btn--small" disabled={state.coins < pack.price} onClick={() => setGot(onBuyBoostPack(id))}>◎ {pack.price}</button>
+                  <button type="button" className="btn btn--primary btn--small" disabled={state.coins < boostPackPrice(state, id)} onClick={() => setGot(onBuyBoostPack(id))}>◎ {boostPackPrice(state, id)}</button>
                 </div>
               </div>
             ))}

@@ -11,6 +11,7 @@ import { ClubLink } from './nav.jsx';
 import { DerbyAlert } from './Home.jsx';
 import { clubVars } from './Home.jsx';
 import { skillOf, MAX_SKILLS } from '../data/skills.js';
+import { extraSkills } from '../engine/gmTraits.js';
 import { aiTeamFor } from '../engine/season.js';
 import { POOL_BY_ID } from '../state/club.js';
 
@@ -132,7 +133,7 @@ function Scouting({ state, opponent, starters }) {
   const keys = ai.lineup.map((id) => byId[id]).filter((c) => c && !c.generic);
   return (
     <section className="scouting">
-      <h2 className="section-title">Skills · {MAX_SKILLS} per match</h2>
+      <h2 className="section-title">Skills · {MAX_SKILLS + extraSkills(state.gm?.trait)} per match</h2>
       <div className="scouting__cols">
         <div>
           <h3 className="sub-title">Yours</h3>

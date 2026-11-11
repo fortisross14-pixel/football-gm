@@ -7,6 +7,7 @@ import { clubVars } from './clubTheme.js';
 import { ClubLink, LeagueLink } from './nav.jsx';
 import { Segmented } from './Home.jsx';
 import { compName, compOrder, TROPHY_ICON } from './names.js';
+import { GmCard, GmFlag } from './GmCard.jsx';
 
 const ordinal = (n) => `${n}${['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 < 14) ? 0 : n % 10] || 'th'}`;
 const pct = (w, p) => (p ? `${Math.round((w / p) * 100)}%` : '—');
@@ -17,7 +18,7 @@ export function resolveManager(state, key) {
   if (key === 'you') {
     const log = state.careerLog || [];
     return {
-      name: state.gmName || 'You', clubId: state.club.id, isUser: true, current: true, rep: state.gm?.reputation ?? 0,
+      name: state.gmName || 'You', clubId: state.club.id, isUser: true, current: true, rep: state.gm?.reputation ?? 0, trait: state.gm?.trait ?? null, nation: state.gm?.nation ?? null,
       titles: log.filter((s) => s.position === 1).length, cups: log.reduce((n, s) => n + s.trophies.length, 0) - log.filter((s) => s.position === 1).length,
       seasons: log.length, best: log.length ? Math.min(...log.map((s) => s.position)) : null, history: log.map((s) => ({ year: s.year, clubId: s.clubId, divId: s.divId, pos: s.position })),
     };
@@ -51,7 +52,7 @@ export default function Manager({ state, mkey, tab: tabProp, onTab, onBack }) {
       <div className="club-head" style={clubVars(club || { colors: ['#1b1f29', '#ffd400'] })}>
         {club && <Crest colors={club.colors} short={club.short} size={56} id={club.id} />}
         <div>
-          <b>{m.name}</b>
+          <b>{m.isUser && <GmFlag nation={m.nation} />}{m.name}</b>
           <span>Manager · {club ? (m.current ? club.name : `formerly ${club.name}${m.until ? ` (until S${m.until})` : ''}`) : ''}</span>
         </div>
         <i className="club-stripes" aria-hidden="true" />
@@ -68,6 +69,12 @@ export default function Manager({ state, mkey, tab: tabProp, onTab, onBack }) {
             <div><span>Trophies</span><b>{tot.tr}</b><small>on record</small></div>
             <div><span>Club</span><b className="profile__tile-club">{club?.short || '—'}</b><small>{m.current ? 'in charge' : 'former club'}</small></div>
           </div>
+          {m.isUser && (
+            <section>
+              <h2 className="section-title">GM card</h2>
+              <div className="gm-panel"><GmCard trait={m.trait} small /></div>
+            </section>
+          )}
           {seasons.some((s) => s.trophies.length) && (
             <section>
               <h2 className="section-title">Trophies</h2>

@@ -9,9 +9,10 @@ import { COACH_PASSIVES } from '../data/coachPassives.js';
 import { PLAYER_POOL, COACH_POOL } from '../data/pool.js';
 import { canUseOffseason, cardPlays, SQUAD_SIZE } from '../state/club.js';
 import { PlayerLink, ProfileButton } from './nav.jsx';
+import SeasonDeal from './SeasonDeal.jsx';
 
-export default function Collection({ state, onOpenPack, onUseCard }) {
-  const [tab, setTab] = useState('squad');
+export default function Collection({ state, onOpenPack, onUseCard, onPickSeason, onRedrawSeason }) {
+  const [tab, setTab] = useState(state.seasonDeal ? 'season' : 'squad');
   const [viewing, setViewing] = useState(null);
   const [using, setUsing] = useState(null);
   const inv = state.inventory;
@@ -26,6 +27,7 @@ export default function Collection({ state, onOpenPack, onUseCard }) {
         options={[
           { id: 'squad', label: 'Squad' },
           { id: 'inventory', label: `Items${invCount ? ` (${invCount})` : ''}` },
+          { id: 'season', label: state.seasonDeal ? 'Season · pick' : 'Season' },
           { id: 'album', label: 'Album' },
         ]}
         onChange={setTab}
@@ -63,10 +65,7 @@ export default function Collection({ state, onOpenPack, onUseCard }) {
 
           <h3 className="sub-title">Management cards</h3>
           <CardPlays state={state} />
-          <p className="hint">Tap a card to play it, any time of the year. One season event per season: played mid-season it lasts until the season ends.</p>
-          {state.activeEvent && (
-            <p className="hint hint--accent">Season event active: {OFFSEASON_CARDS[state.activeEvent.type].name} ({RARITIES[state.activeEvent.rarity].label}).</p>
-          )}
+          <p className="hint">Tap a card to play it, any time of the year. Season events now come from the season card deal (Season tab).</p>
           {inv.offseason.length === 0 ? <p className="hint">None yet. Buy them in Shop → Market, open all year.</p> : (
             <div className="ocard-grid">
               {inv.offseason.map((item) => {
@@ -82,6 +81,14 @@ export default function Collection({ state, onOpenPack, onUseCard }) {
           <div className="boost-grid">
             {BOOST_IDS.filter((id) => inv.boosts[id] > 0).map((id) => <BoostCard key={id} id={id} count={inv.boosts[id]} />)}
           </div>
+        </>
+      )}
+
+      {tab === 'season' && (
+        <>
+          <h3 className="sub-title">Season card</h3>
+          <SeasonDeal state={state} onPick={onPickSeason} onRedraw={onRedrawSeason} />
+          <p className="hint">At the end of every season you're dealt 3 season cards and pick 1: it's active all next season.</p>
         </>
       )}
 

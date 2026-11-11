@@ -6,6 +6,7 @@ import {
   newClubState, buildUserTeam, matchRewards, applyMatch,
   buyPack, buyBoostPack, openOwnedPack, keepPending, mergePending, discardPending, closeSeason, buyMarketCard,
   startNextSeason, useOffseasonCard, seeMarket, POOL_BY_ID, nextUserGame, acceptOffer, discardCommons, lookForOffers, toggleCurse,
+  pickSeasonCard, redrawSeasonCards,
 } from './state/club.js';
 import { Crest, BadgesContext } from './ui/Art.jsx';
 import { clubVars } from './ui/clubTheme.js';
@@ -172,6 +173,8 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
     setScreen('result');
   };
 
+  const pickSeason = (key) => setState((s) => pickSeasonCard(s, key, randomSeed()));
+  const redrawSeason = () => setState((s) => redrawSeasonCards(s, randomSeed()));
   const useCard = (itemUid, target) => {
     const r = useOffseasonCard(state, itemUid, target, randomSeed());
     if (r.success !== false && r.message && r.state !== state) pushInbox(r.state, 'club', r.message.split(':')[0], r.message);
@@ -206,6 +209,8 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
             onPlay={() => setScreen('prematch')}
             onCloseSeason={() => setState((s) => closeSeason(s, randomSeed()))}
             onStartSeason={() => setState((s) => startNextSeason(s, randomSeed()))}
+            onPickSeason={pickSeason}
+            onRedrawSeason={redrawSeason}
             goTo={setScreen}
           />
         )}
@@ -215,7 +220,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
             key={screen}
             state={state}
             initial={screen === 'shop' ? 'shop' : 'owned'}
-            collectionProps={{ onOpenPack: (i) => setState((s) => openOwnedPack(s, i, randomSeed())), onUseCard: useCard }}
+            collectionProps={{ onOpenPack: (i) => setState((s) => openOwnedPack(s, i, randomSeed())), onUseCard: useCard, onPickSeason: pickSeason, onRedrawSeason: redrawSeason }}
             shopProps={{
               onBuyPack: (id) => setState((s) => buyPack(s, id, randomSeed())),
               onBuyBoostPack: (id) => { const r = buyBoostPack(state, id, randomSeed()); setState(r.state); return r.got; },

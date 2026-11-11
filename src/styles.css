@@ -1159,6 +1159,7 @@ button:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 .flip__art { width: 80%; height: 46%; display: flex; justify-content: center; }
 .flip__name { font-family: var(--font-display); font-weight: 400; font-size: 15px; text-transform: uppercase; text-align: center; line-height: 1.02; }
 .flip__rarity { font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; color: var(--rc-t); }
+.flip__life { font-size: 8.5px; font-weight: 700; color: var(--muted); letter-spacing: .04em; }
 .flip__badge { position: absolute; top: 8px; right: 0; background: var(--red); color: #fff; font-size: 9px; font-weight: 800; letter-spacing: .1em; padding: 3px 6px 3px 9px; clip-path: polygon(4px 0, 100% 0, 100% 100%, 0 100%); animation: badge-in var(--t-impact) var(--ease-back) .35s both; }
 .flip__badge--dup { background: var(--yellow); color: var(--ink); }
 @keyframes badge-in { from { transform: translateX(16px) scale(.6); opacity: 0; } }
@@ -1366,6 +1367,64 @@ button:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 .field { display: flex; flex-direction: column; gap: 6px; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .field input { font: inherit; font-size: 16px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink); background: #fff; border: 0; box-shadow: inset 0 0 0 2px var(--ink); padding: 12px; border-radius: 0; }
 .field input:focus, .backup-text:focus { outline: 3px solid var(--blue); outline-offset: 1px; }
+.field__select { position: relative; display: flex; align-items: center; background: #fff; box-shadow: inset 0 0 0 2px var(--ink); }
+.field__flag { font-size: 22px; padding: 0 0 0 12px; }
+.field select { flex: 1; min-width: 0; font: inherit; font-size: 16px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink); background: transparent; border: 0; padding: 12px; min-height: 48px; border-radius: 0; }
+.field select:focus { outline: 3px solid var(--blue); outline-offset: 1px; }
+
+/* ---------- GM card (styles, card, reveal) ---------- */
+.gm-styles { display: flex; flex-direction: column; gap: 6px; }
+.gm-style { display: flex; align-items: center; gap: 12px; text-align: left; border: 0; color: var(--ink); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-2); padding: 10px 12px; min-height: 64px; transition: background var(--t-quick) var(--ease-out); }
+.gm-style.is-selected { background: var(--blue-soft); box-shadow: inset 0 0 0 2px var(--blue), inset 6px 0 0 var(--blue); }
+.gm-style:active { transform: scale(.98); }
+.gm-style__icon { flex: none; font-size: 26px; width: 36px; text-align: center; }
+.gm-style__body { display: flex; flex-direction: column; min-width: 0; }
+.gm-style__body b { font-family: var(--font-display); font-weight: 400; font-size: 20px; text-transform: uppercase; line-height: 1.05; }
+.gm-style__body span { font-size: 12px; color: var(--muted); }
+.gm-style__body small { font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--blue); margin-top: 2px; }
+.gmcard { min-height: 200px; width: 100%; }
+.gmcard--small { min-height: 0; }
+.gmcard--small .ocard__icon { font-size: 24px; }
+.gm-panel { display: grid; grid-template-columns: minmax(0, 220px) 1fr; gap: 12px; align-items: start; }
+.gm-panel .hint { margin: 0; }
+@media (max-width: 420px) { .gm-panel { grid-template-columns: 1fr; } }
+.gm-tag { display: inline-block; font-size: 10.5px; font-weight: 800; letter-spacing: .04em; color: var(--rc-t, var(--muted)); white-space: nowrap; }
+.gm-tag.is-none { color: var(--muted); font-weight: 600; }
+.gm-flag { font-size: 1.05em; margin-right: 4px; }
+.gm-reveal-stage { display: grid; place-items: center; padding: 18px 0 8px; }
+.gm-reveal { position: relative; width: min(240px, 72vw); height: 250px; padding: 0; border: 0; background: none; perspective: 1000px; animation: deal var(--t-reveal) var(--ease-out) both; --i: 1; }
+.gm-reveal__inner { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform var(--t-reveal) var(--ease-out); }
+.gm-reveal.is-flipped .gm-reveal__inner { transform: rotateY(180deg); animation: flip-pop var(--t-reveal) var(--ease-out); }
+.gm-reveal__back, .gm-reveal__front { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.gm-reveal__back { display: grid; place-items: center; background: repeating-linear-gradient(-45deg, transparent 0 8px, rgba(255, 255, 255, .08) 8px 16px), var(--ink); box-shadow: inset 0 0 0 3px #fff; }
+.gm-reveal__back span { font-family: var(--font-display); font-weight: 400; font-size: 48px; color: var(--ink); background: var(--yellow); padding: 2px 14px; transform: skewX(calc(var(--slant) * -1)); }
+.gm-reveal.is-glowing:not(.is-flipped) .gm-reveal__back { box-shadow: inset 0 0 0 3px var(--rc), 0 0 22px -2px var(--rc); animation: edge-glow 1.2s var(--ease-in-out) infinite; }
+.gm-reveal__front { transform: rotateY(180deg); }
+.gm-reveal__front .gmcard { height: 100%; font-size: 14px; }
+.gm-reveal__front .ocard__name { font-size: 28px; }
+.gm-reveal__front .ocard__icon { font-size: 44px; }
+.gm-reveal__front .ocard__text { font-size: 14px; }
+.gm-reveal.is-flipped .gm-reveal__front::after { content: ''; position: absolute; inset: 0; box-shadow: 0 0 0 3px var(--rc); animation: stamp-in var(--t-impact) var(--ease-back) var(--t-reveal) both; pointer-events: none; }
+
+/* ---------- Season deal ---------- */
+.price-was { opacity: .55; font-size: .85em; }
+.season-deal { display: flex; flex-direction: column; gap: 10px; }
+.season-deal__hand { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 420px) {
+  .season-deal__hand { grid-template-columns: 1fr; }
+  .season-deal__hand .ocard { min-height: 0; display: grid; grid-template-columns: 44px 1fr; column-gap: 0; row-gap: 4px; }
+  .season-deal__hand .ocard__top { grid-column: 1 / -1; }
+  .season-deal__hand .ocard__footer { justify-self: start; }
+  .season-deal__hand .ocard__icon { grid-row: 2 / span 3; font-size: 26px; margin: 2px 0 0 12px !important; }
+  .season-deal__hand .ocard > *:not(.ocard__top):not(.ocard__icon) { margin: 0 12px 0 8px; }
+}
+.season-deal__hand .ocard { animation: deal var(--t-reveal) var(--ease-out) both; animation-delay: calc(var(--i) * 70ms); }
+.season-deal__card { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.season-deal__card .ocard { width: 100%; flex: 1; }
+.season-deal__owned { font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--blue); }
+.season-deal__actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.advice__item.is-covered { color: var(--muted); }
+.advice__item.is-covered em { font-style: normal; font-weight: 800; color: var(--blue); }
 .backup-text { width: 100%; font: 12px/1.4 ui-monospace, monospace; color: var(--ink); background: var(--paper); border: 0; box-shadow: inset 0 0 0 1.5px var(--line-2); padding: 10px; margin: 8px 0; resize: vertical; border-radius: 0; }
 .file-input { font-size: 13px; color: var(--muted); }
 .settings { display: flex; flex-direction: column; gap: 16px; padding-bottom: 6px; }
