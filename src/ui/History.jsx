@@ -7,8 +7,10 @@ import { CUP_NAME_FOR, CONTINENTAL_NAME } from './names.js';
 import { POOL_BY_ID, seasonLeaders } from '../state/club.js';
 import { Segmented } from './Home.jsx';
 import Stats from './Stats.jsx';
+import CompHistory from './CompHistory.jsx';
 import { Crest } from './Art.jsx';
 import { ClubLink, LeagueLink, PlayerLink, useSticky } from './nav.jsx';
+import { yearLabel } from '../engine/years.js';
 
 const nameOf = (id) => POOL_BY_ID[id]?.name;
 
@@ -50,10 +52,9 @@ function ClubName({ state, id, short }) {
 
 function Seasons({ state, archive, divId }) {
   const div = DIVISION_BY_ID[divId];
-  if (!archive.length) return <Empty />;
   return (
     <div className="season-book">
-      <p className="hint">{div.name}, newest first. Tap a club to see its page.</p>
+      {archive.length > 0 && <p className="hint">{div.name} in the game, newest first. Tap a club to see its page.</p>}
       {[...archive].reverse().map((e) => {
         const lg = e.leagues[divId];
         if (!lg) return null;
@@ -64,7 +65,7 @@ function Seasons({ state, archive, divId }) {
         const cont = div.tier === 1 && div.level === 1 ? e.continental[div.continent] : null;
         return (
           <article key={e.year} className="season-card">
-            <header><b>Season {e.year}</b>{e.cwc?.winner && <span className="muted">Club World Cup: {state.world.clubs[e.cwc.winner]?.name}</span>}</header>
+            <header><b>{yearLabel(e.year)}</b>{e.cwc?.winner && <span className="muted">Club World Cup: {state.world.clubs[e.cwc.winner]?.name}</span>}</header>
             <dl>
               <dt>🏆 Champion</dt><dd><ClubName state={state} id={lg.table[0][0]} /> <small>{lg.table[0][1]} pts</small></dd>
               <dt>Runner-up</dt><dd><ClubName state={state} id={lg.table[1]?.[0]} /> <small>{lg.table[1]?.[1]} pts</small></dd>
@@ -78,6 +79,8 @@ function Seasons({ state, archive, divId }) {
           </article>
         );
       })}
+      <h2 className="section-title">{div.name} champions</h2>
+      <CompHistory state={state} gameKey={`L:${divId}`} />
     </div>
   );
 }
@@ -153,7 +156,7 @@ export function Records({ state, archive, divId, initialScope = 'league' }) {
           {best.map((s, i) => (
             <li key={`${s.id}-${s.year}`}>
               <span className="scorer-list__pos">{i + 1}</span>
-              <span className="scorer-list__name"><PlayerLink id={s.id} name={s.name || nameOf(s.id) || '?'} /><em> · {state.world.clubs[s.clubId]?.short} · S{s.year}{divIds ? '' : ` · ${DIVISION_BY_ID[s.divId].name}`}</em></span>
+              <span className="scorer-list__name"><PlayerLink id={s.id} name={s.name || nameOf(s.id) || '?'} /><em> · {state.world.clubs[s.clubId]?.short} · {yearLabel(s.year)}{divIds ? '' : ` · ${DIVISION_BY_ID[s.divId].name}`}</em></span>
               <b>{s.goals}</b>
             </li>
           ))}
@@ -229,7 +232,7 @@ export function MyCareer({ state }) {
               <tbody>
                 {[...log].reverse().map((s) => (
                   <tr key={s.year} className={s.position === 1 ? 'is-top' : ''}>
-                    <td>{s.year}</td>
+                    <td>{yearLabel(s.year)}</td>
                     <td className="table__club"><ClubName state={state} id={s.clubId} short /></td>
                     <td className="table__club"><LeagueLink divId={s.divId}>{DIVISION_BY_ID[s.divId].name}</LeagueLink></td>
                     <td><b>{s.position}</b></td>

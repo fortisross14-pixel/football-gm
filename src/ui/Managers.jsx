@@ -5,11 +5,12 @@ import { Segmented } from './Home.jsx';
 import { listManagers } from '../state/storage.js';
 import { MANAGER_SORTS, rankManagers, managerScore, winPct, played } from '../state/managers.js';
 import { GmCard, GmTraitTag, GmFlag } from './GmCard.jsx';
+import { yearLabel } from '../engine/years.js';
 
 const ordinal = (n) => `${n}${['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 < 14) ? 0 : n % 10] || 'th'}`;
 const wdl = (r) => `${r.w}-${r.d}-${r.l}`;
 const pct = (r) => (played(r) ? `${winPct(r).toFixed(1)}%` : '—');
-const years = (from, to) => (to == null ? `S${from}–now` : from === to ? `S${from}` : `S${from}–S${to}`);
+const years = (from, to) => (to == null ? `${yearLabel(from)}–now` : from === to ? `${yearLabel(from)}` : `${yearLabel(from)}–${yearLabel(to)}`);
 const status = (m) => (m.status === 'active' ? `Slot ${m.slot}` : 'Retired');
 
 // Main menu: every manager you have ever created, ranked, with a career page for each.
@@ -86,7 +87,7 @@ function ManagerDetail({ m, rank, total, onBack }) {
         <Crest colors={m.club.colors} short={m.club.short} size={48} />
         <div>
           <b><GmFlag nation={m.nation} />{m.gmName}</b>
-          <span>{m.status === 'active' ? `${m.club.name} · Season ${m.season} · slot ${m.slot}` : `Retired · last at ${m.club.name}`}</span>
+          <span>{m.status === 'active' ? `${m.club.name} · ${yearLabel(m.season)} · slot ${m.slot}` : `Retired · last at ${m.club.name}`}</span>
         </div>
         <button type="button" className="btn btn--small btn--ghost" onClick={onBack}>Back</button>
       </div>
@@ -97,7 +98,7 @@ function ManagerDetail({ m, rank, total, onBack }) {
         <div><span>Win %</span><b>{pct(m.record)}</b><small>{wdl(m.record)} · {m.record.gf}-{m.record.ga}</small></div>
         <div><span>Reputation</span><b>{m.reputation}</b><small>best {m.bestReputation}</small></div>
         <div><span>Seasons</span><b>{m.seasonsPlayed}</b><small>{m.clubs.length} club{m.clubs.length === 1 ? '' : 's'}</small></div>
-        <div><span>Best finish</span><b>{m.best ? ordinal(m.best.pos) : '—'}</b><small>{m.best ? `${m.best.div} · S${m.best.year}` : 'no season finished'}</small></div>
+        <div><span>Best finish</span><b>{m.best ? ordinal(m.best.pos) : '—'}</b><small>{m.best ? `${m.best.div} · ${yearLabel(m.best.year)}` : 'no season finished'}</small></div>
       </div>
       <div className="gm-panel"><GmCard trait={m.gmTrait || null} small /></div>
       {m.sackedSeasons.length > 0 && <p className="hint hint--warn">Sacked {m.sackedSeasons.length}× (season {m.sackedSeasons.join(', ')}).</p>}
@@ -128,7 +129,7 @@ function ManagerDetail({ m, rank, total, onBack }) {
         <h2 className="section-title">Trophies</h2>
         {m.trophies.length ? (
           <ul className="champions">
-            {m.trophies.map((t, i) => <li key={`${t.season}-${t.competition}-${i}`}><span>S{t.season} · {t.club}</span><b>{t.league ? '🏆' : '🥇'} {t.competition}</b></li>)}
+            {m.trophies.map((t, i) => <li key={`${t.season}-${t.competition}-${i}`}><span>{yearLabel(t.season)} · {t.club}</span><b>{t.league ? '🏆' : '🥇'} {t.competition}</b></li>)}
           </ul>
         ) : <p className="hint">No trophies yet.</p>}
       </section>
@@ -142,7 +143,7 @@ function ManagerDetail({ m, rank, total, onBack }) {
               <tbody>
                 {m.seasons.map((s) => (
                   <tr key={s.year} className={s.pos === 1 ? 'is-top' : ''}>
-                    <td>{s.year}</td>
+                    <td>{yearLabel(s.year)}</td>
                     <td className="table__club">{s.club}</td>
                     <td className="table__club">{s.div}</td>
                     <td><b>{s.live ? 'Now' : s.pos}</b></td>

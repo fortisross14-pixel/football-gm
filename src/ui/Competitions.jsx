@@ -7,8 +7,10 @@ import { Crest } from './Art.jsx';
 import { CompLink, ClubLink } from './nav.jsx';
 import { DomesticCup, Continental, ClubWorldCup } from './Cups.jsx';
 import CompStats from './CompStats.jsx';
+import CompHistory from './CompHistory.jsx';
 import { Segmented } from './Home.jsx';
 import League from './League.jsx';
+import { yearLabel } from '../engine/years.js';
 
 // A competition reference: { type: 'league' | 'cup' | 'cont' | 'cwc', id }.
 export const compName = (c) => {
@@ -49,7 +51,7 @@ export default function Competitions({ state }) {
   return (
     <div className="screen comps-hub">
       <section>
-        <h2 className="section-title">Your competitions · season {state.season.year}</h2>
+        <h2 className="section-title">Your competitions · {yearLabel(state.season.year)}</h2>
         <div className="comp-cards">
           {mine.map(({ c, sub }) => (
             <CompLink key={`${c.type}-${c.id}`} comp={c} className={`comp-card comp-card--${c.type}`}>
@@ -122,7 +124,7 @@ function CupScreen({ state, comp, initialTab, onBack }) {
     <div className="screen comp-screen">
       <div className="comp-head">
         <div>
-          <span className="comp-head__type">{{ cup: 'Domestic cup', cont: 'Continental', cwc: 'Club World Cup' }[comp.type]} · Season {state.season.year}</span>
+          <span className="comp-head__type">{{ cup: 'Domestic cup', cont: 'Continental', cwc: 'Club World Cup' }[comp.type]} · {yearLabel(state.season.year)}</span>
           <b className="comp-head__name">{compName(comp)}</b>
         </div>
         {onBack && <button type="button" className="btn btn--small btn--ghost" onClick={onBack}>Back</button>}
@@ -134,43 +136,7 @@ function CupScreen({ state, comp, initialTab, onBack }) {
             : <ClubWorldCup state={state} cwc={comps.cwc} />
       )}
       {tab === 'stats' && <CompStats state={state} comp={statsKey} />}
-      {tab === 'history' && <CupHistory state={state} comp={comp} />}
+      {tab === 'history' && <CompHistory state={state} gameKey={statsKey} />}
     </div>
-  );
-}
-
-// Winners and runners-up by season, from the history book.
-function CupHistory({ state, comp }) {
-  const rows = (state.archive || []).map((e) => ({
-    year: e.year,
-    r: comp.type === 'cup' ? e.cups?.[comp.id] : comp.type === 'cont' ? e.continental?.[comp.id] : e.cwc,
-  })).filter((x) => x.r?.winner).reverse();
-  if (!rows.length) return <p className="hint">Winners appear here after each season.</p>;
-  const counts = {};
-  for (const x of rows) counts[x.r.winner] = (counts[x.r.winner] || 0) + 1;
-  const club = (id) => state.world.clubs[id];
-  return (
-    <>
-      <div className="scroll-x">
-        <table className="table table--history">
-          <thead><tr><th>Season</th><th className="table__club">Winner</th><th className="table__club">Runner-up</th></tr></thead>
-          <tbody>
-            {rows.map(({ year, r }) => (
-              <tr key={year} className={r.winner === state.club.id ? 'is-user' : ''}>
-                <td>{year}</td>
-                <td className="table__club">{club(r.winner) && <ClubLink id={r.winner} className="club-inline"><Crest colors={club(r.winner).colors} short={club(r.winner).short} id={r.winner} size={16} /> <span>{club(r.winner).name}</span></ClubLink>}</td>
-                <td className="table__club">{r.runnerUp && club(r.runnerUp) ? <ClubLink id={r.runnerUp}>{club(r.runnerUp).name}</ClubLink> : '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <h3 className="sub-title">Most titles</h3>
-      <ol className="scorer-list">
-        {Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([id, n], i) => (
-          <li key={id}><span className="scorer-list__pos">{i + 1}</span><span className="scorer-list__name"><ClubLink id={id}>{club(id)?.name}</ClubLink></span><b>{n}</b></li>
-        ))}
-      </ol>
-    </>
   );
 }

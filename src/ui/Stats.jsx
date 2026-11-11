@@ -5,6 +5,7 @@ import { CONTINENT_NAME } from '../engine/competitions.js';
 import { Segmented } from './Home.jsx';
 import { Crest } from './Art.jsx';
 import { ClubLink, PlayerLink, ManagerLink, useSticky } from './nav.jsx';
+import { yearLabel } from '../engine/years.js';
 
 // Live stats: any moment, any competition, players and coaches.
 const COUNTRIES = [...new Map(DIVISIONS.filter((d) => d.tier === 1).map((d) => [d.code, d])).values()];
@@ -52,7 +53,7 @@ export default function Stats({ state, initialScope = 'all', memoKey = 'stats' }
   return (
     <div className="stats">
       <div className="stats__filters">
-        <Segmented small label="Period" value={period} options={[{ id: 'season', label: `Season ${stats.year || state.season.year}` }, { id: 'last', label: 'Last season', disabled: !stats.lastSeason }, { id: 'all', label: 'All-time' }]} onChange={setPeriod} />
+        <Segmented small label="Period" value={period} options={[{ id: 'season', label: yearLabel(stats.year || state.season.year) }, { id: 'last', label: 'Last season', disabled: !stats.lastSeason }, { id: 'all', label: 'All-time' }]} onChange={setPeriod} />
         <label className="select">
           <span>Competition</span>
           <select id="stats-scope" value={scope} onChange={(e) => setScope(e.target.value)}>

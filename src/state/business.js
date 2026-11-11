@@ -8,6 +8,7 @@
 
 import { LEVEL_MULTIPLIER } from '../data/demo.js';
 import { DIVISION_BY_ID } from '../data/world/structure.js';
+import { seasonYear } from '../engine/years.js';
 import {
   AREAS, MAX_LEVEL, fullFacilities, buildMatchdays, TICKET_PRICES, STEADY_INCOME, SPONSOR_DEALS, SPONSOR_DEAL_IDS, SPONSOR_BRANDS,
 } from '../data/facilities.js';
@@ -127,7 +128,7 @@ export function signSponsor(state, type) {
   next.sponsorOffers = { ...next.sponsorOffers, signed: type };
   const t = sponsorTerms(next, type);
   const pay = [t.perMatch && `◎ ${t.perMatch} a match`, t.perWin && `◎ ${t.perWin} a win`, t.perTrophy && `◎ ${t.perTrophy} a trophy or promotion`].filter(Boolean).join(', ');
-  pushInbox(next, 'club', `🤝 Sponsor signed: ${offer.brand}`, `A ${SPONSOR_DEALS[type].label.toLowerCase()} contract for season ${next.sponsor.year}: ${pay}.`);
+  pushInbox(next, 'club', `🤝 Sponsor signed: ${offer.brand}`, `A ${SPONSOR_DEALS[type].label.toLowerCase()} contract for the ${seasonYear(next.sponsor.year)} season: ${pay}.`);
   return { state: next, message: `${offer.brand} signed: ${SPONSOR_DEALS[type].label} contract.`, success: true };
 }
 

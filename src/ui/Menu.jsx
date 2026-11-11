@@ -4,6 +4,7 @@ import Sheet from './Sheet.jsx';
 import { listSlots, deleteSlot, deleteOldSlot, exportSlot, importSave } from '../state/storage.js';
 import { Segmented } from './Home.jsx';
 import ManagersSheet from './Managers.jsx';
+import { yearLabel } from '../engine/years.js';
 
 // Main menu: three save slots, settings, backups.
 export default function Menu({ onContinue, onNew, onImport, settings, setSettings }) {
@@ -32,7 +33,7 @@ export default function Menu({ onContinue, onNew, onImport, settings, setSetting
                   <Crest colors={slot.old.summary.colors} short={slot.old.summary.short} size={44} id={slot.old.summary.clubId} />
                   <span className="slot__body">
                     <b>{slot.old.summary.club}</b>
-                    <span>{slot.old.summary.gmName} · Season {slot.old.summary.season}</span>
+                    <span>{slot.old.summary.gmName} · {yearLabel(slot.old.summary.season)}</span>
                     <span className="muted">Older version — can't be continued</span>
                   </span>
                 </div>
@@ -48,7 +49,7 @@ export default function Menu({ onContinue, onNew, onImport, settings, setSetting
                   <Crest colors={slot.summary.colors} short={slot.summary.short} size={44} id={slot.summary.clubId} />
                   <span className="slot__body">
                     <b>{slot.summary.club}</b>
-                    <span>{slot.summary.gmName} · Season {slot.summary.season} · Rep {slot.summary.reputation}{slot.summary.trophies ? ` · 🏆 ${slot.summary.trophies}` : ''}</span>
+                    <span>{slot.summary.gmName} · {yearLabel(slot.summary.season)} · Rep {slot.summary.reputation}{slot.summary.trophies ? ` · 🏆 ${slot.summary.trophies}` : ''}</span>
                     <span className="muted">{slot.summary.division} · {new Date(slot.summary.updated).toLocaleDateString()}</span>
                   </span>
                   <span className="slot__go">Continue ›</span>

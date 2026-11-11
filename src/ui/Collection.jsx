@@ -11,6 +11,7 @@ import { PLAYER_POOL, COACH_POOL } from '../data/pool.js';
 import { canUseOffseason, cardPlays, clubEffects, SQUAD_SIZE } from '../state/club.js';
 import { PlayerLink, ProfileButton } from './nav.jsx';
 import SeasonDeal from './SeasonDeal.jsx';
+import { yearLabel } from '../engine/years.js';
 
 // Cards → Owned: Players (squad, coaches, player packs, transfer cards), Club (club packs,
 // club cards, active effects, match boosts), Season (the season card) and the Album.
@@ -376,7 +377,7 @@ export function HallOfFame({ state }) {
       {[...state.hallOfFame].reverse().map((h, i) => (
         <li key={i} className={`r-${h.card.rarity}`}>
           <b>{h.card.pos ? <PlayerLink id={h.card.id} name={h.card.name} /> : h.card.name}</b>
-          <span>{RARITIES[h.card.rarity]?.label} · {h.card.pos || 'Coach'} · retired in season {h.season ?? 1}</span>
+          <span>{RARITIES[h.card.rarity]?.label} · {h.card.pos || 'Coach'} · retired in {yearLabel(h.season ?? 1)}</span>
           {h.stats && <span>{h.stats.apps} apps · {h.stats.goals} goals · {h.stats.assists} assists · {h.stats.motm} MOTM{h.stats.cs ? ` · ${h.stats.cs} clean sheets` : ''}</span>}
         </li>
       ))}
