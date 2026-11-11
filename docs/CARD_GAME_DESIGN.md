@@ -895,3 +895,11 @@ Club-area cards left the Transfer Market for club packs (§4.6b), and the market
 | Poor | 9,767 → 9,076 | 3,095 → 2,274 | 3.2 / 9.7 → 6.3 / 7.7 | 3/12 s7 → 1/12 s7 | 2/12 → 0/12 | 22 → 17 |
 
 The bot keeps about 1–1.5 club packs a season (average: 40 Bronze, 31 Silver, 6 Gold over 12 × 6 seasons; 60% of kept cards infrastructure). Poor bots (Bronze only, few careers reaching a higher tier) are noisy at 12 careers.
+
+### GM cards and season cards (v2.2)
+
+`node scripts/career-sim.mjs` gives each bot career a GM style and a random GM card (`TRAIT=none` for none, `TRAIT=<id> TRAIT_RARITY=<rarity>` to force one); the great bot scores the season deal and redraws a weak hand when it has spare coins, the others take the first card (the auto-pick at kick-off).
+
+Before the club-card merge, 16 careers × 8 seasons, v2.1 → v2.2 (season deal, pack wear, random GM card): average S1/S2/S3 finish 6.2 / 3.6 / 1.7 → 6.1 / 3.2 / 1.6, tier-1 club 16/16 (median season 7 → 5), giant 9/16 → 11/16 (median season 9), sacked 4 → 1 of 128; great 5.8 / 2.6 / 1.4 → 5.8 / 2.1 / 1.4, giant 15/16 → 14/16. Most of the gain is the free season card every summer (the old market event had to be bought).
+
+After merging club cards (12 × 6, `BOT=average`): dev with its stand-in summer event draw → v2.2 with no GM card → v2.2 with a random GM card: reputation after season 6 is 58 → 58 → 61, tier-1 club 9/12 → 7/12 → 9/12 (median season 5), top club 2/12 → 3/12 → 4/12. A GM card is worth about +3 reputation over 6 seasons on average. The strongest single card measured is an Epic Tactics Connoisseur for a bot that plays its coach's preset regardless of the squad (season-1 finish 6.3 → 5.5, reputation 69 → 71 at season 6 before the merge, with covered warnings worth a third of a strength); Coach Tamer does nothing for a bot that already plays its coach's style.
