@@ -14,6 +14,10 @@ import { clubVars } from './clubTheme.js';
 import { CardPlays } from './Collection.jsx';
 import { Segmented } from './Home.jsx';
 import { useSticky } from './nav.jsx';
+import { StadiumCard, FansPanel, Stars } from './Stadium.jsx';
+import { projectLabel, projectIcon } from '../state/business.js';
+import { matchdayOf, starsOf } from '../state/stadium.js';
+import { fansOf, formatFans } from '../state/fans.js';
 
 const effect = (state, id, level) => {
   const a = id === 'academy' ? academyInfo(level) : null;
@@ -26,6 +30,7 @@ const ordinal = (n) => `${n}${['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 
 const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'infra', label: 'Infrastructure' },
+  { id: 'fans', label: 'Fans' },
   { id: 'finance', label: 'Finance' },
   { id: 'effects', label: 'Effects' },
   { id: 'trophies', label: 'Trophies' },
@@ -54,6 +59,7 @@ export default function Club({ state, onMarket, onTicket, onSignSponsor }) {
       <Segmented label="Club" small value={tab} options={labels} onChange={setTab} />
       {tab === 'overview' && <Overview state={state} goFinance={() => setTab('finance')} />}
       {tab === 'infra' && <Infrastructure state={state} onMarket={onMarket} />}
+      {tab === 'fans' && <FansPanel state={state} />}
       {tab === 'finance' && <Finance state={state} onTicket={onTicket} onSignSponsor={onSignSponsor} />}
       {tab === 'effects' && <Effects state={state} />}
       {tab === 'trophies' && <Trophies state={state} />}
@@ -99,6 +105,8 @@ function Overview({ state, goFinance }) {
           {contract && <li><span>Contract</span><b>Until season {contract.until}{left > 0 ? ` · ${left} season${left > 1 ? 's' : ''} left` : ' · last season'}</b></li>}
           <li><span>Sponsor</span><b>{sp.brand} · {SPONSOR_DEALS[sp.type]?.label}</b></li>
           <li><span>Ticket prices</span><b>{ticketOf(state).label}</b></li>
+          <li><span>Stadium</span><b><Stars value={starsOf(state)} size={14} /> · {matchdayOf(state).capacity.toLocaleString('en')} seats</b></li>
+          <li><span>Fans</span><b>{formatFans(fansOf(state).local)} local · {formatFans(fansOf(state).global)} worldwide</b></li>
         </ul>
       </section>
 
@@ -139,12 +147,12 @@ function Infrastructure({ state, onMarket }) {
       <section className="panel">
         <h2 className="section-title">Building works</h2>
         <CardPlays state={state} />
-        <p className="hint">Each area is raised by its own infrastructure card, from club packs (Shop → Club). Playing one starts building works: 2 + the new level league matchdays (summer works are ready for matchday 1). One project per area at a time. Card rarity sets the highest level: Common up to 2, Uncommon 3, Rare 4, Epic 5, Legend +2 levels.</p>
+        <p className="hint">Each area (and each part of the stadium) is raised by its own infrastructure card, from club packs (Shop → Club). Playing one starts building works: 2 + the new level league matchdays (summer works are ready for matchday 1). One project per area or stadium part at a time. Card rarity sets the highest level: Common up to 2, Uncommon 3, Rare 4, Epic 5, Legend +2 levels.</p>
         {works.length === 0 ? <p className="hint">No works under way.</p> : (
           <ul className="works">
             {works.map((p) => (
               <li key={p.id}>
-                <b><span aria-hidden="true">{AREAS[p.area].icon}</span> {AREAS[p.area].label} L{p.from} → L{p.to}</b>
+                <b><span aria-hidden="true">{projectIcon(p)}</span> {projectLabel(p)} L{p.from} → L{p.to}</b>
                 <Progress project={p} />
               </li>
             ))}
@@ -153,11 +161,13 @@ function Infrastructure({ state, onMarket }) {
         {onMarket && <button type="button" className="btn btn--ghost btn--small" onClick={onMarket}>Club packs ›</button>}
       </section>
 
+      <StadiumCard state={state} />
+
       {AREA_GROUPS.map((g) => (
         <section key={g.id}>
           <h2 className="section-title">{g.label}</h2>
           <div className="facilities">
-            {g.ids.map((k) => {
+            {g.ids.filter((k) => k !== 'stadium').map((k) => {
               const lvl = state.facilities?.[k] || 0;
               const p = constructionOf(state, k);
               return (
@@ -252,7 +262,8 @@ function Finance({ state, onTicket, onSignSponsor }) {
           options={TICKET_IDS.map((id) => ({ id, label: TICKET_PRICES[id].label }))}
           onChange={(id) => onTicket?.(id)}
         />
-        <p className="hint">{ticket.text}. Fans now: {Math.round(state.gm?.confidence?.fans ?? 55)}.</p>
+        <p className="hint">{ticket.text}. Happiness now: {Math.round(state.gm?.confidence?.fans ?? 55)}.</p>
+        <Crowd state={state} />
       </section>
 
       <section className="panel">
@@ -303,6 +314,27 @@ function Finance({ state, onTicket, onSignSponsor }) {
           </table>
         )}
       </section>
+    </>
+  );
+}
+
+// Ticket demand against capacity for the next home game, and the last home crowds.
+function Crowd({ state }) {
+  const day = matchdayOf(state);
+  const games = fansOf(state).games.slice(0, 5);
+  return (
+    <>
+      <div className="money-totals">
+        <div><span>Demand</span><b>{day.demand.toLocaleString('en')}</b></div>
+        <div><span>Capacity</span><b>{day.capacity.toLocaleString('en')}</b></div>
+        <div><span>Per fan</span><b>◎ {(day.perFan * 1000 * 0.8).toFixed(1)}<small>/1k</small></b></div>
+      </div>
+      <p className="hint">{day.soldOut ? 'Demand is above capacity: every price sells out, so High earns more, but the fans grumble after every home game you don\'t win.' : 'Demand is below capacity: High prices would leave more seats empty, Low fills them.'}</p>
+      {games.length > 0 && (
+        <ul className="champions">
+          {games.map((g, i) => <li key={i}><span>{g.md} · {g.opponent}</span><b>{g.attendance.toLocaleString('en')} / {g.capacity.toLocaleString('en')}{g.soldOut ? ' · sold out' : ''} · ◎ {g.gate}</b></li>)}
+        </ul>
+      )}
     </>
   );
 }

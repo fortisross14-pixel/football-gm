@@ -6,11 +6,12 @@ import {
   duplicateOf, canMerge, keepPending, mergePending, discardPending, closeSeason, buyMarketCard, useOffseasonCard,
   startNextSeason, acceptOffer, carryOptions, seasonSummary, userStrength, canUseOffseason, POOL_BY_ID, isCoach, lookForOffers,
   cardPlaysLeft, seeMarket, buyClubPack, pickClubCard, seasonDealOptions, pickSeasonCard, redrawSeasonCards, redrawCost,
-  signSponsor, sponsorOffers, setTicketPrice, activeSponsor,
+  signSponsor, sponsorOffers, setTicketPrice, activeSponsor, businessIncome,
 } from '../src/state/club.js';
 import { CLUB_PACKS } from '../src/data/clubPacks.js';
 import { GM_STYLE_IDS, drawGmTrait } from '../src/engine/gmTraits.js';
-import { AREA_IDS } from '../src/data/facilities.js';
+import { AREA_IDS, STADIUM_INCOME, TICKET_PRICES } from '../src/data/facilities.js';
+import { LEVEL_MULTIPLIER } from '../src/data/demo.js';
 import { aiTeamFor, clubById, standings } from '../src/engine/season.js';
 import { simulateMatch } from '../src/engine/match.js';
 import { overall, autoArrange, FORMATIONS, slotFit } from '../src/engine/cards.js';
@@ -275,7 +276,16 @@ function playNext(state, seed, stats) {
   const rewards = matchRewards(state, m, side, game);
   // What the sponsor and ticket choices earned against the defaults (Steady, Normal) on the same match.
   const plain = matchRewards({ ...state, sponsor: { type: 'steady', brand: activeSponsor(state).brand }, ticketPrice: 'normal' }, m, side, game);
-  stats.bySeason[(state.season.year - 1) % SEASONS].choice += (rewards.total - plain.total) / CAREERS;
+  const row = stats.bySeason[(state.season.year - 1) % SEASONS];
+  row.choice += (rewards.total - plain.total) / CAREERS;
+  // v2.3 gate (crowd × price per fan) against the v2.2 per-level gate on the same home game.
+  if (homeFirst && !game.neutral) {
+    const gate = businessIncome(state, { competition: game.competition }).find((i) => i.area === 'stadium');
+    const m = LEVEL_MULTIPLIER[state.club.level] || 1;
+    row.gate += gate.coins / CAREERS;
+    row.oldGate += Math.round(Math.round(STADIUM_INCOME[state.facilities.stadium] * m * (TICKET_PRICES[state.ticketPrice] || TICKET_PRICES.normal).gate) * 0.8) / CAREERS;
+    row.crowd += gate.crowd.attendance; row.cap += gate.crowd.capacity; row.homeGames += 1;
+  }
   return applyMatch(state, m, side, opp, rewards, seed, game).state;
 }
 
@@ -285,7 +295,7 @@ function playNext(state, seed, stats) {
 const stats = {
   packs: {}, pulls: {}, goals: 0, matches: 0, byComp: {}, clubPacks: {}, clubPicks: {},
   upsets: { underdog: { n: 0, w: 0, d: 0 }, favourite: { n: 0, w: 0, d: 0 } },
-  bySeason: Array.from({ length: SEASONS }, () => ({ level: [], pos: [], coinsIn: [], strengthGap: [], rep: [], areas: [], plays: [], retired: 0, trophies: 0, continental: 0, cats: {}, spent: {}, verdicts: {}, choice: 0 })),
+  bySeason: Array.from({ length: SEASONS }, () => ({ level: [], pos: [], coinsIn: [], strengthGap: [], rep: [], areas: [], plays: [], retired: 0, trophies: 0, continental: 0, cats: {}, spent: {}, verdicts: {}, choice: 0, gate: 0, oldGate: 0, crowd: 0, cap: 0, homeGames: 0 })),
   redraws: 0, traits: {},
   firstD2: [], firstD1: [], firstContinental: [], topClub: [], sacked: 0, moves: 0,
   worldNamed: [], contWinners: {}, cardSeasons: [],
@@ -384,6 +394,8 @@ for (const i of [0, Math.floor(SEASONS / 2), SEASONS - 1]) {
 }
 console.log(`Club packs bought: ${JSON.stringify(stats.clubPacks)} · kept: ${JSON.stringify(stats.clubPicks)}`);
 console.log(`Sponsor and ticket choices vs Steady/Normal (coins a season): ${stats.bySeason.map((r) => `${Math.round(r.choice)} (${Math.round((100 * r.choice) / Math.max(1, avg(r.coinsIn)))}%)`).join(' · ')}`);
+console.log(`Gate (v2.3 crowd × price) vs v2.2 per-level gate, same home games: ${stats.bySeason.map((r) => `${Math.round(r.gate)}/${Math.round(r.oldGate)} (${Math.round((100 * r.gate) / Math.max(1, r.oldGate))}%)`).join(' · ')}`);
+console.log(`Average crowd / capacity: ${stats.bySeason.map((r) => `${Math.round(r.crowd / Math.max(1, r.homeGames))}/${Math.round(r.cap / Math.max(1, r.homeGames))}`).join(' · ')}`);
 console.log(`Board verdicts: ${['exceeded', 'met', 'missed'].map((v) => `${v} ${stats.bySeason.reduce((a, r) => a + (r.verdicts[v] || 0), 0)}`).join(' · ')}`);
 console.log(`\nReached a level-2 club: ${reachedPct(stats.firstD2)} · level-1 club: ${reachedPct(stats.firstD1)} · continental: ${reachedPct(stats.firstContinental)} · top club: ${reachedPct(stats.topClub)}`);
 console.log(`Moves: ${stats.moves} · sackings: ${stats.sacked} · season-deal redraws: ${stats.redraws}`);

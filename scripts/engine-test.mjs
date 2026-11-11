@@ -29,8 +29,11 @@ import {
   pendingCard, duplicateOf, nextUserGame, newSeason, closeSeason, toggleCurse, teamShape, shapeLabel, acceptOffer, carryOptions, starterOffers, discardCommons, buyMarketCard, useOffseasonCard, startNextSeason, POOLS, POOL_BY_ID,
   canUseOffseason, cardPlays, migrateClubState, effectiveCohesion, seasonMods, packShift, MARKET_EVERY, MARKET_SIZE,
   buyClubPack, openOwnedClubPack, pickClubCard, businessIncome,
-  startConstruction, constructionOf, setTicketPrice, signSponsor, sponsorOffers, activeSponsor,
+  startConstruction, constructionOf, setTicketPrice, matchdayOf, capacityOf, starsOf, fansOf, signSponsor, sponsorOffers, activeSponsor,
 } from '../src/state/club.js';
+import { ticketMoodInto } from '../src/state/business.js';
+import { stadiumStars } from '../src/data/facilities.js';
+import { initialFans } from '../src/state/fans.js';
 import { CLUB_PACKS, drawClubCards } from '../src/data/clubPacks.js';
 import {
   CONTINENTS, CONTINENTS2, FORMATS, compKey, CALENDAR as CALENDAR_V23, createCompetitions as createCompetitionsV23, qualifiers as qualifiersV23, tablesByStrength as tablesByStrengthV23,
@@ -185,8 +188,8 @@ test('a full season runs, ends and opens the Transfer Market', () => {
   assert.equal(s.season.year, 2);
 });
 
-test('all 42 management card types (and the season-only cards) can be used', () => {
-  assert.equal(OFFSEASON_IDS.filter((id) => OFFSEASON_CARDS[id].group !== 'season').length, 42);
+test('all 53 management card types (and the season-only cards) can be used', () => {
+  assert.equal(OFFSEASON_IDS.filter((id) => OFFSEASON_CARDS[id].group !== 'season').length, 53);
   let base = fresh();
   for (let md = 0; md < MATCHDAYS; md += 1) base = playMatchday(base, 300 + md);
   base = resolve(closeSeason(base, 1));
@@ -826,24 +829,25 @@ test('old saves load: missing club areas, card plays and market are filled in', 
 
 test('building works: an area card queues a project that finishes after 2 + level league matchdays', () => {
   let s = fresh();
-  const from = s.facilities.stadium;
-  let r = startConstruction(s, 'stadium', 1);
+  const from = s.stadium.parts.seats;
+  let r = startConstruction(s, 'stadium', 1, 'seats');
   assert.equal(r.success, true, r.message);
   s = r.state;
-  const p = constructionOf(s, 'stadium');
+  const p = constructionOf(s, 'stadium', 'seats');
   assert.equal(p.to, from + 1);
   assert.equal(p.total, 2 + from + 1);
-  assert.equal(s.facilities.stadium, from, 'not instant');
-  assert.equal(startConstruction(s, 'stadium', 1).success, false, 'one project per area');
-  assert.equal(canUseOffseason(s, { type: 'stadiumEvolution', rarity: 'legend' }).ok, false);
+  assert.equal(s.stadium.parts.seats, from, 'not instant');
+  assert.equal(startConstruction(s, 'stadium', 1, 'seats').success, false, 'one project per stadium part');
+  assert.equal(canUseOffseason(s, { type: 'newStand', rarity: 'legend' }).ok, false);
+  assert.equal(canUseOffseason(s, { type: 'floodlights', rarity: 'legend' }).ok, true, 'another part can build at the same time');
   assert.equal(startConstruction(s, 'gym', 1).success, true, 'other areas can build at the same time');
   for (let md = 0; md < p.total - 1; md += 1) s = playMatchday(s, 2100 + md);
-  assert.equal(s.facilities.stadium, from, 'still building');
-  assert.equal(constructionOf(s, 'stadium').left, 1);
+  assert.equal(s.stadium.parts.seats, from, 'still building');
+  assert.equal(constructionOf(s, 'stadium', 'seats').left, 1);
   s = playMatchday(s, 2199);
-  assert.equal(s.facilities.stadium, from + 1);
-  assert.equal(constructionOf(s, 'stadium'), null);
-  assert.ok(s.inbox.some((m) => m.title.startsWith('🏗 Construction finished: Stadium')));
+  assert.equal(s.stadium.parts.seats, from + 1);
+  assert.equal(constructionOf(s, 'stadium', 'seats'), null);
+  assert.ok(s.inbox.some((m) => m.title.startsWith('🏗 Construction finished: Stadium · Capacity')));
   // A Legend card builds +2; a summer project is ready for the first matchday.
   let o = resolve(closeSeason(playFull(fresh()), 31));
   o.inventory.offseason = [{ uid: 'leg', type: 'clubStore', rarity: 'legend' }];
@@ -861,25 +865,124 @@ const fakeMatch = (s, score, winner, home = true) => ({
   score, result: { winner, appeared: [[], []] }, teams: [{ id: s.club.id, isHome: home }, { id: 'nobody', isHome: !home }],
 });
 
-test('ticket prices: High earns more at the gate and upsets the fans, Low helps at home', () => {
+test('ticket prices: High sells out above capacity for more money, costs happiness unless you win', () => {
   const s = fresh();
+  s.stadium.parts.screens = 0; // no screen bonus, to read the ticket effect alone
   const gate = (st) => businessIncome(st).find((i) => i.area === 'stadium').coins;
-  const high = setTicketPrice(s, 'high');
-  const low = setTicketPrice(s, 'low');
-  assert.equal(high.ticketPrice, 'high');
-  assert.ok(Math.abs(gate(high) - gate(s) * 1.25) <= 1, `${gate(high)} vs ${gate(s)}`);
-  assert.ok(gate(low) < gate(s));
-  assert.equal(seasonMods(low).home - seasonMods(s).home, 0.01);
+  // Demand far above capacity: every price sells out, High earns 25% more.
+  const full = structuredClone(s);
+  full.fans.local = 500000;
+  assert.equal(matchdayOf(setTicketPrice(full, 'high')).attendance, capacityOf(full));
+  assert.ok(Math.abs(gate(setTicketPrice(full, 'high')) - gate(full) * 1.25) <= 1);
+  // Demand below capacity: High lowers the crowd.
+  const thin = structuredClone(s);
+  thin.fans.local = 3000;
+  assert.ok(matchdayOf(setTicketPrice(thin, 'high')).attendance < matchdayOf(thin).attendance);
+  assert.ok(matchdayOf(setTicketPrice(thin, 'low')).attendance > matchdayOf(thin).attendance);
+  assert.ok(gate(setTicketPrice(s, 'low')) < gate(s));
+  assert.equal(seasonMods(setTicketPrice(s, 'low')).home - seasonMods(s).home, 0.01);
   assert.equal(setTicketPrice(s, 'silly'), s);
-  const fans = (st) => {
-    const fx = userFixture(st.season, st.club.divisionId, st.club.id);
-    const me = buildUserTeam(st, [], true);
-    const m = simulateMatch({ home: me, away: aiTeamFor(st.world, fx.opponentId, POOL_BY_ID, 5), seed: 6 });
-    return applyMatch(st, m, 0, clubById(st.world, fx.opponentId), matchRewards(st, m, 0), 7).state.gm.confidence.fans;
-  };
-  const f = fans(s);
-  assert.ok(Math.abs(fans(high) - (f - 0.6)) < 0.02, 'high prices: fans −0.6 a home match');
-  assert.ok(Math.abs(fans(low) - (f + 0.6)) < 0.02, 'low prices: fans +0.6 a home match');
+  // Happiness after a home game: High costs it after a draw or a defeat, a win offsets it.
+  const mood = (st, outcome) => { const n = structuredClone(st); ticketMoodInto(n, true, outcome); return n.gm.confidence.fans - st.gm.confidence.fans; };
+  const high = setTicketPrice(full, 'high');
+  assert.equal(mood(high, 'W'), 0, 'a win keeps them happy');
+  assert.ok(mood(high, 'L') < -1 && mood(high, 'D') < 0);
+  assert.ok(Math.abs(mood(setTicketPrice(s, 'low'), 'L') - 0.6) < 0.01, 'low prices: +0.6 a home game');
+  assert.equal(mood(s, 'L'), 0);
+  // Through a real match: the crowd is logged.
+  const fx = userFixture(s.season, s.club.divisionId, s.club.id);
+  const m = simulateMatch({ home: buildUserTeam(s, [], true), away: aiTeamFor(s.world, fx.opponentId, POOL_BY_ID, 5), seed: 6 });
+  const after = applyMatch(s, m, 0, clubById(s.world, fx.opponentId), matchRewards(s, m, 0), 7).state;
+  assert.equal(after.fans.games.length, 1);
+  assert.ok(after.fans.games[0].attendance <= after.fans.games[0].capacity);
+});
+
+test('stadium: star rating from the parts, capacity from the seats, a part card builds its part', () => {
+  const all = (v) => ({ seats: v, lockers: v, pitch: v, access: v, lighting: v, screens: v });
+  assert.equal(stadiumStars(all(0), 0), 1);
+  assert.equal(stadiumStars(all(5), 5), 5, 'five stars: everything at level 5');
+  assert.equal(stadiumStars(all(5), 4), 4.5, 'one short of five');
+  assert.ok(stadiumStars({ ...all(2), seats: 4 }, 2) > stadiumStars({ ...all(2), screens: 4 }, 2), 'capacity counts double');
+  for (const v of [0.5, 1.5, 2.5, 3.5]) assert.ok([1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].includes(stadiumStars(all(v), 0)), 'half stars');
+  const s = fresh();
+  assert.ok(capacityOf(s) >= 5000 && capacityOf(s) <= 9000, `small club: ${capacityOf(s)} seats`);
+  assert.ok(starsOf(s) >= 1 && starsOf(s) <= 2);
+  const bigger = structuredClone(s);
+  bigger.stadium.parts.seats += 1;
+  assert.ok(capacityOf(bigger) > capacityOf(s));
+  // Locker rooms and pitch: a little better at home.
+  const better = structuredClone(s);
+  better.stadium.parts.lockers = 5; better.stadium.parts.pitch = 5;
+  assert.ok(seasonMods(better).home > seasonMods(s).home);
+  // Floodlights card: building works on that part only; 4 stars sends an inbox message.
+  s.inventory.club = [{ uid: 'fl', type: 'floodlights', rarity: 'rare' }];
+  const r = useOffseasonCard(s, 'fl', {}, 1);
+  assert.equal(r.success, true, r.message);
+  assert.equal(constructionOf(r.state, 'stadium', 'lighting').to, s.stadium.parts.lighting + 1);
+  let t = fresh();
+  t.stadium.parts = { ...all(4), seats: 3, lockers: 3 }; t.facilities.hospitality = 4;
+  const before = starsOf(t);
+  assert.equal(before, 3.5);
+  t = startConstruction(t, 'stadium', 1, 'seats').state;
+  for (let md = 0; md < 8; md += 1) t = playMatchday(t, 2600 + md);
+  assert.equal(starsOf(t), 4);
+  assert.ok(t.inbox.some((m) => /4-star stadium/.test(m.title)), 'a 4-star milestone message');
+});
+
+test('fans: sizes by club, attendance capped by capacity, demand follows fans and happiness, fan cards', () => {
+  const s = fresh();
+  const f = fansOf(s);
+  assert.ok(f.local >= 8000 && f.local <= 30000, `small club local fans ${f.local}`);
+  assert.ok(f.global > f.local);
+  assert.equal(f.happiness, s.gm.confidence.fans, 'happiness is the fans\' confidence meter');
+  const giant = initialFans(s.world, 'real-madrid');
+  assert.ok(giant.local >= 2e6 && giant.global >= 1e8, `giants ${giant.local} / ${giant.global}`);
+  // Attendance never above capacity; below it, demand rises with fans and happiness.
+  const many = structuredClone(s); many.fans.local = 5e6;
+  assert.equal(matchdayOf(many).attendance, capacityOf(many));
+  assert.ok(matchdayOf(many).soldOut);
+  const few = structuredClone(s); few.fans.local = 3000;
+  const happy = structuredClone(few); happy.gm.confidence.fans = 95;
+  assert.ok(matchdayOf(happy).attendance > matchdayOf(few).attendance);
+  assert.ok(matchdayOf(few).gate < matchdayOf(s).gate, 'a thin crowd earns less');
+  // Fan cards.
+  const c = structuredClone(s);
+  c.inventory.club = [
+    { uid: 'le', type: 'localEvent', rarity: 'legend' }, { uid: 'sm', type: 'socialMedia', rarity: 'epic' },
+    { uid: 'fd', type: 'fanDay', rarity: 'rare' }, { uid: 'st', type: 'stadiumTour', rarity: 'common' }, { uid: 'it', type: 'internationalTour', rarity: 'rare' },
+  ];
+  let x = useOffseasonCard(c, 'le', {}, 1).state;
+  assert.ok(Math.abs(x.fans.local / c.fans.local - 1.1) < 0.01, 'Local Event legend: +10% local fans');
+  x = useOffseasonCard(x, 'sm', {}, 1).state;
+  assert.ok(Math.abs(x.fans.global / c.fans.global - 1.12) < 0.01, 'Social Media epic: +12% worldwide');
+  const h = x.gm.confidence.fans;
+  x = useOffseasonCard(x, 'fd', {}, 1).state;
+  assert.equal(x.gm.confidence.fans, Math.min(100, h + 4), 'Fan Day: happiness');
+  const coins = x.coins;
+  x = useOffseasonCard(x, 'st', {}, 1).state;
+  assert.equal(x.coins, coins + 60, 'Stadium Tour: coins');
+  assert.ok(!useOffseasonCard(x, 'it', {}, 1).success, 'International Tour: summer only');
+  let summer = resolve(closeSeason(playFull(fresh()), 5));
+  summer.inventory.club = [{ uid: 'it', type: 'internationalTour', rarity: 'rare' }];
+  const before = fansOf(summer).global;
+  const r = useOffseasonCard(summer, 'it', {}, 1);
+  assert.equal(r.success, true, r.message);
+  assert.ok(fansOf(r.state).global > before * 1.12);
+  assert.ok(r.state.clubEffects.some((e) => e.kind === 'shape' && e.value < 0), 'jet lag');
+});
+
+test('fans grow with a good season and the crowd is logged; a sell-out run sends a message', () => {
+  let s = fresh();
+  s.fans.local = 400000; // demand far above capacity: every home game sells out
+  const start = { ...s.fans };
+  s = playFull(s);
+  assert.ok(s.fans.games.length >= 8);
+  assert.ok(s.fans.games.every((g) => g.attendance <= g.capacity && g.soldOut));
+  assert.ok(s.inbox.some((m) => /sell-outs in a row/.test(m.title)));
+  s = resolve(closeSeason(s, 9));
+  assert.equal(s.fans.history.length, 1);
+  assert.equal(s.fans.history[0].soldOut, s.fans.history[0].homeGames);
+  assert.ok(s.fans.global !== start.global);
 });
 
 test('sponsor contracts: three summer offers, Performance pays per win, Glory per trophy, Steady by default', () => {
@@ -1130,6 +1233,7 @@ test('club packs: Bronze shows 1, Silver 3, Gold 3 Rare+; you keep the one you p
   // Area cards are only drawn at a rarity that can still raise that area.
   const maxed = { ...fresh(), coins: 99999 };
   maxed.facilities = Object.fromEntries(AREA_IDS.map((k) => [k, 5]));
+  maxed.stadium = { ...maxed.stadium, parts: Object.fromEntries(Object.keys(maxed.stadium.parts).map((k) => [k, 5])) };
   for (let i = 0; i < 20; i += 1) assert.ok(buyClubPack(maxed, 'clubSilver', i).pendingPick.cards.every((c) => !OFFSEASON_CARDS[c.type].facility));
 });
 
@@ -1138,7 +1242,9 @@ test('club cards: infrastructure raises its area, card plays still count and run
   s.inventory.club = [{ uid: 'a', type: 'stadiumEvolution', rarity: 'uncommon' }, ...Array.from({ length: 9 }, (_, i) => ({ uid: `t${i}`, type: 'teamBuilding', rarity: 'common' }))];
   let r = useOffseasonCard(s, 'a', {}, 1);
   assert.equal(r.success, true, r.message);
-  assert.equal(constructionOf(r.state, 'stadium').to, s.facilities.stadium + 1, 'infrastructure starts building works');
+  const weakest = constructionOf(r.state, 'stadium');
+  assert.equal(weakest.to, s.stadium.parts[weakest.part] + 1, 'infrastructure starts building works (Stadium Evolution: the weakest part)');
+  assert.equal(s.stadium.parts[weakest.part], Math.min(...Object.values(s.stadium.parts)));
   assert.equal(r.state.inventory.club.length, 9);
   let x = r.state;
   for (let i = 0; i < 7; i += 1) { r = useOffseasonCard(x, `t${i}`, {}, i); assert.equal(r.success, true, r.message); x = r.state; }
@@ -1156,7 +1262,7 @@ test('High Season doubles the gate on home games and only counts down at home', 
   assert.equal(s.clubEffects.length, 1);
   assert.equal(s.clubEffects[0].gamesLeft, 3);
   assert.equal(canUseOffseason({ ...s, inventory: { ...s.inventory, club: [{ uid: 'h2', type: 'highSeason', rarity: 'common' }] } }, { type: 'highSeason', rarity: 'common' }).ok, false, 'one High Season at a time');
-  const gate = businessIncome(s).find((i) => i.label.startsWith('Home gate (')).coins;
+  const gate = businessIncome(s).find((i) => i.area === 'stadium').coins;
   const extra = businessIncome(s).find((i) => i.label.includes('High Season'));
   assert.ok(Math.abs(extra.coins - gate) <= 1, 'x2 gate: the extra equals the normal gate');
   assert.ok(extra.homeOnly);
@@ -1233,7 +1339,7 @@ test('old saves: club cards move to the club inventory, events stay, market rest
   assert.deepEqual(m.inventory.clubPacks, []);
   assert.deepEqual(m.clubEffects, []);
   assert.ok(m.market.offers.length > 0 && m.market.offers.every((o) => OFFSEASON_CARDS[o.type].group === 'transfer'));
-  assert.equal(useOffseasonCard(m, 'o1', {}, 1).state.construction[0].to, m.facilities.stadium + 1, 'a moved card still plays (building works)');
+  assert.equal(useOffseasonCard(m, 'o1', {}, 1).state.construction[0].to, Math.min(...Object.values(m.stadium.parts)) + 1, 'a moved card still plays (building works)');
   assert.equal(useOffseasonCard(m, 'o3', {}, 1).state.activeEvent.type, 'fortressSeason', 'old event cards still play');
   assert.deepEqual(migrateClubState(m).inventory, m.inventory, 'migration is idempotent');
 });
