@@ -18,6 +18,7 @@ import { Segmented } from './Home.jsx';
 import { useSticky } from './nav.jsx';
 import { KitSummary } from './Jersey.jsx';
 import { SponsorNow } from './Offseason.jsx';
+import { yearLabel } from '../engine/years.js';
 import { StadiumCard, FansPanel, Stars } from './Stadium.jsx';
 import { projectLabel, projectIcon } from '../state/business.js';
 import { matchdayOf, starsOf } from '../state/stadium.js';
@@ -56,7 +57,7 @@ export default function Club({ state, onMarket, onTicket, onSummer }) {
         <Crest colors={state.club.colors} short={state.club.short} size={56} id={state.club.id} />
         <div>
           <b>{state.club.name}</b>
-          <span>{state.club.division} · Season {state.season.year}</span>
+          <span>{state.club.division} · {yearLabel(state.season.year)}</span>
         </div>
         <i className="club-stripes" aria-hidden="true" />
       </div>
@@ -106,7 +107,7 @@ function Overview({ state, goFinance }) {
         <h2 className="section-title">The job</h2>
         <ul className="champions">
           {state.gm?.objective && <li><span>Board objective</span><b>{state.gm.objective.text}</b></li>}
-          {contract && <li><span>Contract</span><b>Until season {contract.until}{left > 0 ? ` · ${left} season${left > 1 ? 's' : ''} left` : ' · last season'}</b></li>}
+          {contract && <li><span>Contract</span><b>Until {yearLabel(contract.until)}{left > 0 ? ` · ${left} season${left > 1 ? 's' : ''} left` : ' · last season'}</b></li>}
           <li><span>Sponsor</span><b>{state.sponsor?.brand || '—'}</b></li>
           <li><span>Kit</span><b>{state.kit?.brand || '—'}</b></li>
           <li><span>TV</span><b>{state.tv?.brand || '—'}</b></li>
@@ -210,7 +211,7 @@ function Deals({ state, onSummer }) {
   const open = dealsPending(state);
   return (
     <section className="panel">
-      <h2 className="section-title">Deals · season {kit?.year ?? state.season.year}</h2>
+      <h2 className="section-title">Deals · {yearLabel(kit?.year ?? state.season.year)}</h2>
       {state.phase === 'offseason' && state.deals && (
         <button type="button" className="career-link career-link--light" onClick={onSummer}>
           <span>{open.length ? `Offers waiting for next season: ${open.map((k) => ({ kit: 'jersey', sponsor: 'sponsor', tv: 'TV' })[k]).join(', ')}` : `Next season's deals are signed`}</span>
@@ -272,7 +273,7 @@ function Finance({ state, onTicket, onSummer }) {
       </section>
 
       <section className="panel">
-        <h2 className="section-title">Season {state.season.year} money</h2>
+        <h2 className="section-title">{yearLabel(state.season.year)} money</h2>
         <div className="money-totals">
           <div><span>In</span><b className="is-up">{coins(totalIn)}</b></div>
           <div><span>Out</span><b className="is-down">{coins(totalOut)}</b></div>
@@ -296,7 +297,7 @@ function Finance({ state, onTicket, onSummer }) {
                 return (
                   <React.Fragment key={e.year}>
                     <tr>
-                      <td>{e.year}</td>
+                      <td>{yearLabel(e.year)}</td>
                       <td className="fin-history__club">{e.club}</td>
                       <td className="num is-up">{e.in.toLocaleString()}</td>
                       <td className="num is-down">{e.out.toLocaleString()}</td>
@@ -354,7 +355,7 @@ function JerseyTab({ state, onSummer }) {
   return (
     <>
       <section className="panel">
-        <h2 className="section-title">Kit · season {kit?.year ?? state.season.year}</h2>
+        <h2 className="section-title">Kit · {yearLabel(kit?.year ?? state.season.year)}</h2>
         <KitSummary state={state} />
         <SponsorNow state={state} />
       </section>
@@ -441,14 +442,14 @@ function Trophies({ state }) {
       ) : (
         <ul className="trophies">
           {won.map((t, i) => (
-            <li key={i}><span className="trophies__cup">🏆</span><b>{t.competition}</b><span>Season {t.season}</span></li>
+            <li key={i}><span className="trophies__cup">🏆</span><b>{t.competition}</b><span>{yearLabel(t.season)}</span></li>
           ))}
         </ul>
       )}
       <h3 className="sub-title">League finishes</h3>
       <ul className="champions">
         {state.trophies.filter((t) => t.competition.includes('Division') || t.competition.includes('·')).map((t, i) => (
-          <li key={i}><span>Season {t.season} · {t.competition}</span><b>{t.position === 1 ? 'Champions' : ordinal(t.position)}</b></li>
+          <li key={i}><span>{yearLabel(t.season)} · {t.competition}</span><b>{t.position === 1 ? 'Champions' : ordinal(t.position)}</b></li>
         ))}
       </ul>
     </section>

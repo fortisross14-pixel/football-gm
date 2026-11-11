@@ -2055,6 +2055,16 @@ a.chip-btn, button.xlink.chip-btn { text-decoration: none; }
 }
 html.reduce-motion .reveal-row { animation-delay: 0s; }
 @media (prefers-reduced-motion: reduce) { .reveal-row { animation-delay: 0s; } }
+/* Real-life + in-game history (club honours, competition winners by year) */
+.trophy-list__game { color: var(--yellow); font-weight: 700; }
+.hint .trophy-list__game { color: inherit; text-decoration: underline; text-decoration-color: var(--yellow); text-decoration-thickness: 2px; }
+.club-history-line { margin: 0 0 8px; font-weight: 700; }
+.honour-lines { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.honour-lines span { color: var(--muted); overflow-wrap: anywhere; }
+.comp-history__table tr.is-real td { opacity: .92; }
+.comp-history__table tr.comp-history__divider td { background: var(--yellow); color: var(--ink); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; text-align: left; }
+.comp-history .muted-name { color: var(--muted); }
+.comp-history .btn { margin-top: 8px; }
 /* v2.3 Stadium card and Fans tab */
 .stars { display: inline-flex; gap: 1px; line-height: 1; letter-spacing: 0; }
 .stars i { font-style: normal; color: var(--grey); }
@@ -2089,3 +2099,8 @@ html.reduce-motion .reveal-row { animation-delay: 0s; }
 .crowd__bar em.is-full { background: var(--good); }
 .crowd b { font-variant-numeric: tabular-nums; }
 .money-totals b small { font-size: 11px; color: var(--muted); }
+/* History tables that must keep the winner visible on a phone: no forced min-width. */
+.table--history.table--narrow { min-width: 0; width: 100%; }
+.table--history.table--narrow td.table__club { max-width: 46vw; }
+.table--history.table--narrow td, .table--history.table--narrow th { padding-left: 5px; padding-right: 5px; }
+@media (min-width: 700px) { .table--history.table--narrow td.table__club { max-width: 320px; } }

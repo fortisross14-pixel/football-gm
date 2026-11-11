@@ -17,7 +17,8 @@ import { makeGenericCard, FILLER_RATING, squadStrength } from '../engine/aiTeam.
 import { makeRng } from '../engine/rng.js';
 import { archiveSeason, foldRecords, compactEntry } from '../engine/history.js';
 import { ensureGms, updateGms } from '../engine/gms.js';
-import { pushInbox, moodNews, newContract } from './chronicle.js';
+import { pushInbox, moodNews, newContract, ceoWelcome, historySentence } from './chronicle.js';
+import { seasonYear } from '../engine/years.js';
 import {
   queueConstruction, constructionOf, advanceConstructionInto, ticketOf, ticketMoodInto, recordFinanceInto, migrateBusinessInto,
 } from './business.js';
@@ -202,6 +203,8 @@ export function newClubState(seed = 12345, { clubId = USER_CLUB.id, gmName = 'Yo
   setObjective(state);
   initialDealsInto(state, seed + 91); // the club's kit, sponsor and TV deals for season 1
   state.fansStart = fanCount(state);
+  const ceo = ceoWelcome(state, state.world.clubs[state.club.id], state.gm.objective, seasonYear(1));
+  pushInbox(state, 'board', ceo.title, ceo.body);
   return state;
 }
 
@@ -1030,7 +1033,7 @@ export function closeSeason(state, seed) {
   next.awards = [...(next.awards || []), awards];
   for (const [k, label] of [['best', 'Best Player'], ['scorer', 'Top Scorer'], ['gk', 'Best Goalkeeper'], ['young', 'Best Young Player']]) {
     const a = awards[k];
-    if (a && next.squad.some((c) => c.id === a.id)) pushInbox(next, 'award', `${a.name} is the ${label} of season ${state.season.year}`, 'One of yours takes a yearly award.');
+    if (a && next.squad.some((c) => c.id === a.id)) pushInbox(next, 'award', `${a.name} is the ${label} of ${seasonYear(state.season.year)}`, 'One of yours takes a yearly award.');
   }
   for (const a of [awards.best, awards.gk, awards.young, awards.scorer]) {
     const card = a && next.squad.find((c) => c.id === a.id);
@@ -1105,7 +1108,7 @@ export function closeSeason(state, seed) {
     if (!next.gm.sacked && next.gm.contract.until <= state.season.year) {
       if (verdict !== 'missed' || next.gm.securityEnd >= 35) {
         next.gm.contract = { from: next.gm.contract.from, until: state.season.year + 2 };
-        pushInbox(next, 'career', 'Contract extended', `The owners extend your contract until the end of season ${state.season.year + 2}.`);
+        pushInbox(next, 'career', 'Contract extended', `The owners extend your contract until the end of the ${seasonYear(state.season.year + 2)} season.`);
       } else {
         next.gm.sacked = true;
         next.gm.outOfContract = true;
@@ -1118,7 +1121,7 @@ export function closeSeason(state, seed) {
     }
     next.gm.reputation = applyReputation(before, items);
     next.gm.review = { season: state.season.year, objective, position, verdict, items, before, after: next.gm.reputation, sacked: next.gm.sacked };
-    pushInbox(next, 'board', `Season ${state.season.year} review: objective ${verdict}`, `${objective.text}: you finished ${position}${['th', 'st', 'nd', 'rd'][position % 10 > 3 || [11, 12, 13].includes(position % 100) ? 0 : position % 10]}. Reputation ${before} → ${next.gm.reputation}.`);
+    pushInbox(next, 'board', `${seasonYear(state.season.year)} review: objective ${verdict}`, `${objective.text}: you finished ${position}${['th', 'st', 'nd', 'rd'][position % 10 > 3 || [11, 12, 13].includes(position % 100) ? 0 : position % 10]}. Reputation ${before} → ${next.gm.reputation}.`);
     if (position === 1) pushInbox(next, 'title', `🏆 Champions of ${state.club.division}!`, `${state.club.name} win the league. The whole city is out in the streets.`);
     next.gm.searched = false;
     next.gm.offers = jobOffers(next.world, {
@@ -1202,17 +1205,22 @@ export function ceoMeeting(state) {
   if (state.gm?.newJob) lines.push(`Welcome to ${state.club.name}. Last season is not on you: we start from today.`);
   else if (review) {
     const asked = review.objective?.text?.toLowerCase() || 'finish the season';
-    if (review.verdict === 'exceeded') lines.push(`We asked you to ${asked} and you finished ${ord(review.position)}. That's beyond what we hoped for.`);
-    else if (review.verdict === 'met') lines.push(`We asked you to ${asked}: ${ord(review.position)} is what we wanted. Job done.`);
-    else lines.push(`We asked you to ${asked}. ${ord(review.position)} isn't good enough, and the board noticed.`);
+    const when = `In ${seasonYear(review.season)}`;
+    if (review.verdict === 'exceeded') lines.push(`${when} we asked you to ${asked} and you finished ${ord(review.position)}. That's beyond what we hoped for.`);
+    else if (review.verdict === 'met') lines.push(`${when} we asked you to ${asked}: ${ord(review.position)} is what we wanted. Job done.`);
+    else lines.push(`${when} we asked you to ${asked}. ${ord(review.position)} isn't good enough, and the board noticed.`);
     const sr = state.seasonReview;
     if (sr?.titles?.length) lines.push(`The ${sr.titles.join(' and the ')}: that's what this club is about.`);
     if (sr?.promoted) lines.push('Promotion changes everything for us: bigger crowds, bigger sponsors.');
     if (sr?.relegated) lines.push('Relegation hurts the club, on the pitch and in the accounts.');
   }
-  const expect = [`Next season we expect you to ${objective.text.toLowerCase()} in ${state.club.division}.`];
+  const nextYear = seasonYear((state.season?.year ?? 0) + 1);
+  const club = state.world.clubs[state.club.id];
+  // The club's story (real-life and in-game titles, from engine/titles.js) up to the new season.
+  if (club) lines.push(historySentence(state.archive || [], club, nextYear));
+  const expect = [`For ${nextYear} we expect you to ${objective.text.toLowerCase()} in ${state.club.division}.`];
   const contract = state.gm?.contract;
-  if (contract && contract.until === (state.season?.year ?? 0) + 1) expect.push('Your contract ends next summer: a good season and we talk about an extension.');
+  if (contract && contract.until === (state.season?.year ?? 0) + 1) expect.push(`Your contract ends after ${nextYear}: a good season and we talk about an extension.`);
   if (board < 40) expect.push('Another season like the last one and we will be looking for someone else.');
   return { board, mood, lines, objective, expect, verdict: review?.verdict || null };
 }
@@ -1547,7 +1555,11 @@ export function acceptOffer(state, clubId, carryKeys = [], seed = 1) {
   next.gm.newJob = true;
   next.gm.outOfContract = false;
   next.gm.contract = newContract(year + 1, DIVISION_BY_ID[newClub.divisionId].level);
-  pushInbox(next, 'career', `You sign for ${newClub.name}`, `A ${next.gm.contract.until - next.gm.contract.from + 1}-season contract, until the end of season ${next.gm.contract.until}.`);
+  pushInbox(next, 'career', `You sign for ${newClub.name}`, `A ${next.gm.contract.until - next.gm.contract.from + 1}-season contract, until the end of the ${seasonYear(next.gm.contract.until)} season.`);
+  // The CEO's welcome, with the objective for next season (set again when it starts).
+  const objective = boardObjective(world, newClub.divisionId, clubId, userStrength(next));
+  const ceo = ceoWelcome(next, newClub, objective, seasonYear(year + 1));
+  pushInbox(next, 'board', ceo.title, ceo.body);
   return next;
 }
 

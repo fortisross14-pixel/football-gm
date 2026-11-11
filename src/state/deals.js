@@ -21,6 +21,7 @@ import { RARITIES } from '../engine/cards.js';
 import { MATCHDAYS } from '../engine/season.js';
 import { makeRng } from '../engine/rng.js';
 import { pushInbox } from './chronicle.js';
+import { seasonYear } from '../engine/years.js';
 import { fansOf } from './fans.js';
 import {
   SPONSOR_BASE, SEASON_GAMES, SPONSOR_KINDS, SPONSOR_BRANDS, RENEWAL_PACK, RENEWAL_CARD_RARITY,
@@ -237,7 +238,7 @@ function applySponsorInto(next, offer, { auto = false } = {}) {
     gift = ` They add an infrastructure card (Cards → Club).`;
   }
   const pay = [offer.bonus && `◎ ${offer.bonus} signing bonus on matchday 1`, `◎ ${offer.perWin} for every win`].filter(Boolean).join(' and ');
-  pushInbox(next, 'club', `🤝 Sponsor ${offer.kind === 'renewal' ? 'renewed' : 'signed'}: ${offer.brand}`, `Season ${year}: ${pay}.${gift}${auto ? ' (renewed by the club: nothing was chosen).' : ''}`);
+  pushInbox(next, 'club', `🤝 Sponsor ${offer.kind === 'renewal' ? 'renewed' : 'signed'}: ${offer.brand}`, `${seasonYear(year)} season: ${pay}.${gift}${auto ? ' (renewed by the club: nothing was chosen).' : ''}`);
 }
 
 export function signSponsorDeal(state, id) {
@@ -256,7 +257,7 @@ function applyTvInto(next, offer, { auto = false } = {}) {
   const year = next.deals?.year ?? (next.season?.year ?? 0) + 1;
   next.tv = { brand: offer.brand, kind: offer.kind, fee: offer.fee, per: offer.per, year };
   if (next.deals) next.deals.tv.signed = offer.id;
-  pushInbox(next, 'club', `📺 TV deal signed: ${offer.brand}`, `Season ${year}: ◎ ${offer.fee} fixed (over the league matchdays) + ◎ ${offer.per} ${TV_KINDS[offer.kind].unit}.${auto ? ' (the first offer: nothing was chosen).' : ''}`);
+  pushInbox(next, 'club', `📺 TV deal signed: ${offer.brand}`, `${seasonYear(year)} season: ◎ ${offer.fee} fixed (over the league matchdays) + ◎ ${offer.per} ${TV_KINDS[offer.kind].unit}.${auto ? ' (the first offer: nothing was chosen).' : ''}`);
 }
 
 export function signTv(state, id) {

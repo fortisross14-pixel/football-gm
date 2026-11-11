@@ -13,6 +13,7 @@ import { opinions, ownerLine, fanLine, unreadCount } from '../state/chronicle.js
 import { isDerby, derbyName } from '../data/rivals.js';
 import { OFFSEASON_STEPS } from '../data/deals.js';
 import { dealsPending, offseasonStatus } from '../state/club.js';
+import { yearLabel } from '../engine/years.js';
 
 export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo }) {
   const { season, phase } = state;
@@ -78,7 +79,7 @@ function NextMatch({ state, onPlay }) {
   return (
     <section className={`next-match${cupGame ? ` next-match--${game.competition}` : ''}`}>
       <div className="next-match__meta">
-        <span>Season {season.year} · {cupGame ? <CompLink comp={compOfGame(state, game)}>{game.label}</CompLink> : <><LeagueLink divId={state.club.divisionId}>{state.club.division}</LeagueLink> · {game.label}</>}</span>
+        <span>{yearLabel(season.year)} · {cupGame ? <CompLink comp={compOfGame(state, game)}>{game.label}</CompLink> : <><LeagueLink divId={state.club.divisionId}>{state.club.division}</LeagueLink> · {game.label}</>}</span>
         {season.matchday > 0 && !cupGame && <span>You're {ordinal(pos)}</span>}
       </div>
       {state.gm?.objective && (
@@ -115,7 +116,7 @@ function SeasonEnd({ state, onClose }) {
   return (
     <section className={`season-end${position === 1 ? ' is-champion' : ''}`}>
       {(position === 1 || promoted) && <Confetti colors={[state.club.colors.primary, state.club.colors.secondary, '#f2b52f']} />}
-      <span className="season-end__label">Season {state.season.year} complete</span>
+      <span className="season-end__label">The {yearLabel(state.season.year)} season is complete</span>
       <b className="season-end__pos">{position === 1 ? '🏆 Champions!' : `${ordinal(position)} place`}</b>
       {(state.season.userTrophies || []).length > 0 && (
         <p className="promo is-up">🏆 Also won: {state.season.userTrophies.join(', ')}</p>
@@ -151,7 +152,7 @@ function Offseason({ state, goTo, onStart }) {
         const y = state.awards[state.awards.length - 1];
         return (
           <button type="button" className="career-link" onClick={() => goTo('world')}>
-            <span>🏅 Season {y.year} awards · Best Player {y.best?.name || '—'} · Top Scorer {y.scorer?.name || '—'} ({y.scorer?.goals || 0}) · Best GK {y.gk?.name || '—'} · Young {y.young?.name || '—'}</span>
+            <span>🏅 {yearLabel(y.year)} awards · Best Player {y.best?.name || '—'} · Top Scorer {y.scorer?.name || '—'} ({y.scorer?.goals || 0}) · Best GK {y.gk?.name || '—'} · Young {y.young?.name || '—'}</span>
             <b>Awards ›</b>
           </button>
         );
@@ -166,7 +167,7 @@ function Offseason({ state, goTo, onStart }) {
         <button type="button" className="btn btn--ghost" onClick={() => goTo('club')}>Club</button>
       </div>
       <button type="button" className="btn btn--primary btn--block" onClick={onStart} disabled={!!state.pendingOpen || state.gm?.sacked}>
-        {state.gm?.sacked ? 'Take a new job first' : `Start season ${state.season.year + 1}`}
+        {state.gm?.sacked ? 'Take a new job first' : `Start ${yearLabel(state.season.year + 1)}`}
       </button>
     </section>
   );

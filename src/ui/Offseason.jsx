@@ -8,6 +8,7 @@ import {
   dealOffers, dealSigned, dealsPending, offseasonStatus, kitSales, designFee, keepFactor, newDesignExpected, expectedGames, sponsorEV, tvEV, ceoMeeting,
 } from '../state/club.js';
 import { opinions } from '../state/chronicle.js';
+import { yearLabel } from '../engine/years.js';
 import Jersey from './Jersey.jsx';
 import SeasonDeal from './SeasonDeal.jsx';
 import { Segmented } from './Home.jsx';
@@ -28,7 +29,7 @@ export default function OffseasonFlow({ state, onSeen, onSignKit, onSignSponsor,
     <div className="screen screen--summer">
       <div className="summer-head">
         <button type="button" className="link-btn" onClick={onBack}>‹ Home</button>
-        <span className="season-end__label">Off-season · season {state.season.year + 1}</span>
+        <span className="season-end__label">Off-season · before {yearLabel(state.season.year + 1)}</span>
       </div>
       <ol className="stepper" aria-label="Off-season steps">
         {OFFSEASON_STEPS.map((s, k) => (
@@ -81,7 +82,7 @@ function Summary({ state }) {
   return (
     <>
       <section className={`season-end${r.position === 1 ? ' is-champion' : ''}`}>
-        <span className="season-end__label">Season {r.year} · {r.club} · {r.division}</span>
+        <span className="season-end__label">{yearLabel(r.year)} · {r.club} · {r.division}</span>
         <b className="season-end__pos">{r.position === 1 ? '🏆 Champions' : `${ordinal(r.position)} place`}</b>
         {r.promoted && <p className="promo is-up">▲ Promoted</p>}
         {r.relegated && <p className="promo is-down">▼ Relegated</p>}
@@ -95,7 +96,7 @@ function Summary({ state }) {
 
       <section className="panel">
         <h2 className="section-title">Titles</h2>
-        {r.titles.length ? <ul className="trophies">{r.titles.map((t) => <li key={t}><span className="trophies__cup">🏆</span><b>{t}</b><span>Season {r.year}</span></li>)}</ul> : <p className="hint">No silverware this season.</p>}
+        {r.titles.length ? <ul className="trophies">{r.titles.map((t) => <li key={t}><span className="trophies__cup">🏆</span><b>{t}</b><span>{yearLabel(r.year)}</span></li>)}</ul> : <p className="hint">No silverware this season.</p>}
       </section>
 
       <section className="panel">
@@ -111,8 +112,8 @@ function Summary({ state }) {
       <section className="panel">
         <h2 className="section-title">Revenue</h2>
         <div className="money-totals money-totals--two">
-          <div><span>Season {r.year}</span><b className="is-up">{coins(r.revenue)}</b></div>
-          <div><span>Season before</span><b>{r.lastRevenue === null ? '—' : coins(r.lastRevenue)}</b>{r.lastRevenue ? <small className={r.revenue >= r.lastRevenue ? 'is-up' : 'is-down'}>{r.revenue >= r.lastRevenue ? '+' : ''}{Math.round((100 * (r.revenue - r.lastRevenue)) / r.lastRevenue)}%</small> : null}</div>
+          <div><span>{yearLabel(r.year)}</span><b className="is-up">{coins(r.revenue)}</b></div>
+          <div><span>{r.year > 1 ? yearLabel(r.year - 1) : "Season before"}</span><b>{r.lastRevenue === null ? '—' : coins(r.lastRevenue)}</b>{r.lastRevenue ? <small className={r.revenue >= r.lastRevenue ? 'is-up' : 'is-down'}>{r.revenue >= r.lastRevenue ? '+' : ''}{Math.round((100 * (r.revenue - r.lastRevenue)) / r.lastRevenue)}%</small> : null}</div>
         </div>
         <ul className="champions">{r.income.map(([k, v]) => <li key={k}><span>{k}</span><b>{coins(v)}</b></li>)}</ul>
         {r.kit && <p className="hint">{r.kit.brand} sold {r.kit.shirts.toLocaleString()} of your shirts: ◎ {r.kit.revenue} for the club.</p>}
@@ -305,7 +306,7 @@ function Ceo({ state, onStart }) {
       </section>
       {pending.length > 0 && <p className="hint hint--warn">Still open: {pending.map((k) => label[k]).join(', ')}. The defaults apply at kick-off.</p>}
       <button type="button" className="btn btn--primary btn--block" onClick={onStart} disabled={!!state.pendingOpen || state.gm?.sacked}>
-        {state.gm?.sacked ? 'Take a new job first' : `Start season ${state.season.year + 1}`}
+        {state.gm?.sacked ? 'Take a new job first' : `Start ${yearLabel(state.season.year + 1)}`}
       </button>
     </>
   );

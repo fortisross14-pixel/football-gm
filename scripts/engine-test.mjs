@@ -24,6 +24,10 @@ import { DIVISION_BY_ID, DIVISIONS } from '../src/data/world/structure.js';
 import { startingDraw, aiOffseason } from '../src/engine/transfers.js';
 import { careerLines, playerSeasons, playerMoves, clubSpells, clubMoves, managerSeasons, clubManagers, clubRecord, clubPlayersAllTime } from '../src/engine/careers.js';
 import { CLUB_POOLS, PLAYER_CARDS } from '../src/data/world/index.js';
+import { RAW_HISTORY, REAL_HISTORY, REAL_TITLES, WORLD_CLUBS, LAST_REAL_YEAR, isClubId } from '../src/data/history/index.js';
+import { clubTitles, titleRanking, competitionHistory, yearsText, honoursSummary } from '../src/engine/titles.js';
+import { seasonYear, yearLabel, FIRST_YEAR } from '../src/engine/years.js';
+import { historySentence } from '../src/state/chronicle.js';
 import {
   newClubState, buildUserTeam, matchRewards, applyMatch, buyPack, keepPending, mergePending, discardPending,
   pendingCard, duplicateOf, nextUserGame, newSeason, closeSeason, toggleCurse, teamShape, shapeLabel, acceptOffer, carryOptions, starterOffers, discardCommons, buyMarketCard, useOffseasonCard, startNextSeason, POOLS, POOL_BY_ID,
@@ -420,6 +424,10 @@ test('GM career: objective, review, offers and switching clubs with 2 cards', ()
   const leftBehind = s.squad.filter((c) => POOL_BY_ID[c.id] && c.id !== star.id).map((c) => c.id);
   for (const id of leftBehind.slice(0, 1)) assert.ok(moved.world.clubs.racing.keyPlayers.includes(id), 'old club keeps your legends');
   assert.equal(moved.gm.career.length, 2);
+  const ceo = moved.inbox[0];
+  assert.equal(ceo.title, `A message from the CEO of ${moved.club.name}`, 'the new CEO welcomes you');
+  assert.match(ceo.body, new RegExp(`${moved.season.year + 2026 + 1} season`), 'objective for next season');
+  assert.match(ceo.body, /I want us to play/);
   const next = startNextSeason(moved, 9);
   assert.equal(next.phase, 'season');
   assert.ok(nextUserGame(next));
@@ -1004,7 +1012,7 @@ test('off-season flow: season review, deals offered, defaults when every step is
   assert.equal(dealOffers(s, 'sponsor')[0].brand, s.sponsor.brand, 'first sponsor offer: the renewal');
   assert.deepEqual(markOffseasonStep(markOffseasonStep(s, 'summary'), 'summary').offseasonSeen, ['summary']);
   const meet = ceoMeeting(s);
-  assert.ok(meet.lines.length > 0 && meet.objective.text && meet.expect[0].startsWith('Next season'));
+  assert.ok(meet.lines.length > 0 && meet.objective.text && /^For 20\d\d we expect you to/.test(meet.expect[0]));
   // Nothing signed: keep the kit line, renew the sponsor (and get its card), the first TV offer.
   const packs = s.inventory.packs.length + (s.inventory.club || []).length;
   const n = startNextSeason(s, 5);
@@ -1430,6 +1438,86 @@ test('old saves: club cards move to the club inventory, events stay, market rest
   assert.equal(useOffseasonCard(m, 'o1', {}, 1).state.construction[0].to, Math.min(...Object.values(m.stadium.parts)) + 1, 'a moved card still plays (building works)');
   assert.equal(useOffseasonCard(m, 'o3', {}, 1).state.activeEvent.type, 'fortressSeason', 'old event cards still play');
   assert.deepEqual(migrateClubState(m).inventory, m.inventory, 'migration is idempotent');
+});
+
+test('real-life history data is consistent', () => {
+  for (const [key, h] of Object.entries(RAW_HISTORY)) {
+    assert.ok(Number.isInteger(h.from) && h.w.length > 0, `${key}: from and winners`);
+    assert.ok(h.from + h.w.length - 1 <= LAST_REAL_YEAR, `${key}: no year after ${LAST_REAL_YEAR}`);
+    for (const w of h.w.flat()) if (isClubId(w)) assert.ok(WORLD_CLUBS[w], `${key}: '${w}' is a world club`);
+    const years = REAL_HISTORY[key].years.map((y) => y.year);
+    assert.deepEqual(years, [...new Set(years)].sort((a, b) => a - b), `${key}: years increase, no duplicates`);
+  }
+  for (const key of ['L:esp-1', 'L:eng-1', 'L:ita-1', 'L:ger-1', 'L:fra-1', 'L:por-1', 'L:ned-1', 'L:arg-1', 'L:bra-1', 'C:ESP', 'C:ENG', 'K:europe', 'K2:europe', 'KS:europe', 'K:southamerica', 'K2:southamerica', 'W']) {
+    assert.ok(REAL_HISTORY[key], `${key} has history`);
+  }
+});
+
+test('real-life title counts for known clubs', () => {
+  const upTo = (id, key, year) => (REAL_TITLES[id]?.[key] || []).filter((y) => y <= year).length;
+  assert.equal(upTo('real-madrid', 'K:europe', 2024), 15, 'Real Madrid: 15 European Cups by 2024');
+  assert.equal(upTo('boca-juniors', 'K:southamerica', 2025), 6, 'Boca: 6 Libertadores');
+  assert.equal(upTo('independiente', 'K:southamerica', 2025), 7, 'Independiente: 7 Libertadores');
+  assert.equal(upTo('real-madrid', 'L:esp-1', 2025), 36);
+  assert.equal(upTo('barcelona', 'L:esp-1', 2025), 28);
+  assert.equal(upTo('liverpool', 'L:eng-1', 2025), 20);
+  assert.equal(upTo('man-united', 'L:eng-1', 2025), 20);
+  assert.equal(upTo('juventus', 'L:ita-1', 2025), 36);
+  assert.equal(upTo('bayern', 'L:ger-1', 2025), 34);
+  assert.equal(upTo('benfica', 'L:por-1', 2025), 38);
+  assert.equal(upTo('ajax', 'L:ned-1', 2025), 36);
+  assert.equal(upTo('atletico-nacional', 'K:southamerica', 2025), 2);
+  assert.equal(upTo('atletico-nacional', 'L:col-1', 2025), 18);
+  assert.equal(upTo('colo-colo', 'L:chi-1', 2025), 34);
+  assert.equal(upTo('al-ahly', 'K:africa', 2025), 12);
+  assert.equal(upTo('sevilla', 'K2:europe', 2025), 7);
+  assert.equal(REAL_TITLES.racing, undefined, 'Racing Santander: no major honours');
+  // Clubs of the North America Other and Oceania leagues.
+  assert.equal(upTo('saprissa', 'K:northamerica', 2025), 3);
+  assert.equal(upTo('auckland-city', 'K:oceania', 2025), 12);
+  assert.equal(upTo('sydney-fc', 'N:AUS', 2025), 5);
+  assert.equal(upTo('toronto-fc', 'L:usa-1', 2025), 1);
+  assert.equal(honoursSummary([], 'melbourne-city', 'oce-1', 2027).league.n, 2, 'A-League titles count as league titles');
+});
+
+test('titles merge real life and the game', () => {
+  assert.equal(seasonYear(1), 2027);
+  assert.equal(yearLabel(3), '2029');
+  assert.equal(FIRST_YEAR, 2027);
+  const archive = [{ year: 1, leagues: { 'esp-1': { table: [['real-madrid'], ['barcelona']] } }, cups: {}, continental: { europe: { winner: 'real-madrid', runnerUp: 'psg' } }, cwc: null }];
+  const ucl = clubTitles(archive, 'real-madrid').find((t) => t.key === 'K:europe');
+  assert.equal(ucl.n, 16, '15 real + 1 in-game');
+  assert.deepEqual(ucl.game, [2027]);
+  assert.equal(clubTitles(archive, 'real-madrid')[0].key, 'W', 'Club World Cup listed first');
+  const h = competitionHistory(archive, 'L:esp-1');
+  assert.equal(h.game[0].year, 2027);
+  assert.equal(h.real.at(-1).year, 2026);
+  assert.equal(h.most[0].id, 'real-madrid');
+  assert.equal(h.most[0].n, 37);
+  assert.equal(yearsText([2013, 2007, 2013, 2001], 2), '2001, 2007, etc.');
+  assert.equal(yearsText([2013, 2013]), '2013 ×2');
+  const leagueTop = titleRanking(archive, 'league')[0];
+  assert.ok(['real-madrid', 'celtic'].includes(leagueTop.id), 'most league titles: Celtic or Real Madrid');
+  const all = titleRanking([], 'continental');
+  assert.equal(all[0].id, 'real-madrid', 'most continental titles: Real Madrid');
+  const s = honoursSummary([], 'everton', 'eng-2', 2027);
+  assert.equal(s.league.n, 9);
+  assert.equal(s.league.last, 1987);
+});
+
+test('the CEO welcome: objective, history and style', () => {
+  const st = newClubState(11, { clubId: 'racing' });
+  const msg = st.inbox.find((m) => m.title.startsWith('A message from the CEO'));
+  assert.ok(msg, 'a CEO message on a new career');
+  assert.match(msg.body, /2027 season/);
+  assert.ok(msg.body.toLowerCase().includes(st.gm.objective.text.toLowerCase()), 'mentions the objective');
+  assert.match(msg.body, /no major honours/i);
+  assert.match(msg.body, /I want us to play/);
+  const club = (id) => st.world.clubs[id];
+  assert.match(historySentence([], club('everton'), 2027), /historic club with 9 league titles.*1987/);
+  assert.match(historySentence([], club('liverpool'), 2027), /brilliant modern history/);
+  assert.match(historySentence([], club('sevilla'), 2027), /once, in 1946/);
+  assert.match(historySentence([], club('getafe'), 2027), /Dream big/);
 });
 
 test('v2.3 super cups: matchday 0, league champion against the cup winner', () => {
