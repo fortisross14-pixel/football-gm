@@ -1174,6 +1174,45 @@ button:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
   from { transform: rotate(var(--a)) translateY(0) scale(1); opacity: 1; }
   to { transform: rotate(var(--a)) translateY(calc(var(--d) * -1)) scale(.3); opacity: 0; }
 }
+/* Club packs: horizontal bands instead of diagonal foil; club cards in the fan */
+.pack--club {
+  background:
+    linear-gradient(180deg, transparent 62%, rgba(11, 13, 18, .85) 62%),
+    repeating-linear-gradient(0deg, transparent 0 10px, rgba(255, 255, 255, .14) 10px 13px),
+    linear-gradient(160deg, var(--p1), var(--p2));
+}
+.pack--club::before { content: 'CLUB'; }
+.pack--clubBronze { --p1: #c98546; --p2: #5a3212; }
+.pack--clubSilver { --p1: #d9dde3; --p2: #5f6875; }
+.pack--clubGold { --p1: #ffd23d; --p2: #a86d00; }
+.flip--club .flip__back { background: repeating-linear-gradient(0deg, transparent 0 10px, rgba(255, 255, 255, .1) 10px 13px), var(--red); }
+.flip--club .flip__back span { font-size: 26px; }
+.flip--club .flip__front { justify-content: flex-start; gap: 3px; padding: 6px 7px 8px; background: linear-gradient(180deg, var(--rc) 0 22%, #fff 22%); text-align: center; }
+.r-legend.flip--club .flip__front { background: linear-gradient(180deg, transparent 0 22%, #fff 22%), var(--ink) var(--hazard); }
+.flip__kind { font-size: 8.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--rc-ink); min-height: 12px; }
+.r-legend .flip__kind { color: var(--yellow); }
+.flip__icon { font-size: 30px; line-height: 1.1; margin-top: 6px; }
+.flip__blurb { font-size: 10px; line-height: 1.2; color: var(--muted); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; }
+.flip--club { transition: transform var(--t-impact) var(--ease-out), opacity var(--t-impact) var(--ease-out); }
+.flip--club.is-chosen { transform: translateY(-14px); }
+.flip--club.is-chosen .flip__front { box-shadow: inset 0 0 0 4px var(--yellow), 0 0 0 0 transparent; }
+.flip--club.is-chosen::after { content: '✓'; position: absolute; top: -10px; right: -6px; width: 26px; height: 26px; display: grid; place-items: center; background: var(--yellow); color: var(--ink); font-weight: 800; font-size: 15px; clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%); }
+.flip--club.is-dim { opacity: .45; }
+.club-pick__text { text-align: center; margin: 0; }
+@media (min-width: 600px) { .fan .flip--club { --w: 138px; } .flip--club .flip__blurb { font-size: 11px; } }
+
+/* Active temporary club effects */
+.effects { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.effects li { display: flex; align-items: center; gap: 12px; background: var(--surface); box-shadow: inset 5px 0 0 var(--rc); padding: 8px 12px 8px 16px; min-height: 52px; }
+.effects__icon { font-size: 24px; flex: none; }
+.effects__body { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 12px; color: var(--muted); }
+.effects__body b { color: var(--ink); font-family: var(--font-display); font-weight: 400; font-size: 17px; text-transform: uppercase; line-height: 1.05; }
+.effects__left { flex: none; display: flex; flex-direction: column; align-items: center; font-family: var(--font-display); font-size: 24px; line-height: 1; }
+.effects__left small { font-family: var(--font-body, inherit); font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.season-card { display: flex; flex-direction: column; gap: 4px; }
+.season-card b { font-family: var(--font-display); font-weight: 400; font-size: 20px; text-transform: uppercase; }
+.season-card span { font-size: 13px; color: var(--muted); }
+
 .release-list { display: flex; flex-direction: column; gap: 4px; }
 .release { display: flex; align-items: center; gap: 12px; text-align: left; border: 0; background: #fff; color: var(--ink); padding: 6px 12px 6px 6px; }
 .release .mini { width: 56px; height: 70px; pointer-events: none; box-shadow: 0 0 0 1px var(--grey); }

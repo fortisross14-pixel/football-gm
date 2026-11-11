@@ -30,15 +30,16 @@ npm run build      # static build in dist/
 - **Competitions:** domestic cups, the European / Americas / Africa–APAC Cups (qualify through your league) and the Club World Cup, all interleaved with league matchdays. Trophies pay prize money and reward packs.
 - **Matches:** 6 blocks of 15 minutes with live commentary, subs, mentality, boosts (up to 3 per match) and **skills**: elite players and coaches each carry one, and you can fire 2 per match. Penalties in knockout games.
 - **Tactics:** pressing, passing and defensive line, with counters (high press beats short passing, direct beats a high line…) and synergies with cards and coaches. Rivals' styles and skills are shown before kick-off.
-- **Shop:** Bronze, Silver, Gold, Elite and Coach packs (odds shown), plus sealed boost packs. Play a boost in a match and you get a free random boost card afterwards.
+- **Shop:** two sections. **Player:** Bronze, Silver, Gold, Elite and Coach packs (odds shown) and the Transfer Market. **Club:** club packs (Bronze 200: 1 card; Silver 600: keep 1 of 3; Gold 1,800: keep 1 of 3, Rare or better) and sealed boost packs. Play a boost in a match and you get a free random boost card afterwards.
 - **Pack opening:**
   - Cards reveal one by one.
   - For each card you choose Keep (pick who it replaces in your 12), Merge a duplicate (+1★, +2 stats, +30 matches) or Discard for coins.
-- **Cards tab:** Owned (squad, items, album) and Shop (packs, boosts, Transfer Market).
+- **Cards tab:** Owned (Players: squad, coaches, player packs, transfer cards · Club: club packs, club cards, active effects, boosts · Season · Album) and Shop.
+- **Club cards:** infrastructure cards raise one club area for good (rarity caps the level); temporary cards last a few games: High Season (home gate ×2), Viral Merchandise, Ticket Promo, Recovery Camp, Analyst Report (tactics grade one step better), or pay off at once: Sponsor Night, Team Building, Press Charm, Local Hero.
 - **League tab:** every league by name, with table, fixtures, scorers, cups and **History**: champion, runner-up, top scorer, MVP and Golden Glove for every season, records by league, country or world, and your career season by season. Tap any club for its page (Overview, Squad, History with managers and transfers, Stats, Honours), any player for his profile (Overview, History club by club and season by season, Stats by competition) and any manager for his page.
 - **World tab:** manager rankings (you against 400+ AI managers), power ranking and most decorated clubs, world records, Hall of Fame.
 - **Season end:** prize money, reward packs and a free management card.
-- **Transfer Market, open all year:** 33 management card types (random signings, youth, club-area upgrades, sponsors, season events…), each with a rarity that sets its strength. 9 offers each summer, 6 new ones every 5 league matchdays. Play cards from Cards → Items any time, up to **8 card plays a season** (+1 at Analytics level 3 and 5).
+- **Transfer Market, open all year:** transfer cards (random signings, youth, veterans, trainers, retraining…), each with a rarity that sets its strength. 5 offers each summer, 3 new ones every 5 league matchdays. Play cards (transfer and club) from the Cards tab any time, up to **8 card plays a season** (+1 at Analytics level 3 and 5).
 - **Card wear:** players and coaches lose a match each time they play and retire at 0.
 
 - **Squad:** 12 cards, a starting 7 and 5 reserves (3 subs a match). Rotating keeps the team's shape up.
@@ -72,7 +73,8 @@ Progress is saved in the browser, automatically.
 | `scripts/check-world.mjs` | Validates the world data |
 | `scripts/check-nations.mjs` | Every named player/coach has a known nation (`src/data/nations.js`: code → name + flag) |
 | `src/state/managers.js` | Managers book: every career you have played, ranked (main menu → Managers) |
-| `src/data/offseason.js` | The 33 management card types (Transfer Market) |
+| `src/data/offseason.js` | The 42 management card types: transfer (Transfer Market), club (infrastructure + temporary), season events |
+| `src/data/clubPacks.js` | Club packs: prices, odds, pick 1 of 3 |
 | `src/data/facilities.js` | The ten club areas: levels, effects, card plays per season |
 | `src/data/` | Demo club, league clubs, boosts, coach passives |
 | `src/ui/` | React screens and card components |

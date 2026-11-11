@@ -43,8 +43,8 @@ export default function ClubInfo({ state, onBack, onMarket }) {
       <section className="panel">
         <h2 className="section-title">Club management</h2>
         <CardPlays state={state} />
-        <p className="hint">Each area is raised by its own Club card from the Transfer Market, open all year. Card rarity sets the highest level it can build: Common up to 2, Uncommon 3, Rare 4, Epic 5, Legend +2 levels.</p>
-        {onMarket && <button type="button" className="btn btn--ghost btn--small" onClick={onMarket}>Transfer Market ›</button>}
+        <p className="hint">Each area is raised by its own infrastructure card, from club packs (Shop → Club). Card rarity sets the highest level it can build: Common up to 2, Uncommon 3, Rare 4, Epic 5, Legend +2 levels.</p>
+        {onMarket && <button type="button" className="btn btn--ghost btn--small" onClick={onMarket}>Club packs ›</button>}
       </section>
 
       {AREA_GROUPS.map((g) => (
