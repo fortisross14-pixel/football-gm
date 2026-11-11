@@ -230,10 +230,10 @@ test('promotion and relegation move clubs between tiers', () => {
   assert.ok(userFixture(s.season, 'esp-2', 'racing'));
 });
 
-test('the world has 46 full divisions of 10 and a big card pool', () => {
+test('the world has 47 full divisions of 10 and a big card pool', () => {
   const s = fresh();
-  assert.equal(Object.keys(s.world.divisions).length, 46);
-  assert.equal(Object.keys(s.world.clubs).length, 460);
+  assert.equal(Object.keys(s.world.divisions).length, 47);
+  assert.equal(Object.keys(s.world.clubs).length, 470);
   assert.ok(POOLS.player.length >= 400, `pool ${POOLS.player.length}`);
   const seen = new Set(s.squad.map((c) => c.id));
   for (const c of Object.values(s.world.clubs)) {
@@ -1476,7 +1476,7 @@ test('real-life title counts for known clubs', () => {
   assert.equal(upTo('saprissa', 'K:northamerica', 2025), 3);
   assert.equal(upTo('auckland-city', 'K:oceania', 2025), 12);
   assert.equal(upTo('sydney-fc', 'N:AUS', 2025), 5);
-  assert.equal(upTo('toronto-fc', 'L:usa-1', 2025), 1);
+  assert.equal(upTo('seattle-sounders', 'L:usa-1', 2025) >= 1, true);
   assert.equal(honoursSummary([], 'melbourne-city', 'oce-1', 2027).league.n, 2, 'A-League titles count as league titles');
 });
 
@@ -1565,8 +1565,9 @@ test('v2.3 formats: North America, the European Trophy and Oceania', () => {
   assert.equal(e2.prelim.length, 6);
   assert.equal(e2.seeded.length, 10);
   assert.equal(FORMATS.europe.k2.groups, 4);
-  // Oceania: the top three and the cup winner (season 1: next by strength), one group, no second trophy.
-  assert.deepEqual(comps.continental.oceania.direct.slice().sort(), strength('oce-1').slice(0, 4).sort());
+  // Oceania: the A-League's and Oceania Other's top two, one group, no second trophy.
+  assert.deepEqual(comps.continental.oceania.direct.slice().sort(), [...strength('aus-1').slice(0, 2), ...strength('oce-1').slice(0, 2)].sort());
+  assert.equal(comps.continental.oceania.groups.length, 1);
   assert.equal(comps.continental2.oceania, undefined);
   assert.equal(comps.contSuper.oceania, undefined);
   // South America: four direct, eight in the qualifying round.

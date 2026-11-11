@@ -32,7 +32,8 @@ export function statsFor(name, pos, ovr) {
 }
 
 // classic = retired (shown at his peak for the club); pass now = true for an active player.
-export function card(name, pos, ovr, nation, trait = null, { now = false, id = null } = {}) {
+// fictional = an invented player (clubs whose real squads we don't know, v2.4); always active.
+export function card(name, pos, ovr, nation, trait = null, { now = false, id = null, fictional = false } = {}) {
   const rarity = rarityForOverall(ovr);
   const r = hash(name);
   return {
@@ -44,7 +45,8 @@ export function card(name, pos, ovr, nation, trait = null, { now = false, id = n
     trait,
     matchesLeft: (CAREER[rarity] || 150) + ((r >>> 7) % 21) - 10,
     nation,
-    ...(now ? {} : { classic: true }),
+    ...(now || fictional ? {} : { classic: true }),
+    ...(fictional ? { fictional: true } : {}),
   };
 }
 

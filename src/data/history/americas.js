@@ -82,7 +82,7 @@ export const HISTORY = {
     name: 'MLS Cup', from: 1996,
     w: [DCU, DCU, CHF, DCU,
       /* 2000 */ SKC, 'San Jose Earthquakes', LAG, 'San Jose Earthquakes', DCU, LAG, HOU, HOU, CLB, 'Real Salt Lake',
-      /* 2010 */ 'Colorado Rapids', LAG, LAG, SKC, LAG, 'Portland Timbers', SEA, 'toronto-fc', 'Atlanta United', SEA,
+      /* 2010 */ 'Colorado Rapids', LAG, LAG, SKC, LAG, 'Portland Timbers', SEA, 'Toronto FC', 'Atlanta United', SEA,
       /* 2020 */ CLB, 'New York City FC', LAFC, CLB, LAG, 'inter-miami'],
   },
   'C:USA': {
