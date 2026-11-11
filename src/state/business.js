@@ -1,23 +1,17 @@
-// The club's business side (v2.2): building works, ticket prices, the summer sponsor
-// contract and the season-by-season finance history. Pure helpers on the save state,
+// The club's business side (v2.2): building works, ticket prices and the season-by-season
+// finance history (the kit, sponsor and TV deals live in state/deals.js). Pure helpers on the save state,
 // used by state/club.js (income, matches, season end) and the Club tab.
 //
 // Functions named start…/set…/sign… take a state and return a new one ({ state, message,
 // success } for the ones the UI shows a toast for). Functions that end in "Into" or are
 // marked "mutates" change a state that the caller has already cloned.
 
-import { LEVEL_MULTIPLIER } from '../data/demo.js';
-import { DIVISION_BY_ID } from '../data/world/structure.js';
 import {
-  AREAS, MAX_LEVEL, fullFacilities, buildMatchdays, TICKET_PRICES, STEADY_INCOME, SPONSOR_DEALS, SPONSOR_DEAL_IDS, SPONSOR_BRANDS,
+  AREAS, MAX_LEVEL, fullFacilities, buildMatchdays, TICKET_PRICES,
 } from '../data/facilities.js';
-import { makeRng } from '../engine/rng.js';
 import { pushInbox } from './chronicle.js';
 
-const mult = (state) => LEVEL_MULTIPLIER[DIVISION_BY_ID[state.club?.divisionId]?.level] || 1;
 const lvl = (state, key) => Math.max(0, Math.min(MAX_LEVEL, state.facilities?.[key] || 0));
-// Business income per match since v1.9 (18 league games a season).
-const PACE = 0.8;
 
 // ---------------------------------------------------------------------------
 // Building works
@@ -92,68 +86,7 @@ export function ticketMoodInto(next, isHome) {
   next.gm.confidence = { ...next.gm.confidence, fans: Math.round(fans * 100) / 100 };
 }
 
-// ---------------------------------------------------------------------------
-// Sponsor contracts
-
-// What a deal pays at today's Sponsorship level and division: { perMatch, perWin, perTrophy }.
-export function sponsorTerms(state, type = 'steady') {
-  const d = SPONSOR_DEALS[type] || SPONSOR_DEALS.steady;
-  const base = Math.round(STEADY_INCOME[lvl(state, 'sponsor')] * mult(state)) * PACE;
-  return { perMatch: Math.round(base * d.perMatch), perWin: Math.round(base * d.perWin), perTrophy: Math.round(base * d.perTrophy) };
-}
-
-// The contract this season: { type, brand, year, ...terms }. Saves without one have a steady deal.
-export function activeSponsor(state) {
-  const s = state.sponsor || { type: 'steady', brand: SPONSOR_BRANDS.steady[0], year: state.season?.year ?? 1 };
-  return { ...s, ...sponsorTerms(state, s.type) };
-}
-
-// The three summer offers (one of each kind), or [] when nothing is on the table.
-export const sponsorOffers = (state) => state.sponsorOffers?.offers || [];
-
-// New offers for next season (mutates). Called when the season closes.
-export function offerSponsorsInto(next, seed = 1) {
-  const rng = makeRng(seed);
-  next.sponsorOffers = { year: (next.season?.year ?? 0) + 1, offers: SPONSOR_DEAL_IDS.map((type) => ({ type, brand: rng.pick(SPONSOR_BRANDS[type]) })) };
-}
-
-// Signs one of the summer offers. Returns { state, message, success }.
-export function signSponsor(state, type) {
-  const offer = sponsorOffers(state).find((o) => o.type === type);
-  if (!offer) return { state, message: 'No sponsor offer of that kind right now.', success: false };
-  if (state.phase !== 'offseason') return { state, message: 'Sponsor contracts are signed in the summer.', success: false };
-  const next = structuredClone(state);
-  next.sponsor = { type, brand: offer.brand, year: next.sponsorOffers.year };
-  next.sponsorOffers = { ...next.sponsorOffers, signed: type };
-  const t = sponsorTerms(next, type);
-  const pay = [t.perMatch && `◎ ${t.perMatch} a match`, t.perWin && `◎ ${t.perWin} a win`, t.perTrophy && `◎ ${t.perTrophy} a trophy or promotion`].filter(Boolean).join(', ');
-  pushInbox(next, 'club', `🤝 Sponsor signed: ${offer.brand}`, `A ${SPONSOR_DEALS[type].label.toLowerCase()} contract for season ${next.sponsor.year}: ${pay}.`);
-  return { state: next, message: `${offer.brand} signed: ${SPONSOR_DEALS[type].label} contract.`, success: true };
-}
-
-// The season starts (mutates): no contract chosen → the steady offer is signed for you.
-export function settleSponsorInto(next) {
-  const offers = sponsorOffers(next);
-  if (!offers.length) return;
-  if (!next.sponsorOffers.signed) {
-    const steady = offers.find((o) => o.type === 'steady') || offers[0];
-    next.sponsor = { type: steady.type, brand: steady.brand, year: next.sponsorOffers.year };
-    const t = sponsorTerms(next, steady.type);
-    pushInbox(next, 'club', `🤝 Sponsor signed: ${steady.brand}`, `No contract was chosen, so the club took the steady deal: ◎ ${t.perMatch} a match.`);
-  }
-  next.sponsorOffers = null;
-}
-
-// Glory bonus for promotion or the league title, paid when the season closes (mutates).
-export function sponsorSeasonBonusInto(next, state, { position, promoted }) {
-  const s = activeSponsor(state);
-  if (!s.perTrophy || !(position === 1 || promoted)) return 0;
-  next.coins += s.perTrophy;
-  next.finance = next.finance || { income: {}, spent: {} };
-  next.finance.income.Sponsor = (next.finance.income.Sponsor || 0) + s.perTrophy;
-  pushInbox(next, 'club', `🏆 Sponsor bonus: ◎ ${s.perTrophy}`, `${s.brand} pay the Glory bonus for ${position === 1 ? 'the league title' : 'promotion'}.`);
-  return s.perTrophy;
-}
+// Kit, sponsor and TV deals: see state/deals.js.
 
 // ---------------------------------------------------------------------------
 // Finance history: one compact entry per season (written when the season closes and
@@ -176,8 +109,6 @@ export function recordFinanceInto(next, year) {
 export function migrateBusinessInto(next) {
   if (!Array.isArray(next.construction)) next.construction = [];
   if (!TICKET_PRICES[next.ticketPrice]) next.ticketPrice = 'normal';
-  if (!next.sponsor) next.sponsor = { type: 'steady', brand: SPONSOR_BRANDS.steady[0], year: next.season?.year ?? 1 };
-  if (next.phase === 'offseason' && !next.sponsorOffers) offerSponsorsInto(next, (next.season?.year || 1) * 97);
   if (!Array.isArray(next.financeHistory)) next.financeHistory = [];
   if (!Array.isArray(next.clubEffects)) next.clubEffects = [];
   return next;

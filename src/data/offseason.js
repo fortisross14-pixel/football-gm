@@ -95,7 +95,7 @@ export const OFFSEASON_CARDS = {
   hospitality: areaCard('hospitality', 'Restaurant & Boxes', 200, 'Hospitality: more income every home game.'),
   clubStore: areaCard('store', 'Club Store', 180, 'Store sales every match.'),
   merchExpansion: areaCard('merch', 'Merchandise Line', 200, 'New products: kits, lifestyle, global. Popular players sell more.'),
-  findSponsor: areaCard('sponsor', 'Find a Sponsor', 170, 'A bigger sponsor, paid every match.'),
+  findSponsor: areaCard('sponsor', 'Find a Sponsor', 170, 'Bigger sponsor offers every summer.'),
   trainingGround: areaCard('training', 'Training Fields', 220, 'Faster, stronger cohesion.'),
   gymUpgrade: areaCard('gym', 'Gym Upgrade', 180, 'Stamina drains slower in every match.'),
   spaRecovery: areaCard('spa', 'Spa & Recovery', 180, 'Better team shape, even without rotating.'),

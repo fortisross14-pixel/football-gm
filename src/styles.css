@@ -1980,3 +1980,73 @@ a.chip-btn, button.xlink.chip-btn { text-decoration: none; }
 }
 /* Club sub-tabs wrap onto two rows on phones instead of scrolling out of sight. */
 .screen--club > .segmented .segmented__opts { flex-wrap: wrap; overflow: visible; }
+
+/* ---------- Off-season flow (v2.3): stepper, season review, jersey, deals, CEO ---------- */
+.screen--summer { display: flex; flex-direction: column; gap: 12px; }
+.summer-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.summer-head .season-end__label { color: var(--blue); }
+.stepper { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; }
+.stepper__step {
+  width: 100%; min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  font: inherit; color: var(--muted); background: var(--surface); border: 0; box-shadow: inset 0 0 0 1px var(--line-2); padding: 4px 2px; cursor: pointer;
+  transition: background var(--t-quick) var(--ease-out), color var(--t-quick) var(--ease-out);
+}
+.stepper__n { font-family: var(--font-display); font-size: 18px; line-height: 1; }
+.stepper__label { font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stepper__step.is-done { color: var(--good-text); }
+.stepper__step.is-on { background: var(--ink); color: #fff; box-shadow: inset 0 -4px 0 var(--yellow); }
+.stepper__step.is-on.is-done .stepper__n { color: #5ee39b; }
+.stepper--mini .stepper__step { min-height: 40px; cursor: default; background: rgba(255, 255, 255, .07); box-shadow: none; color: #b7bcc6; }
+.stepper--mini .stepper__step.is-done { color: #5ee39b; }
+.summer-plan { display: flex; flex-direction: column; gap: 8px; }
+.summer-title { margin: 4px 0 0; font-family: var(--font-display); font-weight: 400; font-size: 34px; line-height: 1; text-transform: uppercase; }
+.summer-title span { color: var(--blue); }
+.summer-nav { display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; margin-top: 4px; }
+.summer-foot .link-btn { font-size: 13px; }
+.screen--summer > .offseason { padding-top: 14px; }
+.review-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.review-stats div { background: rgba(255, 255, 255, .07); padding: 8px; display: flex; flex-direction: column; }
+.review-stats span { font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #b7bcc6; }
+.review-stats b { font-family: var(--font-display); font-weight: 400; font-size: 26px; color: var(--yellow); }
+.review-best { margin: 8px 0; display: flex; flex-direction: column; }
+.review-best b { font-family: var(--font-display); font-weight: 400; font-size: 26px; text-transform: uppercase; line-height: 1.1; }
+.review-best span { color: var(--muted); font-size: 13px; }
+.champions li b small { font-size: 11px; font-weight: 800; }
+.jersey { display: block; flex: none; filter: drop-shadow(0 6px 10px rgba(11, 13, 18, .18)); }
+.kit-pick, .kit-reveal, .kit-now { display: flex; gap: 14px; align-items: center; }
+.kit-pick > div, .kit-reveal__numbers, .kit-now__facts { flex: 1; min-width: 0; }
+.kit-now__facts { margin: 0; }
+.kit-reveal__numbers { display: flex; flex-direction: column; gap: 3px; }
+.reveal-row {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px; background: var(--paper); padding: 6px 10px; font-size: 13px;
+  animation: reveal-in var(--t-reveal) var(--ease-out) both; animation-delay: calc(var(--i) * 120ms);
+}
+.reveal-row b { font-family: var(--font-display); font-weight: 400; font-size: 20px; }
+.reveal-row--total { background: var(--ink); color: #fff; }
+.reveal-row--total b { color: var(--yellow); font-size: 24px; }
+@keyframes reveal-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.deal__card { font-size: 12.5px; font-weight: 800; color: var(--gold-text); }
+.deal:disabled:not(.is-on) { opacity: .55; cursor: default; }
+.career-link--light { background: var(--paper); color: var(--ink); margin-bottom: 8px; width: 100%; }
+.career-link--light b { color: var(--blue); }
+.ceo__head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+.ceo__face { font-size: 40px; line-height: 1; }
+.ceo__head b { display: block; font-family: var(--font-display); font-weight: 400; font-size: 22px; text-transform: uppercase; }
+.ceo__head span { font-size: 13px; color: var(--muted); text-transform: capitalize; }
+.ceo__line { margin: 6px 0 0; font-size: 15px; line-height: 1.4; }
+.ceo__objective { margin: 8px 0 0; font-family: var(--font-display); font-size: 24px; text-transform: uppercase; }
+.ceo--delighted, .ceo--very-happy { box-shadow: inset 4px 0 0 var(--good), inset 0 0 0 1px var(--line-2); }
+.ceo--concerned, .ceo--unhappy { box-shadow: inset 4px 0 0 var(--red), inset 0 0 0 1px var(--line-2); }
+@media (max-width: 420px) {
+  .kit-pick, .kit-reveal { flex-direction: column; align-items: stretch; }
+  .kit-pick .jersey, .kit-reveal .jersey { align-self: center; }
+  .stepper__label { font-size: 9px; letter-spacing: .02em; }
+}
+@media (min-width: 720px) {
+  .screen--summer { max-width: 920px; }
+}
+@media (hover: hover) and (pointer: fine) {
+  .stepper__step:not(.is-on):hover { box-shadow: inset 0 0 0 2px var(--ink); }
+}
+html.reduce-motion .reveal-row { animation-delay: 0s; }
+@media (prefers-reduced-motion: reduce) { .reveal-row { animation-delay: 0s; } }

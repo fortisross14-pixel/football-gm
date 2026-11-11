@@ -3,6 +3,13 @@
 > Replaces the old management-sim design (`GAME_DESIGN_DOCUMENT.md`), which is kept for reference only.
 > Language: English. Platform: web (React + Vite), mobile-first.
 
+**Changes in v2.3 (off-season flow, jersey, sponsor and TV deals)**
+- **Off-season flow** (§6.4): six steps after the season closes, each revisitable: season review, season card, jersey, sponsor, TV, CEO meeting. The Transfer Market, cards and job offers stay open alongside.
+- **Jersey** (kit provider): base coins + a share of the shirt sales; renew or change maker, keep the line or order a new design; the season's shirt sales are revealed on signing. New Club → **Jersey** sub-tab.
+- **Sponsor negotiation** replaces Steady / Performance / Glory: the current sponsor's renewal (per win + a card) or one of two new brands (signing bonus + per win, no card).
+- **TV rights:** three offers a year, a fixed fee plus coins per game, per home game or per international game. League and cup result money is about 10% lower to make room.
+- Merchandise per match is halved (replica shirts are now the kit deal's).
+
 **Changes in v2.2 (Club tab)**
 - Season and GM cards stack with these: Packed House adds a % of the ticket-priced gate, Sponsor's Favourite pays on top of the sponsor contract, Money Man takes its % of everything.
 - Six tabs: **Home** (was "Club"), Squad, **Club** (new), Cards, Competitions, World.
@@ -274,8 +281,8 @@ Club packs only deal an infrastructure card at a rarity that can still raise tha
 | Business | 🏟 **Stadium** · Stadium Evolution | Home gate 30 / 45 / 54 / 64 / 74 / 85 a home game |
 | Business | 🍽 **Hospitality** · Restaurant & Boxes | 0 / 10 / 18 / 27 / 36 / 46 a home game |
 | Business | 🏪 **Club store** · Club Store | 0 / 4 / 7 / 10 / 14 / 18 every match |
-| Business | 👕 **Merchandise** · Merchandise Line (kits → lifestyle → global) | Squad popularity × 0.5 / 0.9 / 1.3 / 1.7 / 2.1 / 2.5 × 0.3 every match |
-| Business | 🤝 **Sponsorship** · Find a Sponsor (local business → global partner) | 0 / 6 / 11 / 17 / 24 / 32 every match |
+| Business | 👕 **Merchandise** · Merchandise Line (kits → lifestyle → global) | Squad popularity × 0.5 / 0.9 / 1.3 / 1.7 / 2.1 / 2.5 × 0.15 every match (0.3 before v2.3), and the same multiplier sells shirts for the kit deal (§6.4) |
+| Business | 🤝 **Sponsorship** · Find a Sponsor (local business → global partner) | Sizes the sponsor offers: base 3 / 6 / 11 / 17 / 24 / 32 (§6.4) |
 | Sports | 🏋 **Training fields** · Training Fields | Cohesion +4 / 5 / 7 / 8 / 10 / 12 a match; max bonus 4 / 5 / 6 / 7 / 8 / 9% all stats |
 | Sports | 💪 **Gym** · Gym Upgrade | Stamina drains 0 / 4 / 8 / 12 / 16 / 20% slower |
 | Sports | 🧖 **Spa & recovery** · Spa & Recovery | Team shape +0 / 3 / 6 / 9 / 12 / 15 |
@@ -539,14 +546,15 @@ AI clubs play their identity with a coach that fits it. Pre-match scouting shows
 
 | Source | Amount |
 |---|---|
-| League win / draw / loss | 45 / 20 / 8 × division multiplier (60 / 25 / 10 before v1.9's longer season) |
-| Cup win / draw / loss | 65 / 20 / 8 × division multiplier |
+| League win / draw / loss | 40 / 18 / 7 × division multiplier (45 / 20 / 8 before v2.3's TV deals, 60 / 25 / 10 before v1.9) |
+| Cup win / draw / loss | 58 / 18 / 7 × division multiplier (65 / 20 / 8 before v2.3) |
 | Continental win / draw / loss | 100 / 40 / 20 |
 | Club World Cup win / draw / loss | 150 / 60 / 30 |
 | Bonuses | Clean sheet +15, 3+ goals +15 (× multiplier) |
 | Home game | Stadium gate + hospitality (§4.5) |
-| Every match | Club store + sponsorship (§4.5) |
-| Merchandise (every match) | Squad popularity × merchandise multiplier × 0.3 |
+| Every match | Club store (§4.5) |
+| Merchandise (every match) | Squad popularity × merchandise multiplier × 0.15 (0.3 before v2.3: shirts are now the kit deal's) |
+| Kit deal, sponsor, TV (§6.4) | Kit revenue and the TV fee over the 18 league matchdays; sponsor per win and signing bonus (matchday 1); TV per game / home game / international game |
 | League prizes (1st → 10th) | 600 / 380 / 280 / 210 / 160 / 120 / 90 / 60 / 40 / 20 × multiplier |
 | Trophy prizes | Cup 400 × multiplier, continental 1,500, Club World Cup 2,500; continental finalist 500; European qualifying 150 |
 
@@ -587,17 +595,52 @@ Odds are per card. The guarantee upgrades one card if none of the three meets it
 | Normal | — | — | — | — |
 | High | +25% | +25% | −0.6 a home match | — |
 
-**Sponsor contract.** When the season closes the club gets three offers for next season, one of each kind; you sign one in Club → Finance before the season starts (no choice: the Steady one). Amounts are live: they grow with the Sponsorship area (base 3 / 6 / 11 / 17 / 24 / 32 at levels 0–5) × the division multiplier × 0.8.
-
-| Contract | Pays |
-|---|---|
-| 🤝 Steady | the base every match |
-| 📈 Performance | 2.2 × the base for every win, nothing otherwise |
-| 🏆 Glory | 0.4 × the base every match, plus 14 × the base for each cup / continental / Club World Cup trophy and for promotion or the league title |
-
-Performance beats Steady above a 45% win rate; Glory beats it with one trophy or promotion. Measured (`BOT=… node scripts/career-sim.mjs 12 6`): the average bot (Performance when 4+ stronger than its division, Normal tickets) earns about what it did (+1–2% a season); the great bot (Glory when 6+ stronger, Performance when 1+ stronger, High tickets while fans ≥ 60, Low under 40) earns about 5–7% more a season from these choices, which is 20–25% more on the gate, hospitality and sponsor lines they touch.
+**Sponsor contract.** Replaced in v2.3 by the sponsor negotiation (§6.4).
 
 **Finance history:** every season keeps a compact entry (income by category, spending, closing balance), written when the season closes and brought up to date with the summer's money when the next one starts.
+
+### 6.4 The off-season flow and the club's deals (v2.3)
+
+Collecting the season rewards opens the **off-season flow** (also from Home's off-season block). Six steps, in order, each revisitable from the stepper; Home shows the progress:
+
+1. **Season review:** finish, titles, W-D-L and goals, best player (your yearly award winner, else your best-rated regular), revenue against the season before with the top lines, the fan base (local and global, against the start of the season), last season's shirt sales.
+2. **Season card:** the season card deal (§4.7).
+3. **Jersey**, 4. **Sponsor**, 5. **TV:** next season's deals. Signing is final. Not signed by kick-off: keep the kit maker and the line, renew the sponsor, take the first TV offer.
+6. **CEO meeting:** how happy the owners are (board confidence, the objective's verdict, titles, promotion or relegation) and next season's objective (set from today's squad, fixed at kick-off), with a word on the contract.
+
+The Transfer Market, cards and job offers stay available throughout. A new job brings that club's current deals (a local / national / global kit maker for a tier-3 / 2 / 1 club) and fresh offers.
+
+**Fans** (`state/fans.js`, `fansOf(state) → { local, global, happiness }`) drive the deals; until the fan-base model lands this is a stand-in from division level, stadium, squad popularity, titles and the fans' confidence. Deals read them against the division's usual size, clamped to 0.8–1.25. **Success** is last season's finish and trophies, 0–1 (`0.75 × (10 − position) / 9 + 0.12 × trophies`; 0.4 for a new career), worth 0.85–1.15×.
+
+**Jersey (kit maker).** Three offers: your maker's renewal (+5% base) and the two other tiers.
+
+| Maker | Reach (shirts) | Share of sales | Base (× kit unit) |
+|---|---|---|---|
+| 🌍 Global brand | 1.5× | 12% | 0.6 |
+| 🏬 National brand | 1.15× | 13% | 1.6 |
+| 🧵 Local maker | 0.8× | 15% | 2.5 |
+
+- Kit unit = 8 × division multiplier × merchandise line (0.5 … 2.5). Bases vary ±12% by offer.
+- Shirts sold = squad popularity × merchandise line × fans (60% local, 40% global) × success × 1,200 × reach × design × luck (0.9–1.1). Shop takings = shirts ÷ 100 coins (the maker's money, not the club's). **Club revenue = base + share × shop takings**, revealed on signing and paid over the 18 league matchdays.
+- **Design:** keep the line (5% fewer shirts for every season it has been worn, down to 0.8×) or order a new design (one of seven patterns; 0.9–1.45× in its first season, so it can flop; costs 0.6 kit units). A popular squad makes the global brand pay; a modest one does better with the local maker's base.
+
+**Sponsor.** Season value SV = Sponsorship base (3 / 6 / 11 / 17 / 24 / 32 at levels 0–5) × division multiplier × 0.8 × 22 games × fans × success. Offers vary ±15%.
+
+| Offer | Signing bonus (matchday 1) | Per win (any competition) | Card |
+|---|---|---|---|
+| 🤝 Renewal (your sponsor) | — | 0.07 SV | a player pack (Bronze; Silver in tier 1) or an infrastructure card (Common/Uncommon in tier 3, Uncommon/Rare tier 2, Rare/Epic tier 1) |
+| 💰 New: signing bonus | 0.55 SV | 0.04 SV | — |
+| 📈 New: win bonus | 0.15 SV | 0.075 SV | — |
+
+**TV rights.** T = division multiplier × (45 / 100 / 220 by tier 3 / 2 / 1) × global fans × success. Three channels (±20%), each a fixed fee over the league matchdays plus coins for every game of one kind, whatever the result:
+
+| Offer | Fee | Variable |
+|---|---|---|
+| 📺 Per game | 0.45 T | 0.55 T ÷ 22 a game |
+| 🏟 Per home game | 0.35 T | 0.65 T ÷ 11 a home game (any competition) |
+| 🌐 International | 0.6 T | 0.12 T a continental or Club World Cup game |
+
+Every signed deal (and every default) sends an inbox message; the season finances get **Sponsor**, **Kit deal**, **TV** and **Kit design** lines.
 
 ---
 
@@ -719,7 +762,7 @@ The original plan, kept for reference:
 
 ## 9. Screens (mobile-first)
 
-1. **Home:** next fixture, coins, board objective, quick "Play" button, latest news and achievements.
+1. **Home:** next fixture, coins, board objective, quick "Play" button, latest news and achievements. In the summer: the off-season flow's progress and its button (§6.4).
 2. **Squad:** pitch view with 7 starters, 3 bench, head coach and assistant. Drag to swap. Cohesion meter.
 3. **My cards:** players, coaches, inventory (boosts, off-season cards, unopened packs), card album with completion %, Hall of Fame.
 4. **Shop:** packs and boosts all season. Pack opening with a rarity reveal and Keep/Discard.
@@ -728,7 +771,7 @@ The original plan, kept for reference:
 7. **Competitions:** league table, fixtures, top scorers, cup bracket, continental groups and bracket, Club World Cup.
 8. **Career:** reputation, board objective, job offers, "take 2 cards" picker, GM history.
 9. **History:** club timeline, trophy cabinet, Hall of Fame, world records, past winners.
-10. **Club (tab, v2.2):** Overview (owners' philosophy, owners and fans, objective, contract, budget, income per match, this vs last season); Infrastructure (card plays, building works with progress bars, the ten areas with level pips, current and next effect); Finance (sponsor offers / contract, ticket prices, income per match by source, season money in and out, season-by-season history); Effects (season event and temporary club cards with matches left, squad cohesion and popularity); Trophies.
+10. **Club (tab, v2.2):** Overview (owners' philosophy, owners and fans, objective, contract, budget, income per match, this vs last season); Infrastructure (card plays, building works with progress bars, the ten areas with level pips, current and next effect); Finance (the kit, sponsor and TV deals, ticket prices, income per match by source, season money in and out, season-by-season history); Jersey (v2.3: the shirt in club colours with its design, maker and sponsor; the deal; this season's shirt sales and last season's); Effects (season event and temporary club cards with matches left, squad cohesion and popularity); Trophies.
 
 **Visual direction**
 - Dark pitch-green UI with bright rarity frames: grey, teal, blue, purple, gold.
