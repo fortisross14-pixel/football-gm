@@ -116,12 +116,13 @@ function shop(state, seed, stats) {
   let s = state;
   for (let i = 0; i < 6; i += 1) {
     const reserve = 300;
-    let pack = s.coins >= PACKS.gold.price + reserve ? 'gold' : s.coins >= PACKS.silver.price + reserve ? 'silver' : null;
+    let pack = s.coins >= PACKS.elite.price + reserve && process.env.ELITE !== '0' ? 'elite' : s.coins >= PACKS.gold.price + reserve ? 'gold' : s.coins >= PACKS.silver.price + reserve ? 'silver' : null;
     if (BOT === 'poor') pack = s.coins >= 700 ? 'bronze' : null;
     if (BOT === 'bad') pack = null;
     if (!pack) break;
     s = buyPack(s, pack, seed + i);
     stats.packs[pack] = (stats.packs[pack] || 0) + 1;
+    if (stats.curRow) stats.curRow.bought[pack] = (stats.curRow.bought[pack] || 0) + 1 / CAREERS;
     for (const c of s.pendingOpen?.cards || []) stats.pulls[c.rarity] = (stats.pulls[c.rarity] || 0) + 1;
     s = decide(s);
   }
@@ -316,7 +317,7 @@ function playNext(state, seed, stats) {
 const stats = {
   packs: {}, pulls: {}, goals: 0, matches: 0, byComp: {}, clubPacks: {}, clubPicks: {},
   upsets: { underdog: { n: 0, w: 0, d: 0 }, favourite: { n: 0, w: 0, d: 0 } },
-  bySeason: Array.from({ length: SEASONS }, () => ({ level: [], pos: [], coinsIn: [], strengthGap: [], rep: [], areas: [], plays: [], retired: 0, trophies: 0, continental: 0, cats: {}, spent: {}, verdicts: {}, choice: 0, gate: 0, oldGate: 0, crowd: 0, cap: 0, homeGames: 0 })),
+  bySeason: Array.from({ length: SEASONS }, () => ({ level: [], pos: [], coinsIn: [], strengthGap: [], rep: [], areas: [], plays: [], retired: 0, trophies: 0, continental: 0, cats: {}, spent: {}, verdicts: {}, choice: 0, gate: 0, oldGate: 0, crowd: 0, cap: 0, homeGames: 0, sq: { rare: [], epic: [], legend: [] }, top7: [], bought: {}, topClub: 0 })),
   redraws: 0, traits: {},
   firstD2: [], firstD1: [], firstContinental: [], topClub: [], sacked: 0, moves: 0,
   worldNamed: [], contWinners: {}, cardSeasons: [],
@@ -335,6 +336,7 @@ for (let c = 0; c < CAREERS; c += 1) {
   const reached = { d2: null, d1: null, cont: null, top: null };
   for (let y = 0; y < SEASONS; y += 1) {
     const row = stats.bySeason[y];
+    stats.curRow = row;
     const hof = s.hallOfFame.length;
     s = decide(s);
     s = shop(s, seed++, stats);
@@ -349,6 +351,10 @@ for (let c = 0; c < CAREERS; c += 1) {
     }
     const sum = seasonSummary(s);
     row.level.push(s.club.level);
+    // Squad quality: how many Rare / Epic / Legend cards the user owns at season end.
+    for (const r of ['rare', 'epic', 'legend']) row.sq[r].push(s.squad.filter((c) => c.rarity === r).length);
+    row.top7.push(userStrength(s));
+    if (TOP_CLUBS.includes(s.club.id)) row.topClub += 1;
     row.areas.push(AREA_IDS.reduce((t, k) => t + (s.facilities[k] || 0), 0));
     row.plays.push(s.cardPlays || 0);
     row.pos.push(sum.position);
@@ -405,6 +411,8 @@ console.log('Season | avg level | avg finish | income | strength vs division | r
 stats.bySeason.forEach((r, i) => {
   console.log(`  ${String(i + 1).padStart(2)}   |   ${f1(avg(r.level))}     |    ${f1(avg(r.pos))}     | ${String(Math.round(avg(r.coinsIn))).padStart(6)} |       ${avg(r.strengthGap) >= 0 ? '+' : ''}${f1(avg(r.strengthGap))}          |    ${String(Math.round(avg(r.rep))).padStart(3)}     |    ${f1(r.retired / CAREERS)}      |   ${r.trophies}      |   ${r.continental}`);
 });
+console.log('Squad at season end (avg cards): Rare / Epic / Legend · strength of the 7 · careers at a giant');
+stats.bySeason.forEach((r, i) => console.log(`  ${String(i + 1).padStart(2)}   R ${f1(avg(r.sq.rare))}  E ${f1(avg(r.sq.epic))}  L ${f1(avg(r.sq.legend))}  · ${f1(avg(r.top7))} · ${r.topClub}/${CAREERS}  · packs ${Object.entries(r.bought).map(([k, v]) => `${k} ${v.toFixed(1)}`).join(', ')}`));
 console.log(`Club area levels (sum of all 10 areas, end of season): ${stats.bySeason.map((r) => f1(avg(r.areas))).join(' · ')}`);
 console.log(`Card plays used per season (summer + season): ${stats.bySeason.map((r) => f1(avg(r.plays))).join(' · ')}`);
 for (const i of [0, Math.floor(SEASONS / 2), SEASONS - 1]) {
