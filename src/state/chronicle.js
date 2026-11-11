@@ -3,7 +3,7 @@
 
 import { DIVISION_BY_ID } from '../data/world/structure.js';
 import { honoursSummary } from '../engine/titles.js';
-import { CONTINENT_NAME } from '../engine/competitions.js';
+import { CONTINENT_NAME, CONTINENT2_NAME } from '../engine/competitions.js';
 import { standings } from '../engine/season.js';
 import { PHILOSOPHIES, clubIdentity, styleDistance } from '../data/philosophies.js';
 import { normalizeTactics } from '../engine/tactics.js';
@@ -55,6 +55,9 @@ function ownerReason(state) {
   if (state.season?.userTrophies?.length) reasons.push([10, `above all for winning the ${state.season.userTrophies.at(-1)}`]);
   for (const [k, c] of Object.entries(comps?.continental || {})) {
     if (c.entrants?.includes(state.club.id) && !c.winner && played) reasons.push([6, `especially for the run in the ${CONTINENT_NAME[k]}`]);
+  }
+  for (const [k, c] of Object.entries(comps?.continental2 || {})) {
+    if (c.entrants?.includes(state.club.id) && !c.winner && played) reasons.push([5, `especially for the run in the ${CONTINENT2_NAME[k]}`]);
   }
   if (played && obj && pos > 0 && state.phase === 'season') {
     if (pos <= obj.target) reasons.push([pos === 1 ? 8 : 5, `especially for your ${ordinal(pos)} place in ${div.name}`]);

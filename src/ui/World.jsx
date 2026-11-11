@@ -110,7 +110,7 @@ function Clubs({ state }) {
         <h3 className="sub-title">Most decorated</h3>
         <Segmented small label="Titles" value={filter} options={TITLE_FILTERS} onChange={setFilter} />
         <div className="scroll-x">
-          <table className="table table--history">
+          <table className="table table--history table--narrow">
             <thead><tr><th>#</th><th className="table__club">Club</th><th title="Titles">Total</th><th title="League titles">🏆</th><th title="Domestic cups">🥇</th><th title="Continental cups">🌍</th><th title="Club World Cups">🌐</th></tr></thead>
             <tbody>
               {titles.map((r, i) => {

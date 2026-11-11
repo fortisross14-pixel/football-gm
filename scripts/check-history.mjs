@@ -7,7 +7,7 @@ import { DIVISION_BY_ID, DIVISIONS } from '../src/data/world/structure.js';
 
 const errors = [];
 const resolvedNames = new Set();
-const KEY = /^(L:[a-z]{3}-\d|C:[A-Z]{3}|S:[A-Z]{3}|K2?:[a-z]+|KS:[a-z]+|W)$/;
+const KEY = /^(L:[a-z]{3}-\d|N:[A-Z]{3}|C:[A-Z]{3}|S:[A-Z]{3}|K2?:[a-z]+|KS:[a-z]+|W)$/;
 const CONFS = ['europe', 'southamerica', 'northamerica', 'africa', 'asia', 'oceania'];
 const CODES = new Set(DIVISIONS.map((d) => d.code));
 

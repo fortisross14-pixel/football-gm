@@ -11,8 +11,9 @@ import * as europeOther from './europe-other.js';
 import * as americas from './americas.js';
 import * as asiaAfrica from './asia-africa.js';
 import * as continental from './continental.js';
+import * as oceania from './oceania.js';
 
-export const HISTORY_FILES = { europeLeagues, europeCups, europeOther, americas, asiaAfrica, continental };
+export const HISTORY_FILES = { europeLeagues, europeCups, europeOther, americas, asiaAfrica, continental, oceania };
 export const LAST_REAL_YEAR = 2026;
 
 const RAW = Object.assign({}, ...Object.values(HISTORY_FILES).map((f) => f.HISTORY));

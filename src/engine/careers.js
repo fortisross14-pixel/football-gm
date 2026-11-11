@@ -146,7 +146,10 @@ export function clubTrophies(entry, clubId, names = {}) {
   const lg = leagueOf(entry, clubId);
   if (lg?.pos === 1) out.push({ kind: 'league', label: DIVISION_BY_ID[lg.divId]?.name || 'League' });
   for (const [code, c] of Object.entries(entry.cups)) if (c?.winner === clubId) out.push({ kind: 'cup', label: names.cup?.(code) || `${code} Cup` });
+  for (const [code, c] of Object.entries(entry.supercups || {})) if (c?.winner === clubId) out.push({ kind: 'supercup', label: names.supercup?.(code) || `${code} Super Cup` });
   for (const [k, c] of Object.entries(entry.continental)) if (c?.winner === clubId) out.push({ kind: 'continental', label: names.continental?.(k) || k });
+  for (const [k, c] of Object.entries(entry.continental2 || {})) if (c?.winner === clubId) out.push({ kind: 'continental2', label: names.continental2?.(k) || k });
+  for (const [k, c] of Object.entries(entry.contSuper || {})) if (c?.winner === clubId) out.push({ kind: 'contsuper', label: names.contsuper?.(k) || k });
   if (entry.cwc?.winner === clubId) out.push({ kind: 'cwc', label: 'Club World Cup' });
   return out;
 }

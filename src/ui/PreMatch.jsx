@@ -1,6 +1,6 @@
 import React from 'react';
 import { BOOSTS, BOOST_IDS } from '../data/boosts.js';
-import { BASE_BOOST_SLOTS } from '../engine/match.js';
+import { BASE_BOOST_SLOTS, INTL } from '../engine/match.js';
 import { PHILOSOPHIES, nearestPhilosophy } from '../data/philosophies.js';
 import { COACH_PASSIVES } from '../data/coachPassives.js';
 import { teamOverall } from '../engine/cards.js';
@@ -114,7 +114,7 @@ function Bonuses({ state, competition }) {
   if (m.finishing) chips.push(`Finishing +${Math.round(m.finishing * 100)}%`);
   if (m.drain) chips.push(`Stamina drain −${Math.round(m.drain * 100)}%`);
   if (m.cup && competition === 'cup') chips.push(`Cup +${Math.round(m.cup * 100)}%`);
-  if (m.continental && (competition === 'continental' || competition === 'cwc')) chips.push(`Continental +${Math.round(m.continental * 100)}%`);
+  if (m.continental && INTL.has(competition)) chips.push(`Continental +${Math.round(m.continental * 100)}%`);
   if (!chips.length) return null;
   return (
     <div className="bonus-row" aria-label="Active bonuses">

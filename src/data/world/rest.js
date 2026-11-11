@@ -1,4 +1,4 @@
-// Americas (non-Argentina/Brazil), Asia, Oceania and Africa. Ratings and stats are game values; rosters are a 2025–26 snapshot.
+// North America, South America (non-Argentina/Brazil), Asia, Oceania and Africa. Ratings and stats are game values; rosters are a 2025–26 snapshot.
 
 export const CLUBS = {
   'mex-1': [
@@ -80,10 +80,34 @@ export const CLUBS = {
     { id: 'shanghai-port', name: 'Shanghai Port', short: 'SHP', rating: 68, formation: '2-2-2', passive: 'attackMinded', colors: { primary: '#d71920', secondary: '#ffffff', away: '#ffffff' } },
     { id: 'shanghai-shenhua', name: 'Shanghai Shenhua', short: 'SHS', rating: 68, formation: '3-2-1', passive: 'tactician', colors: { primary: '#0047ab', secondary: '#ffffff', away: '#ffffff' } },
     { id: 'chengdu-rongcheng', name: 'Chengdu Rongcheng', short: 'CHE', rating: 67, formation: '3-1-2', passive: 'counterMaster', colors: { primary: '#c8102e', secondary: '#ffffff', away: '#ffffff' } },
-    { id: 'melbourne-city', name: 'Melbourne City', short: 'MCY', rating: 67, formation: '2-3-1', passive: 'fitnessGuru', colors: { primary: '#6caddf', secondary: '#1c2c5b', away: '#1c2c5b' } },
+    { id: 'fc-seoul', name: 'FC Seoul', short: 'SEO', rating: 67, formation: '2-3-1', passive: 'attackMinded', colors: { primary: '#c8102e', secondary: '#000000', away: '#ffffff' } },
+    { id: 'shandong-taishan', name: 'Shandong Taishan', short: 'SDT', rating: 67, formation: '2-2-2', passive: 'ironDiscipline', colors: { primary: '#f47920', secondary: '#ffffff', away: '#ffffff' } },
     { id: 'buriram-united', name: 'Buriram United', short: 'BUR', rating: 66, formation: '3-2-1', passive: 'cupSpecialist', colors: { primary: '#1a2a80', secondary: '#f58220', away: '#ffffff' } },
     { id: 'guangzhou-fc', name: 'Guangzhou FC', short: 'GZF', rating: 68, formation: '2-3-1', passive: 'tactician', colors: { primary: '#e2001a', secondary: '#ffffff', away: '#ffffff' } },
+  ],
+  'nao-1': [
+    { id: 'saprissa', name: 'Deportivo Saprissa', short: 'SAP', rating: 68, formation: '2-3-1', passive: 'attackMinded', colors: { primary: '#5b2c83', secondary: '#ffffff', away: '#ffffff' } },
+    { id: 'alajuelense', name: 'Alajuelense', short: 'ALA', rating: 68, formation: '2-2-2', passive: 'motivator', colors: { primary: '#d71920', secondary: '#000000', away: '#ffffff' } },
+    { id: 'herediano', name: 'Herediano', short: 'HER', rating: 66, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#d71920', secondary: '#ffd200', away: '#ffffff' } },
+    { id: 'olimpia-hon', name: 'Olimpia', short: 'OLI', rating: 66, formation: '2-3-1', passive: 'cupSpecialist', colors: { primary: '#ffffff', secondary: '#0033a0', away: '#0033a0' } },
+    { id: 'motagua', name: 'Motagua', short: 'MOT', rating: 65, formation: '3-1-2', passive: 'counterMaster', colors: { primary: '#0033a0', secondary: '#ffffff', away: '#ffffff' } },
+    { id: 'municipal-gua', name: 'Municipal', short: 'MUN', rating: 64, formation: '3-2-1', passive: 'fitnessGuru', colors: { primary: '#d71920', secondary: '#0033a0', away: '#ffffff' } },
+    { id: 'vancouver-whitecaps', name: 'Vancouver Whitecaps', short: 'VAN', rating: 70, formation: '2-3-1', passive: 'tactician', colors: { primary: '#00245e', secondary: '#9dc2ea', away: '#ffffff' } },
+    { id: 'toronto-fc', name: 'Toronto FC', short: 'TOR', rating: 69, formation: '2-2-2', passive: 'attackMinded', colors: { primary: '#b81137', secondary: '#455560', away: '#ffffff' } },
+    { id: 'cf-montreal', name: 'CF Montréal', short: 'MTL', rating: 68, formation: '3-1-2', passive: 'counterMaster', colors: { primary: '#0033a1', secondary: '#000000', away: '#ffffff' } },
+    { id: 'forge-fc', name: 'Forge FC', short: 'FOR', rating: 63, formation: '3-2-1', passive: 'motivator', colors: { primary: '#f26522', secondary: '#4d4d4f', away: '#ffffff' } },
+  ],
+  'oce-1': [
+    { id: 'melbourne-city', name: 'Melbourne City', short: 'MCY', rating: 67, formation: '2-3-1', passive: 'fitnessGuru', colors: { primary: '#6caddf', secondary: '#1c2c5b', away: '#1c2c5b' } },
     { id: 'sydney-fc', name: 'Sydney FC', short: 'SYD', rating: 66, formation: '2-2-2', passive: 'attackMinded', colors: { primary: '#6cadd7', secondary: '#0b1f45', away: '#ffffff' } },
+    { id: 'auckland-city', name: 'Auckland City', short: 'AKC', rating: 64, formation: '2-3-1', passive: 'cupSpecialist', colors: { primary: '#00205b', secondary: '#ffffff', away: '#ffffff' } },
+    { id: 'wellington-phoenix', name: 'Wellington Phoenix', short: 'WEL', rating: 65, formation: '2-2-2', passive: 'fitnessGuru', colors: { primary: '#ffd200', secondary: '#000000', away: '#000000' } },
+    { id: 'auckland-fc', name: 'Auckland FC', short: 'AFC', rating: 66, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#1a1a1a', secondary: '#4cc3f1', away: '#ffffff' } },
+    { id: 'melbourne-victory', name: 'Melbourne Victory', short: 'MVC', rating: 66, formation: '2-3-1', passive: 'motivator', colors: { primary: '#00205b', secondary: '#ffffff', away: '#ffffff' } },
+    { id: 'western-sydney', name: 'Western Sydney Wanderers', short: 'WSW', rating: 65, formation: '3-1-2', passive: 'counterMaster', colors: { primary: '#d71920', secondary: '#000000', away: '#ffffff' } },
+    { id: 'brisbane-roar', name: 'Brisbane Roar', short: 'BRI', rating: 64, formation: '2-3-1', passive: 'tactician', colors: { primary: '#f58220', secondary: '#7a1e2b', away: '#ffffff' } },
+    { id: 'adelaide-united', name: 'Adelaide United', short: 'ADL', rating: 65, formation: '2-2-2', passive: 'attackMinded', colors: { primary: '#d71920', secondary: '#ffd200', away: '#ffffff' } },
+    { id: 'central-coast', name: 'Central Coast Mariners', short: 'CCM', rating: 65, formation: '3-2-1', passive: 'ironDiscipline', colors: { primary: '#ffd200', secondary: '#0b2240', away: '#0b2240' } },
   ],
   'sau-1': [
     { id: 'al-hilal', name: 'Al-Hilal', short: 'HIL', rating: 80, formation: '2-3-1', passive: 'tactician', colors: { primary: '#0055a5', secondary: '#ffffff', away: '#ffffff' } },

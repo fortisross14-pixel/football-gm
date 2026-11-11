@@ -3,47 +3,31 @@
 // 'S:<code>' super cup, 'K:<conf>' / 'K2:<conf>' continental cups, 'KS:<conf>' continental super cup,
 // 'W' Club World Cup.
 import { DIVISIONS, DIVISION_BY_ID } from '../data/world/structure.js';
-import { CONTINENT_NAME } from './competitions.js';
+import { keyName } from './competitions.js';
+import { finalsByKey } from './history.js';
 import { REAL_HISTORY, REAL_TITLES } from '../data/history/index.js';
 import { seasonYear } from './years.js';
 
-// In-game continental tournaments that map onto a real competition with another key.
-const ALIAS = { 'K:americas': 'K:southamerica' };
-const UNALIAS = Object.fromEntries(Object.entries(ALIAS).map(([a, b]) => [b, a]));
-export const realKeyOf = (gameKey) => (REAL_HISTORY[gameKey] ? gameKey : ALIAS[gameKey] || null);
-const gameKeyOf = (key) => UNALIAS[key] || key;
-
-export const KIND_OF = { L: 'league', C: 'cup', S: 'super', K: 'continental', K2: 'continental', KS: 'super', W: 'world' };
+// 'N:<country>' is a real national league outside the game (clubs of the invented "Other" leagues).
+export const KIND_OF = { L: 'league', N: 'league', C: 'cup', S: 'super', K: 'continental', K2: 'continental', KS: 'super', W: 'world' };
 export const kindOf = (key) => KIND_OF[key.split(':')[0]] || 'cup';
-const ORDER = { W: 0, K: 1, K2: 2, L: 3, C: 4, KS: 5, S: 6 };
+const ORDER = { W: 0, K: 1, K2: 2, L: 3, N: 3, C: 4, KS: 5, S: 6 };
 const orderOf = (key) => ORDER[key.split(':')[0]] ?? 7;
 
-const countryOf = (code) => DIVISIONS.find((d) => d.code === code)?.country;
-// The competition as it exists in the game (null when the game doesn't play it).
-export function gameCompName(key) {
-  const [kind, ref] = key.split(':');
-  if (key === 'W') return 'Club World Cup';
-  if (kind === 'L') return DIVISION_BY_ID[ref]?.name || null;
-  if (kind === 'C') return countryOf(ref) ? `${countryOf(ref)} Cup` : null;
-  if (kind === 'K') return CONTINENT_NAME[ref] || null;
-  return null;
-}
-// Game name when the game plays it (names stay the game's), else the real one.
+// The game's name when the game plays the competition (names stay the game's), else the real one.
+const inGame = (key) => {
+  const name = keyName(key);
+  return name && name !== key && name !== key.split(':')[1] ? name : null;
+};
 export function competitionName(key) {
-  return gameCompName(gameKeyOf(key)) || gameCompName(key) || REAL_HISTORY[key]?.name || key;
+  return (key.startsWith('N:') ? null : inGame(key)) || REAL_HISTORY[key]?.name || key;
 }
 
-// Every winner in one archive entry: [{ key, winner, runnerUp }] with in-game keys.
+// Every final in one archive entry: [{ key, winner, runnerUp }].
 export function entryWinners(entry) {
-  const out = [];
-  for (const [divId, lg] of Object.entries(entry.leagues || {})) if (lg.table?.[0]) out.push({ key: `L:${divId}`, winner: lg.table[0][0], runnerUp: lg.table[1]?.[0] || null });
-  for (const [code, c] of Object.entries(entry.cups || {})) if (c?.winner) out.push({ key: `C:${code}`, winner: c.winner, runnerUp: c.runnerUp || null });
-  for (const [k, c] of Object.entries(entry.continental || {})) if (c?.winner) out.push({ key: `K:${k}`, winner: c.winner, runnerUp: c.runnerUp || null });
-  if (entry.cwc?.winner) out.push({ key: 'W', winner: entry.cwc.winner, runnerUp: entry.cwc.runnerUp || null });
-  return out;
+  return Object.entries(finalsByKey(entry)).filter(([, r]) => r?.winner).map(([key, r]) => ({ key, winner: r.winner, runnerUp: r.runnerUp || null }));
 }
-// The key a title is filed under: the real competition's key when there is one.
-const fileKey = (gameKey) => realKeyOf(gameKey) || gameKey;
+const fileKey = (key) => key;
 
 // One club's titles, real and in-game, per competition (most prestigious first).
 // → [{ key, kind, name, real: [years], game: [years], n }]
@@ -108,7 +92,7 @@ export function titleRanking(archive, filter = 'all', clubIds = null) {
 // A competition's winners by year: real life, then the game.
 // → { name, note, real: [{ year, winners: [{ id, name }] }], game: [{ year, season, winner, runnerUp }], most: [{ id, name, n }] }
 export function competitionHistory(archive, gameKey) {
-  const real = REAL_HISTORY[realKeyOf(gameKey)] || null;
+  const real = REAL_HISTORY[gameKey] || null;
   const game = [];
   for (const e of archive || []) {
     const w = entryWinners(e).find((x) => x.key === gameKey);
@@ -126,17 +110,21 @@ export function competitionHistory(archive, gameKey) {
   return { name: competitionName(gameKey), note: real?.note || null, from: real?.from || null, real: real?.years || [], game, most };
 }
 
-// The club's league: its country's top flight.
-export const leagueKeyOf = (divisionId) => {
+// The club's league: its country's top flight, or for a club of an invented "Other" league
+// the real national league it has titles in.
+export const leagueKeyOf = (divisionId, clubId = null) => {
   const div = DIVISION_BY_ID[divisionId];
-  return div ? `L:${DIVISIONS.find((d) => d.code === div.code && d.tier === 1).id}` : null;
+  if (!div) return null;
+  const top = `L:${DIVISIONS.find((d) => d.code === div.code && d.tier === 1).id}`;
+  if (REAL_HISTORY[top] || !clubId) return top;
+  return Object.keys(REAL_TITLES[clubId] || {}).find((k) => k.startsWith('N:')) || top;
 };
 
 // A summary for sentences: league, domestic cup and continental titles, with the last year
 // and how many in the last `window` seasons before `nowYear`.
 export function honoursSummary(archive, clubId, divisionId, nowYear, window = 10) {
   const titles = clubTitles(archive, clubId);
-  const lk = leagueKeyOf(divisionId);
+  const lk = leagueKeyOf(divisionId, clubId);
   const pack = (rows) => {
     const years = rows.flatMap((r) => [...r.real, ...r.game]).filter((y) => y < nowYear).sort((a, b) => a - b);
     return { n: years.length, years, last: years.length ? Math.max(...years) : null, recent: years.filter((y) => y >= nowYear - window && y < nowYear).length, name: rows[0]?.name || null };

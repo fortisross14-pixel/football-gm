@@ -3,6 +3,12 @@
 > Replaces the old management-sim design (`GAME_DESIGN_DOCUMENT.md`), which is kept for reference only.
 > Language: English. Platform: web (React + Vite), mobile-first.
 
+**Changes in v2.3 (confederations, super cups, second continental trophies)**
+- Six **confederations** (§3.4): Europe, South America, North America, Africa, Asia, Oceania (they were Europe, Americas, Africa–APAC).
+- New leagues: **North America Other** (Costa Rica, Honduras, Guatemala, Canada) and **Oceania** (Australia and New Zealand; Melbourne City and Sydney FC moved there from East Asia Other, which took FC Seoul and Shandong Taishan). 46 divisions, 460 clubs.
+- A **super cup** in every country on matchday 0 (§3.3b), a **second continental trophy** in five confederations, a **continental super cup**, and a six-club **Club World Cup** (§3.5).
+- Competition keys for every stats, history and real-life record: `L:<divId>`, `C:<code>`, `S:<code>`, `K:<conf>`, `K2:<conf>`, `KS:<conf>`, `W` (§3.7). Saves are version 5.
+
 **Changes in v2.2 (Club tab)**
 - Season and GM cards stack with these: Packed House adds a % of the ticket-priced gate, Sponsor's Favourite pays on top of the sponsor contract, Money Man takes its % of everything.
 - Six tabs: **Home** (was "Club"), Squad, **Club** (new), Cards, Competitions, World.
@@ -93,8 +99,8 @@ Every division has **10 clubs** and plays a double round-robin: **18 matchdays**
 |---|---|---|---|
 | Big 4 | England, Spain, Italy, Germany | 3 each | 120 |
 | Two divisions | France, Portugal, Netherlands, Argentina, Brazil, Mexico (Liga MX + Liga de Expansión), Japan (J1 + J2) | 2 each | 140 |
-| Single-division | Turkey, Belgium, Switzerland, Denmark, Scotland, Austria, Greece, Europe Other, USA, Colombia, Chile, South America Other, Asia Other, APAC Other, Saudi Arabia, Nigeria, Egypt, Africa Other | 1 each | 180 |
-| **Total** | | **44 divisions** | **440 clubs** |
+| Single-division | Turkey, Belgium, Switzerland, Denmark, Scotland, Austria, Greece, Europe Other, USA, North America Other, Colombia, Chile, South America Other, Asia Other, East Asia Other, Saudi Arabia, Nigeria, Egypt, Africa Other, Oceania | 1 each | 200 |
+| **Total** | | **46 divisions** | **460 clubs** |
 
 v1.9 added two real clubs to every existing division, four leagues (**Belgium** Pro League, level 2; **Switzerland** Super League, **Denmark** Superliga and **Chile** Primera División, level 3) and two second divisions (**Mexico** Liga de Expansión, **Japan** J2). Club Brugge, FC Basel, FC Copenhagen, Colo-Colo and Universidad de Chile moved from the "Other" divisions into their new national leagues.
 
@@ -105,7 +111,9 @@ v1.9 added two real clubs to every existing division, four leagues (**Belgium** 
 | Europe Other | Shakhtar Donetsk, Dynamo Kyiv, Bodø/Glimt, Red Star Belgrade, Slavia Prague, Sparta Prague, Dinamo Zagreb, Ferencváros, Malmö FF, Legia Warsaw |
 | South America Other | LDU Quito, Independiente del Valle, Barcelona SC, Peñarol, Nacional, Libertad, Cerro Porteño, Olimpia, Universitario, Alianza Lima |
 | Asia Other | Qatar, UAE, Iran (Persepolis, Tractor, Esteghlal), Uzbekistan (Pakhtakor) |
-| APAC Other | South Korea, China (incl. Guangzhou FC), Australia (Melbourne City, Sydney FC), Thailand |
+| East Asia Other (was APAC Other) | South Korea (incl. FC Seoul), China (incl. Guangzhou FC, Shandong Taishan), Thailand |
+| North America Other (v2.3, Liga Norte) | Saprissa, Alajuelense, Herediano (Costa Rica), Olimpia, Motagua (Honduras), Municipal (Guatemala), Vancouver Whitecaps, Toronto FC, CF Montréal, Forge FC (Canada) |
+| Oceania (v2.3, Oceania Premier League) | Melbourne City, Sydney FC, Melbourne Victory, Western Sydney Wanderers, Brisbane Roar, Adelaide United, Central Coast Mariners (Australia), Auckland City, Auckland FC, Wellington Phoenix (New Zealand) |
 | Africa Other | South Africa (incl. Kaizer Chiefs), Morocco, Tunisia, Algeria, Sudan, DR Congo (TP Mazembe) |
 
 Every league has a name (LaLiga, Pro League, J2 League…); the "Other" divisions have invented ones.
@@ -134,42 +142,58 @@ Each cup is a quick **single-match knockout**. One loss and you're out. The brac
 - Big 4 Division 3 clubs don't play the cup.
 - The draw is random, and the lower-division club plays at home. That gives giant-killing chances.
 
-### 3.4 Continental tournaments
+### 3.3b Super cups (v2.3)
 
-Clubs qualify through **last season's** league results. For season 1, the seeded "previous champions" come from club strength.
+- Every country, **matchday 0** (before league matchday 1): last season's **league champion** against the **cup winner** (the cup runner-up if the champion did the double). One match at a neutral venue, penalties if level. Only those two clubs play; everyone else's calendar is unchanged. England's is the **Community Shield**.
+- Season 1 uses club strength: the strongest top-flight club against the second strongest.
+- Pays like a cup game; the winner gets 80 × multiplier coins, a Bronze pack and +1 reputation.
 
-**Europe (8 teams)**
-- Direct: champions of England, Spain, Italy and Germany (4).
-- The other 11 European champions play for 4 places: France, Portugal, Netherlands, Turkey and Belgium go to the qualifying round; Scotland, Austria, Greece, Denmark, Switzerland and Europe Other first play a **preliminary round** (3 ties), and its winners join the qualifying round (8 clubs, 4 ties).
+### 3.4 Continental tournaments (v2.3: six confederations)
 
-**Americas (8 teams)**
-- Champions of Argentina, Brazil, Mexico, USA, Colombia, Chile and South America Other (7), plus the better runner-up of Argentina and Brazil (by points).
+Clubs qualify through **last season's** league tables and cup finals (season 1: club strength, with the second-strongest top-flight club standing in for the cup winner). Every confederation has a **tier-1 cup (K)** for champions; five have a **tier-2 trophy (K2)** for cup winners and the next-placed league clubs (fill: if the cup winner is already in K, the next-placed club not yet in either takes the place). Nobody plays both.
 
-**Africa–APAC (8 teams)**
-- Champions of Japan, Asia Other, APAC Other, Saudi Arabia, Nigeria, Egypt and Africa Other (7), plus the best runner-up by points (1).
+Rounds: more qualifiers than places → the last-listed (weakest leagues) play a **preliminary round**; fewer → the first-listed get a bye. Groups of 4, single round-robin (3 games). 1 group → the top two play the final; 2 groups → semi-finals (A1–B2, B1–A2) → final; 4 groups → quarter-finals (A1–B2, B1–A2, C1–D2, D1–C2) → semi-finals → final. Group winners play knockout games at home; finals are neutral.
 
-**Format (all three):** 2 groups of 4 (single round-robin, 3 matches) → semi-finals → final. That's up to 5 matches, plus up to 2 for European qualifiers.
+| Confederation | Tier 1 (K) | Tier 2 (K2) |
+|---|---|---|
+| **Europe** | **European Cup**, 15 clubs: ENG, ESP, ITA, GER champions direct; FRA, POR, NED, TUR, BEL champions to qualifying; SCO, AUT, GRE, DEN, SUI, Europe Other champions play a preliminary round (3 ties) → qualifying (4 ties) → 2 groups → SF → F. Up to 7 games | **European Trophy**, 30 clubs: Big 4 cup winners + next placed (8) direct; the other 11 countries' cup winner + next placed (22): the last 12 play a preliminary round (6 ties) → qualifying (8 ties) → **4 groups** → QF → SF → F. Up to 8 games |
+| **South America** | **South American Cup**, 12: ARG and BRA top two direct; COL, CHI, SAM champions, ARG and BRA 3rd, COL, CHI, SAM runners-up play qualifying (4 ties) → 2 groups → SF → F | **South American Trophy**, 20: ARG and BRA cup winner + 3 next placed, COL and CHI cup winner + 1 direct (12); SAM cup winner + 1, COL 2, CHI 2, SAM 2 more play qualifying (4 ties) → 4 groups → QF → SF → F |
+| **North America** | **North American Cup**, 5: MEX, USA and North America Other champions direct; the Mexican and US runners-up play off; 1 group of 4 → the top two play the final | **North American Trophy**, 4: MEX cup winner + next placed, USA and NAO cup winners; 1 group → final |
+| **Africa** | **African Cup**, 5: EGY, NGA, Africa Other champions direct; EGY and AFR runners-up play off; 1 group → final | **African Trophy**, 4: EGY and NGA cup winners, AFR cup winner + next placed; 1 group → final |
+| **Asia** | **Asian Cup**, 8: top two of Japan (J1), Saudi Arabia, Asia Other and East Asia Other; 2 groups → SF → F | **Asian Trophy**, 8: each country's cup winner + next placed; 2 groups → SF → F |
+| **Oceania** | **Oceania Cup**, 4: the league's top three and the cup winner (next placed if already in); 1 group → final | none |
+
+**Continental super cup (KS)**: the K winner against the K2 winner of last season, one neutral match at the start of the season (after league matchday 1). Europe, South America, North America, Africa and Asia; season 1 uses the first-listed entrant of each.
+
+Prizes: K as before (win 100 / draw 40 / loss 20, title 1,500 + Elite pack, finalist 500, qualifying win 150). K2 a bit under half (45 / 18 / 10, title 600 + Gold pack, finalist 200, qualifying win 75). KS 100 / 40 / 20 and 300 + a Gold pack. Reputation: K +10, K2 +5, KS +2, super cup +1 (before the league-level weight). Continental Nights and Big Game apply in K, K2, KS and the Club World Cup.
 
 ### 3.5 Club World Cup (every season, at the end)
 
-- The **3 continental champions** of that season.
-- Single round-robin (each team plays 2), then the **top 2 play the final**. That's up to 3 matches.
+- The **6 continental champions** (K winners) of that season.
+- Two groups of three (Europe's and South America's champions apart, the other four drawn), each club plays the other two, then the **group winners play the final**. Up to 3 matches.
 - Played at a neutral venue: no home bonus, and Fortress Season doesn't apply.
 
 ### 3.6 Season calendar
 
+`S, L1, KS, L2, CP, L3, CQ, L4, CUP0, L5, CG0, L6, CUP1, L7, L8, CG1, L9, CUP2, L10, L11, CG2, L12, CUP3, L13, CQF, L14, CSF, L15, CUP4, L16, L17, L18, CF, CWC0–2, CWCF`
+
 | Phase | Events |
 |---|---|
 | Off-season | **Summer Transfer Market** (9 fresh offers): sign players, upgrade club areas, pick a season event. The market stays open all season, with 6 new offers every 5 league matchdays |
-| MD 1–4 | European preliminary round (after MD 2) and qualifying (after MD 3) · Cup preliminary round (after MD 4) |
-| MD 5–9 | Continental group game 1 (after MD 5) · Cup R16 (after MD 6) · Group game 2 (after MD 8) · Cup QF (after MD 9) |
-| MD 10–14 | Group game 3 (after MD 11) · Cup SF (after MD 12) · Continental SF (after MD 14) |
+| MD 0 | Domestic super cups |
+| MD 1–4 | Continental super cups (after MD 1) · preliminary round (after MD 2) and qualifying (after MD 3) · Cup preliminary round (after MD 4) |
+| MD 5–9 | Group game 1 (after MD 5) · Cup R16 (after MD 6) · Group game 2 (after MD 8) · Cup QF (after MD 9) |
+| MD 10–14 | Group game 3 (after MD 11) · Cup SF (after MD 12) · K2 quarter-finals (after MD 13) · Continental SF (after MD 14) |
 | MD 15–18 | Cup final (after MD 15) · Continental finals (after MD 18) |
-| Club World Cup | 3 continental champions |
+| Club World Cup | 6 continental champions |
 | Season end | Prizes, promotion/relegation, retirements, board review, **job offers** |
 
-- At most **33 matches** per season (18 + 5 + 7 + 3), and a typical club plays 20–24.
+- At most **36 matches** per season for one club (18 league + super cup + 5 cup + continental super cup + 8 K2 or 7 K + 3 Club World Cup), and a typical club plays 20–24. K and K2 groups share the same midweeks; only the K2 quarter-finals add a round.
 - All AI-vs-AI matches are simulated instantly from team ratings.
+
+### 3.7 Competition keys
+
+Stats book, history archive (`engine/history.js` `finalsByKey`) and any real-life record use the same keys: `L:<divId>` league, `C:<code>` domestic cup, `S:<code>` super cup, `K:<conf>` continental cup, `K2:<conf>` second continental trophy, `KS:<conf>` continental super cup, `W` Club World Cup. `<code>` is the country code (ESP, ENG, NAO, OCE…), `<conf>` one of `europe`, `southamerica`, `northamerica`, `africa`, `asia`, `oceania`. The archive stores each season's finals as `cups`, `supercups`, `continental`, `continental2`, `contSuper` and `cwc` (`{ winner, runnerUp }`).
 
 ---
 
@@ -656,6 +680,8 @@ Your GM reputation runs from **0 to 100** and decides which clubs want you.
 | Cup winner | +5 |
 | League title | +10 |
 | Continental title | +15 |
+| Second continental trophy (v2.3) | +5 |
+| Super cup / continental super cup (v2.3) | +1 / +2 |
 | Club World Cup | +20 |
 
 ### 7.2 Board objective
@@ -741,7 +767,7 @@ Every player name opens a **player page** (Overview: card, attributes, status, p
 
 **Calendar years:** season 1 is the 2026–27 season, shown as **2027**; season N is 2026 + N (`engine/years.js`: `seasonYear`, `yearLabel`). Seasons are named by the year they end in, the same convention as the real-life lists, and every user-facing label (inbox, history tables, awards, careers, records, contracts) shows the year. Internal season numbers are unchanged.
 
-**Real-life winners** (`src/data/history/`, checked by `scripts/check-history.mjs`): for each competition key (`L:<divId>` league, `C:<code>` domestic cup, `S:<code>` super cup, `K:<conf>` top continental cup, `K2:<conf>` second continental cup, `KS:<conf>` continental super cup, `W` Intercontinental Cup + FIFA Club World Cup) the winners by year up to 2026, as `{ name, from, w: [...] }`. An entry is a world club id, a plain name (a club outside the game, shown by name and never counted), `null` (not held) or a list (several titles that year: Apertura/Clausura, shared titles). Names that match a world club's name are resolved to it at load. Confederations: europe, southamerica, northamerica, africa, asia, oceania; the game's `K:americas` maps onto the Libertadores until the competitions realignment.
+**Real-life winners** (`src/data/history/`, checked by `scripts/check-history.mjs`): for each competition key (`L:<divId>` league, `C:<code>` domestic cup, `S:<code>` super cup, `K:<conf>` top continental cup, `K2:<conf>` second continental cup, `KS:<conf>` continental super cup, `W` Intercontinental Cup + FIFA Club World Cup) the winners by year up to 2026, as `{ name, from, w: [...] }`. An entry is a world club id, a plain name (a club outside the game, shown by name and never counted), `null` (not held) or a list (several titles that year: Apertura/Clausura, shared titles). Names that match a world club's name are resolved to it at load. Confederations: europe, southamerica, northamerica, africa, asia, oceania, the same ids the game's tournaments use, so real and in-game winners share keys (K:southamerica = Libertadores, K:northamerica = CONCACAF Champions Cup…). `N:<country>` holds a real national league outside the game (the A-League for the Oceania clubs); it counts as the club's league titles. In-game finals come from `finalsByKey` (engine/history.js).
 
 **Where it shows** (`engine/titles.js` merges real life with the in-game archive):
 - Club page → **Honours**: one line per competition, "×N" and the years, real years first, then the in-game years highlighted; league runner-ups and lost finals from the game. **Overview**: a one-line summary ("36 league titles, the last in 2024 · 15 European Cup titles") and the main competitions with their first years.

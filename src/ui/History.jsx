@@ -3,7 +3,7 @@ import {
   awardRow, gloveRow, titleTable, playerLeaders, bestSeasons, leagueLeaders, scorerRow,
 } from '../engine/history.js';
 import { DIVISIONS, DIVISION_BY_ID } from '../data/world/structure.js';
-import { CUP_NAME_FOR, CONTINENTAL_NAME } from './names.js';
+import { CUP_NAME_FOR, SUPER_CUP_NAME_FOR, CONTINENTAL_NAME, CONTINENTAL2_NAME } from './names.js';
 import { POOL_BY_ID, seasonLeaders } from '../state/club.js';
 import { Segmented } from './Home.jsx';
 import Stats from './Stats.jsx';
@@ -62,7 +62,9 @@ function Seasons({ state, archive, divId }) {
         const mvp = awardRow(lg.mvp, nameOf);
         const glove = gloveRow(lg.glove, nameOf);
         const cup = div.tier === 1 ? e.cups[div.code] : null;
-        const cont = div.tier === 1 && div.level === 1 ? e.continental[div.continent] : null;
+        const cont = div.tier === 1 ? e.continental[div.continent] : null;
+        const cont2 = div.tier === 1 ? e.continental2?.[div.continent] : null;
+        const sup = div.tier === 1 ? e.supercups?.[div.code] : null;
         return (
           <article key={e.year} className="season-card">
             <header><b>{yearLabel(e.year)}</b>{e.cwc?.winner && <span className="muted">Club World Cup: {state.world.clubs[e.cwc.winner]?.name}</span>}</header>
@@ -74,6 +76,8 @@ function Seasons({ state, archive, divId }) {
               <dt>⭐ MVP</dt><dd>{mvp ? <><PlayerLink id={mvp.id} name={mvp.name} /> <small>{state.world.clubs[mvp.clubId]?.short}</small></> : '—'}</dd>
               <dt>🧤 Golden Glove</dt><dd>{glove ? <>{glove.name ? <PlayerLink id={glove.id} name={glove.name} /> : `${state.world.clubs[glove.clubId]?.short} keeper`} <small>{glove.ga} conceded · {glove.cs} clean sheets</small></> : '—'}</dd>
               {cup && <><dt>🥇 {CUP_NAME_FOR(div.code)}</dt><dd><ClubName state={state} id={cup.winner} />{cup.runnerUp && <small> beat {state.world.clubs[cup.runnerUp]?.short}</small>}</dd></>}
+              {sup?.winner && <><dt>🛡️ {SUPER_CUP_NAME_FOR(div.code)}</dt><dd><ClubName state={state} id={sup.winner} />{sup.runnerUp && <small> beat {state.world.clubs[sup.runnerUp]?.short}</small>}</dd></>}
+              {cont2?.winner && <><dt>🌎 {CONTINENTAL2_NAME[div.continent]}</dt><dd><ClubName state={state} id={cont2.winner} />{cont2.runnerUp && <small> beat {state.world.clubs[cont2.runnerUp]?.short}</small>}</dd></>}
               {cont?.winner && <><dt>🌍 {CONTINENTAL_NAME[div.continent]}</dt><dd><ClubName state={state} id={cont.winner} />{cont.runnerUp && <small> beat {state.world.clubs[cont.runnerUp]?.short}</small>}</dd></>}
             </dl>
           </article>

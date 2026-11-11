@@ -152,6 +152,7 @@ export const SVG_BADGES = {
     'santos-laguna': 'Santos_Laguna', leon: 'Club_Leon', atlas: 'Atlas', necaxa: 'Necaxa', tijuana: 'Club_Tijuana', puebla: 'Puebla', queretaro: 'Queretaro_FC', atlante: 'Atlante_FC', 'atletico-morelia': 'Club_Atlético_Morelia', 'toros-neza': 'Toros_Neza', veracruz: 'CD_Veracruz', 'atletico-san-luis': 'Atletico_de_San_Luis',
   },
   usa: {
+    'vancouver-whitecaps': 'Vancouver_Whitecaps_FC', 'toronto-fc': 'Toronto_FC', 'cf-montreal': 'CF_Montréal',
     'inter-miami': 'Inter_Miami_CF', lafc: 'Los_Angeles_Football_Club',
     'philadelphia-union': 'Philadelphia_Union', 'fc-cincinnati': 'FC_Cincinnati',
     'san-diego-fc': 'San_Diego_Football_Club', 'columbus-crew': 'Columbus_Crew',
@@ -197,15 +198,31 @@ export const SVG_BADGES = {
     esteghlal: 'Esteghlal',
   },
   'south-korea': {
+    'fc-seoul': 'FC_Seoul',
     'ulsan-hd': 'Ulsan_HD_FC', 'jeonbuk-hyundai': 'Jeonbuk', 'pohang-steelers': 'Pohang_Steelers',
   },
   china: {
+    'shandong-taishan': 'Shandong_Taishan',
     'shanghai-port': 'Shanghai_Port', 'shanghai-shenhua': 'Shanghai_Shenhua',
     'chengdu-rongcheng': 'Chengdu_Rongcheng',
   },
   australia: {
     'melbourne-city': 'Melbourne_City_FC',
     'sydney-fc': 'Sydney_FC',
+    'melbourne-victory': 'Melbourne_Victory_FC', 'western-sydney': 'Western_Sydney_Wanderers_FC', 'brisbane-roar': 'Brisbane_Roar_FC',
+    'adelaide-united': 'Adelaide_United_FC', 'central-coast': 'Central_Coast_Mariners_FC',
+  },
+  'new-zealand': {
+    'auckland-city': 'Auckland_City_FC', 'auckland-fc': 'Auckland_FC', 'wellington-phoenix': 'Wellington_Phoenix_FC',
+  },
+  'costa-rica': {
+    saprissa: 'Deportivo_Saprissa', alajuelense: 'Liga_Deportiva_Alajuelense', herediano: 'Club_Sport_Herediano',
+  },
+  guatemala: {
+    'municipal-gua': 'CSD_Municipal',
+  },
+  canada: {
+    'forge-fc': 'Forge',
   },
   thailand: {
     'buriram-united': 'Buriram_United',

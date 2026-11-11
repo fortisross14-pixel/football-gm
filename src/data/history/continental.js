@@ -17,13 +17,13 @@ const SAN = 'santos'; const FLA = 'flamengo'; const SPF = 'sao-paulo'; const GRE
 const COR = 'corinthians'; const PAL = 'palmeiras'; const CAM = 'atletico-mineiro'; const CAP = 'athletico-pr'; const FLU = 'fluminense';
 const LDU = 'ldu-quito'; const IDV = 'independiente-del-valle'; const NAC = 'atletico-nacional'; const LAN = 'lanus';
 
-const AME = 'america-mex'; const CAZ = 'cruz-azul'; const PAC = 'pachuca'; const MTY = 'monterrey'; const SAP = 'Saprissa';
+const AME = 'america-mex'; const CAZ = 'cruz-azul'; const PAC = 'pachuca'; const MTY = 'monterrey'; const SAP = 'saprissa';
 
 const AHY = 'al-ahly'; const ZAM = 'zamalek'; const MAZ = 'tp-mazembe'; const EST_T = 'esperance'; const WYD = 'wydad'; const RAJ = 'raja-casablanca';
 const ENY = 'enyimba'; const CAN = 'Canon Yaoundé'; const HAF = 'Hafia Conakry'; const SFX = 'CS Sfaxien'; const ESS = 'Étoile du Sahel'; const BRK = 'rs-berkane';
 
 const HIL = 'al-hilal'; const ITT = 'al-ittihad'; const POH = 'pohang-steelers'; const URA = 'urawa-reds'; const ULS = 'ulsan-hd';
-const KUW = 'Al-Kuwait'; const QWJ = 'Al-Quwa Al-Jawiya'; const AUC = 'Auckland City';
+const KUW = 'Al-Kuwait'; const QWJ = 'Al-Quwa Al-Jawiya'; const AUC = 'auckland-city';
 const _ = null;
 const x = (id, n) => Array(n).fill(id);
 
@@ -94,7 +94,7 @@ export const HISTORY = {
   'K:northamerica': {
     name: 'CONCACAF Champions Cup', from: 1990, note: 'From 1990 (earlier editions not listed).',
     w: [AME, 'puebla', AME, SAP, 'Cartaginés', SAP, CAZ, CAZ, 'dc-united', 'necaxa',
-      /* 2000 */ 'la-galaxy', _, PAC, 'toluca', 'Alajuelense', SAP, AME, PAC, PAC, 'atlante',
+      /* 2000 */ 'la-galaxy', _, PAC, 'toluca', 'alajuelense', SAP, AME, PAC, PAC, 'atlante',
       /* 2010 */ PAC, MTY, MTY, MTY, CAZ, AME, AME, PAC, 'guadalajara', MTY,
       /* 2020 */ 'tigres-uanl', MTY, 'seattle-sounders', 'leon', PAC, CAZ, 'toluca'],
   },
@@ -123,14 +123,14 @@ export const HISTORY = {
     w: ['Daewoo Royals', 'Furukawa Electric', 'tokyo-verdy', 'al-sadd', 'Al-Rasheed',
       /* 1990 */ 'Liaoning', 'esteghlal', HIL, 'PAS Tehran', 'Thai Farmers Bank', 'Thai Farmers Bank', 'Ilhwa Chunma', POH, POH, 'jubilo-iwata',
       /* 2000 */ HIL, 'Suwon Samsung Bluewings', 'Suwon Samsung Bluewings', 'al-ain', ITT, ITT, 'jeonbuk-hyundai', URA, 'gamba-osaka', POH,
-      /* 2010 */ 'Seongnam', 'al-sadd', ULS, 'guangzhou-fc', 'Western Sydney Wanderers', 'guangzhou-fc', 'jeonbuk-hyundai', URA, 'kashima-antlers', HIL,
+      /* 2010 */ 'Seongnam', 'al-sadd', ULS, 'guangzhou-fc', 'western-sydney', 'guangzhou-fc', 'jeonbuk-hyundai', URA, 'kashima-antlers', HIL,
       /* 2020 */ ULS, HIL, _, URA, 'al-ain', 'al-ahli-sau', 'al-ahli-sau'],
   },
   'K2:asia': {
     name: 'AFC Cup / Champions League Two', from: 2004, note: 'Listed by the year of the final.',
     w: ['Al-Jaish', 'Al-Faisaly', 'Al-Faisaly', 'Shabab Al-Ordon', 'Al-Muharraq', KUW,
       /* 2010 */ 'Al-Ittihad Aleppo', 'Nasaf', KUW, KUW, 'Al-Qadsia', "Johor Darul Ta'zim", QWJ, QWJ, QWJ, 'Al-Ahed',
-      /* 2020 */ _, 'Al-Muharraq', 'Al-Seeb', _, 'Central Coast Mariners', 'sharjah'],
+      /* 2020 */ _, 'Al-Muharraq', 'Al-Seeb', _, 'central-coast', 'sharjah'],
   },
   'K:oceania': {
     name: 'OFC Champions League', from: 2007, note: 'From 2007 (earlier editions not listed); 2020 and 2021 not completed.',

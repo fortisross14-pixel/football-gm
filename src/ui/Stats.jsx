@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { playerBoard, coachBoard, emptyBook } from '../engine/statsbook.js';
 import { DIVISIONS, DIVISION_BY_ID } from '../data/world/structure.js';
-import { CONTINENT_NAME } from '../engine/competitions.js';
+import { CONTINENT_NAME, CONTINENT2_NAME } from '../engine/competitions.js';
 import { Segmented } from './Home.jsx';
 import { Crest } from './Art.jsx';
 import { ClubLink, PlayerLink, ManagerLink, useSticky } from './nav.jsx';
@@ -14,8 +14,8 @@ function compFilter(scope) {
   if (scope === 'all') return () => true;
   if (scope === 'leagues') return (c) => c.startsWith('L:');
   if (scope === 'top') return (c) => c.startsWith('L:') && DIVISION_BY_ID[c.slice(2)]?.level === 1;
-  if (scope === 'cups') return (c) => c.startsWith('C:');
-  if (scope === 'intl') return (c) => c.startsWith('K:') || c === 'W';
+  if (scope === 'cups') return (c) => c.startsWith('C:') || c.startsWith('S:');
+  if (scope === 'intl') return (c) => c.startsWith('K') || c === 'W';
   return (c) => c === scope; // a single competition key
 }
 
@@ -63,12 +63,13 @@ export default function Stats({ state, initialScope = 'all', memoKey = 'stats' }
             <optgroup label="One league">
               {leagueOpts.map((d) => <option key={d.id} value={`L:${d.id}`}>{d.name}{d.id === state.club.divisionId ? ' (yours)' : ''}</option>)}
             </optgroup>
-            <option value="cups">All domestic cups</option>
+            <option value="cups">All domestic cups and super cups</option>
             <optgroup label="One cup">
               {COUNTRIES.map((d) => <option key={d.code} value={`C:${d.code}`}>{d.country} Cup</option>)}
             </optgroup>
             <option value="intl">Continental + Club World Cup</option>
             {Object.entries(CONTINENT_NAME).map(([c, n]) => <option key={c} value={`K:${c}`}>{n}</option>)}
+            {Object.entries(CONTINENT2_NAME).map(([c, n]) => <option key={c} value={`K2:${c}`}>{n}</option>)}
             <option value="W">Club World Cup</option>
           </select>
         </label>

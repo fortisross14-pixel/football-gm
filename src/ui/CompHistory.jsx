@@ -48,7 +48,7 @@ export default function CompHistory({ state, gameKey, mostTitles = true }) {
       <section>
         <h3 className="sub-title">Winners by year</h3>
         <div className="scroll-x">
-          <table className="table table--history comp-history__table">
+          <table className="table table--history table--narrow comp-history__table">
             <thead><tr><th>Year</th><th className="table__club">Winner</th><th className="table__club">Runner-up</th></tr></thead>
             <tbody>
               {shown.map((r, i) => (

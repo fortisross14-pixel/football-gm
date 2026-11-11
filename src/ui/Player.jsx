@@ -184,7 +184,7 @@ function History({ state, seasons, moves }) {
               </tbody>
             </table>
           </div>
-          <p className="hint">Pos is the club's league finish. 🏅 Best Player · ⚽ Top Scorer · 🧤 Best GK · 🌱 Best Young · 👟 Golden Boot · ⭐ MVP · 🥅 Golden Glove · 🏆 league · 🥇 cup · 🌍 continental · 🌐 Club World Cup.</p>
+          <p className="hint">Pos is the club's league finish. 🏅 Best Player · ⚽ Top Scorer · 🧤 Best GK · 🌱 Best Young · 👟 Golden Boot · ⭐ MVP · 🥅 Golden Glove · 🏆 league · 🥇 cup · 🛡️ super cup · 🌍 continental cup · 🌎 continental trophy · 🏵️ continental super cup · 🌐 Club World Cup.</p>
         </section>
       )}
     </>
