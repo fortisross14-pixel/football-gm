@@ -763,6 +763,19 @@ Careers from before v2.2 have no card: Career says so, and everything plays as b
 
 Every player name opens a **player page** (Overview: card, attributes, status, popularity, awards; History: clubs, moves, season by season with awards and trophies; Stats: this/last season and all-time by competition, career totals). Club pages have tabs (Overview, Squad, History with managers and signings/departures, Stats, Honours) and every manager name opens a **manager page** (Overview, History, Stats). Back returns to where you were.
 
+### 8.1 Real-life history and calendar years (v2.3)
+
+**Calendar years:** season 1 is the 2026–27 season, shown as **2027**; season N is 2026 + N (`engine/years.js`: `seasonYear`, `yearLabel`). Seasons are named by the year they end in, the same convention as the real-life lists, and every user-facing label (inbox, history tables, awards, careers, records, contracts) shows the year. Internal season numbers are unchanged.
+
+**Real-life winners** (`src/data/history/`, checked by `scripts/check-history.mjs`): for each competition key (`L:<divId>` league, `C:<code>` domestic cup, `S:<code>` super cup, `K:<conf>` top continental cup, `K2:<conf>` second continental cup, `KS:<conf>` continental super cup, `W` Intercontinental Cup + FIFA Club World Cup) the winners by year up to 2026, as `{ name, from, w: [...] }`. An entry is a world club id, a plain name (a club outside the game, shown by name and never counted), `null` (not held) or a list (several titles that year: Apertura/Clausura, shared titles). Names that match a world club's name are resolved to it at load. Confederations: europe, southamerica, northamerica, africa, asia, oceania, the same ids the game's tournaments use, so real and in-game winners share keys (K:southamerica = Libertadores, K:northamerica = CONCACAF Champions Cup…). `N:<country>` holds a real national league outside the game (the A-League for the Oceania clubs); it counts as the club's league titles. In-game finals come from `finalsByKey` (engine/history.js).
+
+**Where it shows** (`engine/titles.js` merges real life with the in-game archive):
+- Club page → **Honours**: one line per competition, "×N" and the years, real years first, then the in-game years highlighted; league runner-ups and lost finals from the game. **Overview**: a one-line summary ("36 league titles, the last in 2024 · 15 European Cup titles") and the main competitions with their first years.
+- Every competition's **History** (cups, continental, Club World Cup) and League → History → By season: **Most titles** and **Winners by year**, newest first, with a divider where the game starts (2027).
+- World → Clubs → **Most decorated**: every club by real + in-game titles, filters All / League / Cup / Continental (All includes super cups; Continental includes the Club World Cup; only top flights count as league titles).
+
+**The CEO's welcome:** when a career starts and when you sign for a new club, the CEO writes: the season's objective, a sentence on the club's history generated from the titles (brilliant modern history / historic club with a long drought / big club / champions once or twice / cup tradition / no major honours: dream big) and the football the club wants (its identity's philosophy).
+
 The original plan, kept for reference:
 
 **Per player card:** appearances, goals, assists, clean sheets (GK/DEF), man of the match awards, average rating, trophies. Broken down per season, per club and over the whole career.

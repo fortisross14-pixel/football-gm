@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { gmRanking } from '../engine/gms.js';
-import { titleTable, playerLeaders } from '../engine/history.js';
+import { playerLeaders } from '../engine/history.js';
+import { titleRanking } from '../engine/titles.js';
 import { DIVISION_BY_ID, TOP_CLUBS } from '../data/world/structure.js';
 import { POOL_BY_ID } from '../state/club.js';
 import { Segmented } from './Home.jsx';
@@ -10,6 +11,7 @@ import { Records } from './History.jsx';
 import { HallOfFame } from './Collection.jsx';
 import Stats from './Stats.jsx';
 import Awards from './Awards.jsx';
+import { yearLabel, FIRST_YEAR } from '../engine/years.js';
 
 const nameOf = (id) => POOL_BY_ID[id]?.name;
 
@@ -87,7 +89,7 @@ function Managers({ state }) {
         <section>
           <h3 className="sub-title">Former managers with titles</h3>
           <ul className="champions">
-            {former.map((g, i) => <li key={i}><span><ManagerLink mkey={`${g.clubId}|${g.name}`}>{g.name}</ManagerLink> · {state.world.clubs[g.clubId]?.short} until S{g.until}</span><b>{g.titles} 🏆</b></li>)}
+            {former.map((g, i) => <li key={i}><span><ManagerLink mkey={`${g.clubId}|${g.name}`}>{g.name}</ManagerLink> · {state.world.clubs[g.clubId]?.short} until {yearLabel(g.until)}</span><b>{g.titles} 🏆</b></li>)}
           </ul>
         </section>
       )}
@@ -95,16 +97,42 @@ function Managers({ state }) {
   );
 }
 
+const TITLE_FILTERS = [{ id: 'all', label: 'All' }, { id: 'league', label: 'League' }, { id: 'cup', label: 'Cup' }, { id: 'continental', label: 'Continental' }];
+
 function Clubs({ state }) {
+  const [filter, setFilter] = useSticky('world.titles', 'all');
   const power = useMemo(() => Object.values(state.world.clubs).sort((a, b) => b.strength - a.strength).slice(0, 25), [state.world]);
-  const titles = useMemo(() => titleTable(state.archive || []).slice(0, 15), [state.archive]);
+  const titles = useMemo(() => titleRanking(state.archive || [], filter, new Set(Object.keys(state.world.clubs))).slice(0, 30), [state.archive, filter, state.world]);
+  const you = state.club.id;
   return (
     <>
+      <section>
+        <h3 className="sub-title">Most decorated</h3>
+        <Segmented small label="Titles" value={filter} options={TITLE_FILTERS} onChange={setFilter} />
+        <div className="scroll-x">
+          <table className="table table--history table--narrow">
+            <thead><tr><th>#</th><th className="table__club">Club</th><th title="Titles">Total</th><th title="League titles">🏆</th><th title="Domestic cups">🥇</th><th title="Continental cups">🌍</th><th title="Club World Cups">🌐</th></tr></thead>
+            <tbody>
+              {titles.map((r, i) => {
+                const c = state.world.clubs[r.id];
+                return (
+                  <tr key={r.id} className={r.id === you ? 'is-user' : ''}>
+                    <td>{i + 1}</td>
+                    <td className="table__club"><ClubLink id={r.id} className="club-inline"><Crest colors={c.colors} short={c.short} size={16} id={r.id} /> <span>{c.name}</span></ClubLink></td>
+                    <td><b>{r.total}</b></td><td>{r.league}</td><td>{r.cup}</td><td>{r.continental}</td><td>{r.world}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p className="hint">Real-life titles up to 2026 plus every title won in the game since {FIRST_YEAR}. All counts super cups too; Continental adds the Club World Cup. Only the top flight counts as a league title.</p>
+      </section>
       <section>
         <h3 className="sub-title">Power ranking</h3>
         <ol className="scorer-list">
           {power.map((c, i) => (
-            <li key={c.id} className={c.id === state.club.id ? 'is-user' : ''}>
+            <li key={c.id} className={c.id === you ? 'is-user' : ''}>
               <span className="scorer-list__pos">{i + 1}</span>
               <Crest colors={c.colors} short={c.short} size={20} id={c.id} />
               <span className="scorer-list__name"><ClubLink id={c.id}>{c.name}</ClubLink><em> · <LeagueLink divId={c.divisionId}>{DIVISION_BY_ID[c.divisionId].name}</LeagueLink>{TOP_CLUBS.includes(c.id) ? ' · giant' : ''}</em></span>
@@ -113,24 +141,6 @@ function Clubs({ state }) {
           ))}
         </ol>
       </section>
-      {titles.length > 0 && (
-        <section>
-          <h3 className="sub-title">Most decorated</h3>
-          <div className="scroll-x">
-            <table className="table table--history">
-              <thead><tr><th>#</th><th className="table__club">Club</th><th>🏆</th><th>🥇</th><th>🌍</th><th>🌐</th></tr></thead>
-              <tbody>
-                {titles.map((r, i) => (
-                  <tr key={r.id} className={r.id === state.club.id ? 'is-user' : ''}>
-                    <td>{i + 1}</td><td className="table__club"><ClubLink id={r.id}>{state.world.clubs[r.id]?.name}</ClubLink></td>
-                    <td><b>{r.league}</b></td><td>{r.cup}</td><td>{r.continental}</td><td>{r.cwc}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
     </>
   );
 }

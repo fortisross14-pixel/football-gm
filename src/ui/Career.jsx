@@ -10,6 +10,7 @@ import { opinions, ownerLine, fanLine, unreadCount } from '../state/chronicle.js
 import Sheet from './Sheet.jsx';
 import { GmCard, GmFlag } from './GmCard.jsx';
 import { nationOf } from '../data/nations.js';
+import { yearLabel } from '../engine/years.js';
 
 const VERDICT = { met: 'Objective met', exceeded: 'Objective exceeded', missed: 'Objective missed' };
 
@@ -69,7 +70,7 @@ export default function Career({ state, onAccept, onBack, onLook, onRead }) {
       </section>
       <section className="panel contract">
         <h2 className="section-title">Contract</h2>
-        <p className="objective"><b>{state.club.name}</b><span>{gm.contract ? `Season ${gm.contract.from} to ${gm.contract.until}${gm.contract.until <= state.season.year ? ' · expires this season' : ''}` : 'Rolling contract'}</span></p>
+        <p className="objective"><b>{state.club.name}</b><span>{gm.contract ? `${yearLabel(gm.contract.from)} to ${yearLabel(gm.contract.until)}${gm.contract.until <= state.season.year ? ' · expires this season' : ''}` : 'Rolling contract'}</span></p>
         <p className="hint">At the end of a contract the owners renew it if job security is 35 or more. Otherwise you leave, with three offers to choose from.</p>
       </section>
       <p className="hint">Reputation decides which clubs want you: small clubs from 0, second-tier clubs from about 30, top divisions from about 60, and the world's biggest clubs from 85.</p>
@@ -93,7 +94,7 @@ export default function Career({ state, onAccept, onBack, onLook, onRead }) {
 
       {review && state.phase !== 'season' && (
         <section className="panel">
-          <h2 className="section-title">Season {review.season} review</h2>
+          <h2 className="section-title">{yearLabel(review.season)} review</h2>
           <p className="objective"><b>{review.objective.text}</b><span className={review.verdict === 'missed' ? 'is-down' : 'is-up'}>{VERDICT[review.verdict]} · finished {review.position}{['th', 'st', 'nd', 'rd'][review.position] || 'th'}</span></p>
           <ul className="champions">
             {review.items.map((i) => <li key={i.label}><span>{i.label}</span><b className={i.value >= 0 ? 'is-up' : 'is-down'}>{i.value >= 0 ? '+' : ''}{i.value}</b></li>)}
@@ -143,7 +144,7 @@ export default function Career({ state, onAccept, onBack, onLook, onRead }) {
         <h2 className="section-title">Clubs managed</h2>
         <ul className="champions">
           {gm.career.map((c, i) => (
-            <li key={i}><span><ClubLink id={c.clubId}>{c.name}</ClubLink></span><b>Season {c.from}{c.to ? `–${c.to}` : ' – now'}</b></li>
+            <li key={i}><span><ClubLink id={c.clubId}>{c.name}</ClubLink></span><b>{yearLabel(c.from)}{c.to ? `–${yearLabel(c.to)}` : ' – now'}</b></li>
           ))}
         </ul>
       </section>
@@ -226,7 +227,7 @@ function Inbox({ state, onRead }) {
             <button type="button" onClick={() => { setOpen(open === m.id ? null : m.id); if (!m.read) onRead?.(m.id); }}>
               <span className="inbox__icon" aria-hidden="true">{KIND_ICON[m.kind] || '✉'}</span>
               <span className="inbox__title">{m.title}</span>
-              <span className="inbox__when">S{m.year}{m.md ? ` · MD ${m.md}` : ''}</span>
+              <span className="inbox__when">{yearLabel(m.year)}{m.md ? ` · MD ${m.md}` : ''}</span>
             </button>
             {open === m.id && m.body && <p className="inbox__body">{m.body}</p>}
           </li>

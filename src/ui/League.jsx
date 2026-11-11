@@ -6,6 +6,7 @@ import { Segmented } from './Home.jsx';
 import History from './History.jsx';
 import CompStats from './CompStats.jsx';
 import { ClubLink, PlayerLink, useSticky } from './nav.jsx';
+import { yearLabel } from '../engine/years.js';
 
 const COUNTRIES = [...new Map(DIVISIONS.map((d) => [d.code, d])).values()];
 
@@ -25,7 +26,7 @@ export default function League({ state, nav, onBack }) {
       <button type="button" className="div-picker" onClick={() => setPicking(!picking)} aria-expanded={picking}>
         <span className="div-picker__label">{div.country} · {CONTINENT_LABEL[div.continent]} · Level {div.level}</span>
         <b>{div.name}</b>
-        <span className="div-picker__meta">Season {season.year} · {season.done ? 'Finished' : `Matchday ${md}/${MATCHDAYS}`} {picking ? '▴' : '▾'}</span>
+        <span className="div-picker__meta">{yearLabel(season.year)} · {season.done ? 'Finished' : `Matchday ${md}/${MATCHDAYS}`} {picking ? '▴' : '▾'}</span>
       </button>
 
       {picking && (

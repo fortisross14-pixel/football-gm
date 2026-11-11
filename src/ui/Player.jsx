@@ -11,6 +11,7 @@ import { clubVars } from './clubTheme.js';
 import { ClubLink, LeagueLink } from './nav.jsx';
 import { Segmented } from './Home.jsx';
 import { compName, compOrder, TROPHY_ICON, trophyNames } from './names.js';
+import { yearLabel } from '../engine/years.js';
 
 const NEUTRAL = { colors: ['#1b1f29', '#ffd400'] };
 
@@ -25,7 +26,7 @@ export function resolvePlayer(state, id, fallbackName) {
   if (own) return { card: own, clubId: state.club.id, status: 'yours', label: 'Your squad' };
   if (holder) return { card: { ...pool, matchesLeft: state.world.cardLeft?.[id] ?? pool?.matchesLeft }, clubId: holder.id, status: 'club', label: holder.name };
   if (resting) return { card: hof?.card || pool || null, clubId: null, status: 'retired', label: `Retired · could return in ${resting} season${resting === 1 ? '' : 's'}`, name: nameFromBooks };
-  if (hof) return { card: hof.card, clubId: null, status: 'retired', label: `Retired in season ${hof.season ?? '?'} (Hall of Fame)` };
+  if (hof) return { card: hof.card, clubId: null, status: 'retired', label: `Retired in ${yearLabel(hof.season ?? 1)} (Hall of Fame)` };
   if (pool) return { card: { ...pool }, clubId: null, status: 'free', label: 'Free agent' };
   const lastClub = state.stats?.all?.players?.[id]?.c;
   return { card: null, clubId: null, status: 'gone', label: lastClub ? `Last seen at ${state.world.clubs[lastClub]?.name || lastClub}` : 'No longer at a club', name: nameFromBooks || fallbackName || '?', pos: state.careerNames?.[id]?.[1] || state.stats?.all?.players?.[id]?.p };
@@ -33,7 +34,7 @@ export function resolvePlayer(state, id, fallbackName) {
 
 const TABS = [{ id: 'overview', label: 'Overview' }, { id: 'history', label: 'History' }, { id: 'stats', label: 'Stats' }];
 const avg = (v) => (v ? v.toFixed(2) : '—');
-const years = (a, b) => (a === b ? `S${a}` : `S${a}–S${b}`);
+const years = (a, b) => (a === b ? `${yearLabel(a)}` : `${yearLabel(a)}–${yearLabel(b)}`);
 
 // A player's full page: Overview, History (clubs, moves, season by season) and Stats.
 export default function Player({ state, playerId, fallbackName, tab: tabProp, onTab, onBack }) {
@@ -105,14 +106,14 @@ function Overview({ state, who, club, seasons }) {
       <section>
         <h2 className="section-title">Awards</h2>
         {awards.length ? (
-          <div className="chip-row">{awards.map((a, i) => <span key={i} className="chip profile__award">{a.icon} {a.label} · S{a.year}</span>)}</div>
+          <div className="chip-row">{awards.map((a, i) => <span key={i} className="chip profile__award">{a.icon} {a.label} · {yearLabel(a.year)}</span>)}</div>
         ) : <p className="hint">No individual awards yet. Best Player, Top Scorer, Best Goalkeeper, Best Young Player and every league's Golden Boot, MVP and Golden Glove count.</p>}
       </section>
       {trophies.length > 0 && (
         <section>
           <h2 className="section-title">Team trophies</h2>
           <ul className="champions">
-            {trophies.map((x, i) => <li key={i}><span>S{x.year} · {state.world.clubs[x.clubId]?.short}</span><b>{TROPHY_ICON[x.kind]} {x.label}</b></li>)}
+            {trophies.map((x, i) => <li key={i}><span>{yearLabel(x.year)} · {state.world.clubs[x.clubId]?.short}</span><b>{TROPHY_ICON[x.kind]} {x.label}</b></li>)}
           </ul>
         </section>
       )}
@@ -156,7 +157,7 @@ function History({ state, seasons, moves }) {
           <ul className="champions">
             {[...moves].reverse().map((m, i) => (
               <li key={i}>
-                <span>S{m.year} · {MOVE_LABEL[m.type] || m.type}</span>
+                <span>{yearLabel(m.year)} · {MOVE_LABEL[m.type] || m.type}</span>
                 <b className="profile__move">{m.from ? state.world.clubs[m.from]?.short : (m.type === 'a' ? 'Academy' : 'Free')} → {m.to ? <ClubLink id={m.to}>{state.world.clubs[m.to]?.short}</ClubLink> : (m.type === 'x' ? 'Retired' : 'Free agent')}</b>
               </li>
             ))}
@@ -172,7 +173,7 @@ function History({ state, seasons, moves }) {
               <tbody>
                 {seasons.map((s) => (
                   <tr key={s.year} className={s.live ? 'is-user' : s.trophies.length ? 'is-top' : ''}>
-                    <td>{s.year}</td>
+                    <td>{yearLabel(s.year)}</td>
                     <td className="table__club"><ClubChip state={state} id={s.clubId} /></td>
                     <td className="table__club">{s.divId ? <LeagueLink divId={s.divId}>{DIVISION_BY_ID[s.divId]?.name}</LeagueLink> : '—'}{s.level ? <small className="muted"> · L{s.level}</small> : ''}</td>
                     <td><b>{s.live ? 'Now' : s.pos || '—'}</b></td>
@@ -208,7 +209,7 @@ function Stats({ state, id, seasons }) {
   const mine = state.playerStats?.[id];
   return (
     <>
-      <Segmented small label="Period" value={period} options={[{ id: 'season', label: `Season ${stats.year || state.season.year}` }, { id: 'last', label: 'Last season', disabled: !stats.lastSeason }, { id: 'all', label: 'All-time' }]} onChange={setPeriod} />
+      <Segmented small label="Period" value={period} options={[{ id: 'season', label: yearLabel(stats.year || state.season.year) }, { id: 'last', label: 'Last season', disabled: !stats.lastSeason }, { id: 'all', label: 'All-time' }]} onChange={setPeriod} />
       {rows.length ? (
         <div className="scroll-x">
           <table className="table table--history table--fit">

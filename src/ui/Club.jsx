@@ -14,6 +14,7 @@ import { clubVars } from './clubTheme.js';
 import { CardPlays } from './Collection.jsx';
 import { Segmented } from './Home.jsx';
 import { useSticky } from './nav.jsx';
+import { yearLabel } from '../engine/years.js';
 import { StadiumCard, FansPanel, Stars } from './Stadium.jsx';
 import { projectLabel, projectIcon } from '../state/business.js';
 import { matchdayOf, starsOf } from '../state/stadium.js';
@@ -52,7 +53,7 @@ export default function Club({ state, onMarket, onTicket, onSignSponsor }) {
         <Crest colors={state.club.colors} short={state.club.short} size={56} id={state.club.id} />
         <div>
           <b>{state.club.name}</b>
-          <span>{state.club.division} · Season {state.season.year}</span>
+          <span>{state.club.division} · {yearLabel(state.season.year)}</span>
         </div>
         <i className="club-stripes" aria-hidden="true" />
       </div>
@@ -102,7 +103,7 @@ function Overview({ state, goFinance }) {
         <h2 className="section-title">The job</h2>
         <ul className="champions">
           {state.gm?.objective && <li><span>Board objective</span><b>{state.gm.objective.text}</b></li>}
-          {contract && <li><span>Contract</span><b>Until season {contract.until}{left > 0 ? ` · ${left} season${left > 1 ? 's' : ''} left` : ' · last season'}</b></li>}
+          {contract && <li><span>Contract</span><b>Until {yearLabel(contract.until)}{left > 0 ? ` · ${left} season${left > 1 ? 's' : ''} left` : ' · last season'}</b></li>}
           <li><span>Sponsor</span><b>{sp.brand} · {SPONSOR_DEALS[sp.type]?.label}</b></li>
           <li><span>Ticket prices</span><b>{ticketOf(state).label}</b></li>
           <li><span>Stadium</span><b><Stars value={starsOf(state)} size={14} /> · {matchdayOf(state).capacity.toLocaleString('en')} seats</b></li>
@@ -211,7 +212,7 @@ function Sponsor({ state, onSignSponsor }) {
       <h2 className="section-title">Sponsor</h2>
       {offers.length > 0 ? (
         <>
-          <p className="hint">Three offers for season {state.sponsorOffers.year}. Their size grows with the Sponsorship area and the division. Pick the one that fits your season{signed ? '' : ': if you don\'t choose by the first matchday, the club signs the steady one'}.</p>
+          <p className="hint">Three offers for {yearLabel(state.sponsorOffers.year)}. Their size grows with the Sponsorship area and the division. Pick the one that fits your season{signed ? '' : ': if you don\'t choose by the first matchday, the club signs the steady one'}.</p>
           <div className="deals">
             {offers.map((o) => {
               const d = SPONSOR_DEALS[o.type];
@@ -276,7 +277,7 @@ function Finance({ state, onTicket, onSignSponsor }) {
       </section>
 
       <section className="panel">
-        <h2 className="section-title">Season {state.season.year} money</h2>
+        <h2 className="section-title">{yearLabel(state.season.year)} money</h2>
         <div className="money-totals">
           <div><span>In</span><b className="is-up">{coins(totalIn)}</b></div>
           <div><span>Out</span><b className="is-down">{coins(totalOut)}</b></div>
@@ -300,7 +301,7 @@ function Finance({ state, onTicket, onSignSponsor }) {
                 return (
                   <React.Fragment key={e.year}>
                     <tr>
-                      <td>{e.year}</td>
+                      <td>{yearLabel(e.year)}</td>
                       <td className="fin-history__club">{e.club}</td>
                       <td className="num is-up">{e.in.toLocaleString()}</td>
                       <td className="num is-down">{e.out.toLocaleString()}</td>
@@ -414,14 +415,14 @@ function Trophies({ state }) {
       ) : (
         <ul className="trophies">
           {won.map((t, i) => (
-            <li key={i}><span className="trophies__cup">🏆</span><b>{t.competition}</b><span>Season {t.season}</span></li>
+            <li key={i}><span className="trophies__cup">🏆</span><b>{t.competition}</b><span>{yearLabel(t.season)}</span></li>
           ))}
         </ul>
       )}
       <h3 className="sub-title">League finishes</h3>
       <ul className="champions">
         {state.trophies.filter((t) => t.competition.includes('Division') || t.competition.includes('·')).map((t, i) => (
-          <li key={i}><span>Season {t.season} · {t.competition}</span><b>{t.position === 1 ? 'Champions' : ordinal(t.position)}</b></li>
+          <li key={i}><span>{yearLabel(t.season)} · {t.competition}</span><b>{t.position === 1 ? 'Champions' : ordinal(t.position)}</b></li>
         ))}
       </ul>
     </section>

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Crest } from './Art.jsx';
 import { ClubLink, PlayerLink } from './nav.jsx';
+import { yearLabel } from '../engine/years.js';
 
 const AWARDS = [
   { key: 'best', icon: '🏅', label: 'Best Player' },
@@ -19,7 +20,7 @@ export default function Awards({ state }) {
       if (!w) continue;
       const row = t[w.id] || (t[w.id] = { id: w.id, name: w.name, clubId: w.clubId, n: 0, what: [] });
       row.n += 1;
-      row.what.push(`${a.label} S${y.year}`);
+      row.what.push(`${a.label} ${yearLabel(y.year)}`);
     }
     return Object.values(t).sort((a, b) => b.n - a.n).slice(0, 10);
   }, [list]);
@@ -29,7 +30,7 @@ export default function Awards({ state }) {
     <div className="awards">
       {[...list].reverse().map((y) => (
         <article key={y.year} className="awards__year">
-          <header><b>Season {y.year}</b></header>
+          <header><b>{yearLabel(y.year)}</b></header>
           <div className="awards__grid">
             {AWARDS.map((a) => {
               const w = y[a.key];

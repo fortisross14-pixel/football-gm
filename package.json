@@ -10,7 +10,8 @@
     "test": "node scripts/engine-test.mjs",
     "balance": "node scripts/balance.mjs",
     "career-sim": "node scripts/career-sim.mjs",
-    "check:nations": "node scripts/check-nations.mjs"
+    "check:nations": "node scripts/check-nations.mjs",
+    "check:history": "node scripts/check-history.mjs"
   },
   "dependencies": {
     "lz-string": "^1.5.0",

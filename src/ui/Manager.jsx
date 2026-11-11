@@ -8,6 +8,7 @@ import { ClubLink, LeagueLink } from './nav.jsx';
 import { Segmented } from './Home.jsx';
 import { compName, compOrder, TROPHY_ICON } from './names.js';
 import { GmCard, GmFlag } from './GmCard.jsx';
+import { yearLabel } from '../engine/years.js';
 
 const ordinal = (n) => `${n}${['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 < 14) ? 0 : n % 10] || 'th'}`;
 const pct = (w, p) => (p ? `${Math.round((w / p) * 100)}%` : '—');
@@ -53,7 +54,7 @@ export default function Manager({ state, mkey, tab: tabProp, onTab, onBack }) {
         {club && <Crest colors={club.colors} short={club.short} size={56} id={club.id} />}
         <div>
           <b>{m.isUser && <GmFlag nation={m.nation} />}{m.name}</b>
-          <span>Manager · {club ? (m.current ? club.name : `formerly ${club.name}${m.until ? ` (until S${m.until})` : ''}`) : ''}</span>
+          <span>Manager · {club ? (m.current ? club.name : `formerly ${club.name}${m.until ? ` (until ${yearLabel(m.until)})` : ''}`) : ''}</span>
         </div>
         <i className="club-stripes" aria-hidden="true" />
         <button type="button" className="btn btn--small btn--ghost" onClick={onBack}>Back</button>
@@ -79,7 +80,7 @@ export default function Manager({ state, mkey, tab: tabProp, onTab, onBack }) {
             <section>
               <h2 className="section-title">Trophies</h2>
               <ul className="champions">
-                {seasons.flatMap((s) => s.trophies.map((x, i) => <li key={`${s.year}-${i}`}><span>S{s.year} · {state.world.clubs[s.clubId]?.short}</span><b>{TROPHY_ICON[x.kind]} {x.label}</b></li>))}
+                {seasons.flatMap((s) => s.trophies.map((x, i) => <li key={`${s.year}-${i}`}><span>{yearLabel(s.year)} · {state.world.clubs[s.clubId]?.short}</span><b>{TROPHY_ICON[x.kind]} {x.label}</b></li>))}
               </ul>
             </section>
           )}
@@ -95,7 +96,7 @@ export default function Manager({ state, mkey, tab: tabProp, onTab, onBack }) {
                 const c = state.world.clubs[s.clubId];
                 return (
                   <tr key={s.year} className={s.live ? 'is-user' : s.pos === 1 ? 'is-top' : ''}>
-                    <td>{s.year}</td>
+                    <td>{yearLabel(s.year)}</td>
                     <td className="table__club">{c ? <ClubLink id={s.clubId} className="club-inline"><Crest colors={c.colors} short={c.short} size={16} id={s.clubId} /> <span>{c.short}</span></ClubLink> : '—'}</td>
                     <td className="table__club">{s.divId ? <LeagueLink divId={s.divId}>{DIVISION_BY_ID[s.divId]?.name}</LeagueLink> : '—'}</td>
                     <td><b>{s.live ? 'Now' : s.pos || '—'}</b></td>
@@ -125,7 +126,7 @@ function Stats({ state, mkey }) {
   const t = rows.reduce((x, [, r]) => x.map((v, i) => v + r[i]), [0, 0, 0, 0]);
   return (
     <>
-      <Segmented small label="Period" value={period} options={[{ id: 'season', label: `Season ${stats.year || state.season.year}` }, { id: 'last', label: 'Last season', disabled: !stats.lastSeason }, { id: 'all', label: 'All-time' }]} onChange={setPeriod} />
+      <Segmented small label="Period" value={period} options={[{ id: 'season', label: yearLabel(stats.year || state.season.year) }, { id: 'last', label: 'Last season', disabled: !stats.lastSeason }, { id: 'all', label: 'All-time' }]} onChange={setPeriod} />
       {rows.length ? (
         <div className="scroll-x">
           <table className="table table--history table--fit">
