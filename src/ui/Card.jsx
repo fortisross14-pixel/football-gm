@@ -2,7 +2,8 @@ import React from 'react';
 import { overall, RARITIES, TRAITS } from '../engine/cards.js';
 import { COACH_PASSIVES } from '../data/coachPassives.js';
 import { BOOSTS } from '../data/boosts.js';
-import { OFFSEASON_CARDS, GROUP_LABEL, cardText } from '../data/offseason.js';
+import { OFFSEASON_CARDS, cardLabel, cardText } from '../data/offseason.js';
+import { CLUB_PACKS } from '../data/clubPacks.js';
 import { PACKS } from '../engine/packs.js';
 import { skillOf } from '../data/skills.js';
 import { attrs, ATTR_KEYS, ATTR_LABEL } from '../engine/attributes.js';
@@ -179,7 +180,7 @@ export function OffseasonCard({ item, onClick, footer, disabled, selected }) {
   return (
     <button type="button" className={`ocard r-${item.rarity}${selected ? ' is-selected' : ''}`} onClick={onClick} disabled={disabled}>
       <div className="ocard__top">
-        <span className="ocard__group">{GROUP_LABEL[def.group]}</span>
+        <span className="ocard__group">{cardLabel(item.type)}</span>
         <span className="ocard__rarity">{RARITIES[item.rarity].label}</span>
       </div>
       <span className="ocard__icon" aria-hidden="true">{def.icon}</span>
@@ -190,7 +191,20 @@ export function OffseasonCard({ item, onClick, footer, disabled, selected }) {
   );
 }
 
+// A club pack: the same foil as player packs, with a crest band instead of "FC".
+export function ClubPackArt({ packId, small, big }) {
+  const pack = CLUB_PACKS[packId];
+  return (
+    <div className={`pack pack--club pack--${packId}${small ? ' pack--small' : ''}${big ? ' pack--big' : ''}`}>
+      <span className="pack__shine" />
+      <span className="pack__name">{pack.short}</span>
+      <span className="pack__count">Club · {pack.show > 1 ? `keep 1 of ${pack.show}` : '1 card'}</span>
+    </div>
+  );
+}
+
 export function PackArt({ packId, small, big }) {
+  if (CLUB_PACKS[packId]) return <ClubPackArt packId={packId} small={small} big={big} />;
   const pack = PACKS[packId];
   return (
     <div className={`pack pack--${packId}${small ? ' pack--small' : ''}${big ? ' pack--big' : ''}`}>

@@ -3,10 +3,11 @@ import Collection from './Collection.jsx';
 import Shop from './Shop.jsx';
 import { Segmented } from './Home.jsx';
 
-// Cards: what you own (squad, items, album) and the shop (packs, boosts, the all-year market).
+// Cards: what you own (players, club, season, album) and the shop (player and club sections).
 export default function CardsHub({ state, initial = 'owned', collectionProps, shopProps }) {
   const [view, setView] = useState(initial);
-  const invCount = state.inventory.packs.length + state.inventory.offseason.length;
+  const inv = state.inventory;
+  const invCount = inv.packs.length + inv.offseason.length + (inv.club || []).length + (inv.clubPacks || []).length;
   return (
     <div className="hub">
       <div className="hub__switch">
