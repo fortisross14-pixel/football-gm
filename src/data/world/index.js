@@ -11,9 +11,10 @@ import * as squadsC from './squads-c.js';
 import * as squadsD from './squads-d.js';
 import * as squadsE from './squads-e.js';
 import * as squadsF from './squads-f.js';
+import * as squadsG from './squads-g.js';
 
 const REGIONS = [europeA, europeB, europeC, rest, europeD];
-const SQUAD_FILES = [squadsA, squadsB, squadsC, squadsD, squadsE, squadsF];
+const SQUAD_FILES = [squadsA, squadsB, squadsC, squadsD, squadsE, squadsF, squadsG];
 
 // Each club's history pool: named cards (any era) it draws its squad and academy players from.
 export const CLUB_POOLS = Object.assign({}, ...SQUAD_FILES.map((f) => f.SQUADS || {}));

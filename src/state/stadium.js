@@ -70,7 +70,7 @@ export function matchdayOf(state, ctx = {}) {
   const fans = fansOf(state);
   const ticket = TICKET_PRICES[state.ticketPrice] || TICKET_PRICES.normal;
   const capacity = seatsFor(s.size, s.parts.seats || 0);
-  const big = ctx.competition === 'continental' || ctx.competition === 'cwc';
+  const big = ['continental', 'continental2', 'contsuper', 'cwc'].includes(ctx.competition);
   const demand = Math.round(DEMAND_K * fans.local ** DEMAND_EXP * moodFactor(fans.happiness) * ticket.demand
     * (1 + ACCESS_DEMAND * (s.parts.access || 0)) * (ctx.derby ? 1.25 : 1) * (big ? 1.15 : 1));
   const attendance = Math.min(capacity, demand);

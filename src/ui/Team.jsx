@@ -16,7 +16,7 @@ import { clubVars } from './clubTheme.js';
 import { LeagueLink, ClubLink, PlayerLink, ManagerLink } from './nav.jsx';
 import { Segmented } from './Home.jsx';
 import { rivalsOf, derbyName } from '../data/rivals.js';
-import { compName, compOrder, CUP_NAME_FOR, CONTINENTAL_NAME, TROPHY_ICON } from './names.js';
+import { compName, compOrder, CUP_NAME_FOR, SUPER_CUP_NAME_FOR, CONTINENTAL_NAME, CONTINENTAL2_NAME, TROPHY_ICON, trophyNames } from './names.js';
 
 const nameOf = (id) => POOL_BY_ID[id]?.name;
 const ordinal = (n) => `${n}${['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 < 14) ? 0 : n % 10] || 'th'}`;
@@ -80,7 +80,7 @@ function Overview({ state, club, isUser, squad, hist, onCurse }) {
   const gm = isUser ? { name: state.gmName || 'You', rep: state.gm?.reputation } : state.world.gms?.[clubId];
   const mkey = isUser ? 'you' : gm && `${clubId}|${gm.name}`;
   const h = hist.honours;
-  const totalHonours = h.league + h.cup + h.continental + h.cwc;
+  const totalHonours = h.league + h.cup + h.continental + h.cwc + (h.continental2 || 0) + (h.supercup || 0) + (h.contsuper || 0);
   return (
     <>
       <div className="stat-tiles">
@@ -115,7 +115,9 @@ function Overview({ state, club, isUser, squad, hist, onCurse }) {
         <div className="honours">
           <div><b>{h.league}</b><span>League titles</span></div>
           <div><b>{h.cup}</b><span>Domestic cups</span></div>
-          <div><b>{h.continental}</b><span>{CONTINENT_LABEL[div.continent]} cups</span></div>
+          <div><b>{h.supercup || 0}</b><span>Super cups</span></div>
+          <div><b>{h.continental}</b><span>{CONTINENTAL_NAME[div.continent]}</span></div>
+          {CONTINENTAL2_NAME[div.continent] && <div><b>{h.continental2 || 0}</b><span>{CONTINENTAL2_NAME[div.continent]}</span></div>}
           <div><b>{h.cwc}</b><span>Club World Cups</span></div>
           <div><b>{h.runnerUp}</b><span>League runner-up</span></div>
         </div>
@@ -377,10 +379,13 @@ export function clubHonoursList(archive, clubId) {
       if (lg.table[1]?.[0] === clubId) add('runnerUp', `${DIVISION_BY_ID[divId]?.name || divId} runner-up`, e.year);
     }
     for (const [code, c] of Object.entries(e.cups)) if (c?.winner === clubId) add('cup', CUP_NAME_FOR(code), e.year);
+    for (const [code, c] of Object.entries(e.supercups || {})) if (c?.winner === clubId) add('supercup', SUPER_CUP_NAME_FOR(code), e.year);
     for (const [k, c] of Object.entries(e.continental)) if (c?.winner === clubId) add('continental', CONTINENTAL_NAME[k] || k, e.year);
+    for (const [k, c] of Object.entries(e.continental2 || {})) if (c?.winner === clubId) add('continental2', CONTINENTAL2_NAME[k] || k, e.year);
+    for (const [k, c] of Object.entries(e.contSuper || {})) if (c?.winner === clubId) add('contsuper', trophyNames.contsuper(k), e.year);
     if (e.cwc?.winner === clubId) add('cwc', 'Club World Cup', e.year);
   }
-  const order = { cwc: 0, continental: 1, league: 2, cup: 3, runnerUp: 4 };
+  const order = { cwc: 0, continental: 1, continental2: 2, contsuper: 3, league: 4, cup: 5, supercup: 6, runnerUp: 7 };
   return Object.values(map).sort((a, b) => order[a.kind] - order[b.kind] || b.years.length - a.years.length);
 }
 
@@ -391,6 +396,7 @@ function Honours({ state, club }) {
     for (const e of state.archive || []) {
       for (const [code, c] of Object.entries(e.cups)) if (c?.runnerUp === club.id) out.push({ year: e.year, label: `${CUP_NAME_FOR(code)} final`, winner: c.winner });
       for (const [k, c] of Object.entries(e.continental)) if (c?.runnerUp === club.id) out.push({ year: e.year, label: `${CONTINENTAL_NAME[k]} final`, winner: c.winner });
+      for (const [k, c] of Object.entries(e.continental2 || {})) if (c?.runnerUp === club.id) out.push({ year: e.year, label: `${CONTINENTAL2_NAME[k]} final`, winner: c.winner });
       if (e.cwc?.runnerUp === club.id) out.push({ year: e.year, label: 'Club World Cup final', winner: e.cwc.winner });
     }
     return out.reverse();

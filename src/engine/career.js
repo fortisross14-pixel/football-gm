@@ -3,6 +3,7 @@ import { makeRng } from './rng.js';
 import { DIVISIONS, DIVISION_BY_ID, TOP_CLUBS } from '../data/world/structure.js';
 import { AI_SETTLED_BY_LEVEL, AI_FIT_BONUS } from './aiTeam.js';
 import { PROMOTION_SPOTS } from './season.js';
+import { trophyKind } from './competitions.js';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
@@ -42,23 +43,20 @@ export function judgeObjective(objective, position) {
 
 export const REPUTATION = {
   met: 9, exceeded: 13, missed: -8, promotion: 9, cup: 4, league: 9, continental: 10, cwc: 12, sacked: -15,
+  // v2.3: smaller gains for the second continental trophy and the super cups.
+  continental2: 5, contsuper: 2, supercup: 1,
 };
 
 export function reputationChanges({ verdict, promoted, leagueTitle, trophies }) {
   const items = [{ label: `Board objective ${verdict}`, value: REPUTATION[verdict] }];
   if (promoted) items.push({ label: 'Promotion', value: REPUTATION.promotion });
   if (leagueTitle) items.push({ label: 'League title', value: REPUTATION.league });
-  const CONTINENTAL = ['European Cup', 'Americas Cup', 'Africa–APAC Cup'];
-  for (const t of trophies) {
-    if (t === 'Club World Cup') items.push({ label: t, value: REPUTATION.cwc });
-    else if (CONTINENTAL.includes(t)) items.push({ label: t, value: REPUTATION.continental });
-    else items.push({ label: t, value: REPUTATION.cup });
-  }
+  for (const t of trophies) items.push({ label: t, value: REPUTATION[trophyKind(t)] ?? REPUTATION.cup });
   return items;
 }
 
 // Gains count for less in smaller leagues and get harder as reputation rises; losses count in full.
-const LEVEL_WEIGHT = { 1: 1, 2: 0.75, 3: 0.6 };
+const LEVEL_WEIGHT = { 1: 1, 2: 0.7, 3: 0.5 };
 export function weighReputation(items, level, rep) {
   return items.map((i) => (i.value > 0 ? { ...i, value: Math.max(1, Math.round(i.value * LEVEL_WEIGHT[level] * (1 - rep / 150))) } : i));
 }

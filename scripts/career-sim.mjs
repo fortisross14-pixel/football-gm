@@ -338,7 +338,7 @@ for (let c = 0; c < CAREERS; c += 1) {
     const div = s.world.divisions[s.club.divisionId].filter((id) => id !== s.club.id).map((id) => s.world.clubs[id].strength);
     row.strengthGap.push(userStrength(s) - div.reduce((a, b) => a + b, 0) / div.length);
     row.trophies += (s.season.userTrophies || []).length;
-    if (CONTINENTS.some((k) => s.season.comps.continental[k].entrants.includes(s.club.id))) {
+    if (CONTINENTS.some((k) => [s.season.comps.continental[k], s.season.comps.continental2?.[k]].some((t) => t?.entrants.includes(s.club.id)))) {
       row.continental += 1;
       if (reached.cont === null) reached.cont = y + 1;
     }
@@ -408,4 +408,4 @@ console.log(`As underdog (4+ weaker): won ${f1((100 * u.underdog.w) / Math.max(1
 console.log(`User cards lasted ${f1(avg(stats.cardSeasons))} seasons on average before retiring (${stats.cardSeasons.length} retirements)`);
 console.log(`World named cards per club after ${SEASONS} seasons: ${f1(avg(stats.worldNamed))}`);
 const top = Object.entries(stats.contWinners).sort((a, b) => b[1] - a[1]).slice(0, 6);
-console.log(`Most continental titles: ${top.map(([id, n]) => `${id} ${n}`).join(', ')} (of ${CAREERS * SEASONS * 3})`);
+console.log(`Most continental titles: ${top.map(([id, n]) => `${id} ${n}`).join(', ')} (of ${CAREERS * SEASONS * CONTINENTS.length})`);
