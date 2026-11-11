@@ -1212,7 +1212,8 @@ function rollRarity(rng) {
 const canRaise = (state, type, rarity) => {
   const def = OFFSEASON_CARDS[type];
   if (!def.facility) return true;
-  const level = lvl(state, def.facility);
+  // Works under way count as done: no card for a level that's already being built.
+  const level = Math.max(lvl(state, def.facility), constructionOf(state, def.facility)?.to ?? 0);
   const t = tierIndex(rarity);
   return level < 5 && (t === 4 || level < def.values[t]);
 };
