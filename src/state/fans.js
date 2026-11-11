@@ -77,7 +77,10 @@ export const FAN_GROWTH = {
   bigWin: { local: 0.003, global: 0.006 }, // continental / Club World Cup win
   derbyWin: { local: 0.01, global: 0.003 },
   derbyLoss: { local: -0.004, global: 0 },
-  trophy: { cup: { local: 0.04, global: 0.05 }, continental: { local: 0.06, global: 0.12 }, cwc: { local: 0.06, global: 0.2 } },
+  trophy: {
+    cup: { local: 0.04, global: 0.05 }, continental: { local: 0.06, global: 0.12 }, cwc: { local: 0.06, global: 0.2 },
+    supercup: { local: 0.015, global: 0.015 }, continental2: { local: 0.04, global: 0.07 }, contsuper: { local: 0.02, global: 0.04 },
+  },
   promotion: { local: 0.06, global: 0.1 },
   title: { local: 0.04, global: 0.06 },
   relegation: { local: -0.06, global: -0.08 },
@@ -111,7 +114,7 @@ function grow(f, g, k = 1) {
 // After a match (mutates): outcome 'W' | 'D' | 'L'; competition; derby; trophy (the trophy's competition, or null).
 export function fanMatchInto(next, { outcome, competition = 'league', derby = false, trophy = null }) {
   const f = ensureFansInto(next);
-  const big = competition === 'continental' || competition === 'cwc';
+  const big = ['continental', 'continental2', 'contsuper', 'cwc'].includes(competition);
   if (outcome === 'W') grow(f, big ? FAN_GROWTH.bigWin : FAN_GROWTH.win);
   if (outcome === 'L') grow(f, FAN_GROWTH.loss);
   if (derby && outcome === 'W') grow(f, FAN_GROWTH.derbyWin);

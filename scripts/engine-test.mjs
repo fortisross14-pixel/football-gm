@@ -14,13 +14,13 @@ import { skillOf, MAX_SKILLS } from '../src/data/skills.js';
 import { BOOSTS, BOOST_IDS, openBoostPack } from '../src/data/boosts.js';
 import { makeRng } from '../src/engine/rng.js';
 import { matchConfidence, seasonConfidence, security, jobOffers } from '../src/engine/career.js';
-import { archiveSeason, foldRecords, compactEntry, clubHistory, titleTable } from '../src/engine/history.js';
+import { archiveSeason, foldRecords, compactEntry, clubHistory, titleTable, finalsByKey } from '../src/engine/history.js';
 import { ensureGms, updateGms, gmRanking } from '../src/engine/gms.js';
 import { aiTactics } from '../src/engine/aiTeam.js';
 import { DEFAULT_TACTICS, qualityEdge, styleAdvice } from '../src/engine/tactics.js';
 import { attrs } from '../src/engine/attributes.js';
 import { OPPONENTS } from '../src/data/demo.js';
-import { DIVISION_BY_ID } from '../src/data/world/structure.js';
+import { DIVISION_BY_ID, DIVISIONS } from '../src/data/world/structure.js';
 import { startingDraw, aiOffseason } from '../src/engine/transfers.js';
 import { careerLines, playerSeasons, playerMoves, clubSpells, clubMoves, managerSeasons, clubManagers, clubRecord, clubPlayersAllTime } from '../src/engine/careers.js';
 import { CLUB_POOLS, PLAYER_CARDS } from '../src/data/world/index.js';
@@ -35,6 +35,9 @@ import { ticketMoodInto } from '../src/state/business.js';
 import { stadiumStars } from '../src/data/facilities.js';
 import { initialFans } from '../src/state/fans.js';
 import { CLUB_PACKS, drawClubCards } from '../src/data/clubPacks.js';
+import {
+  CONTINENTS, CONTINENTS2, FORMATS, compKey, CALENDAR as CALENDAR_V23, createCompetitions as createCompetitionsV23, qualifiers as qualifiersV23, tablesByStrength as tablesByStrengthV23,
+} from '../src/engine/competitions.js';
 import { teamFit } from '../src/engine/match.js';
 import { PHILOSOPHIES as PHILOSOPHIES_FOR_TEST } from '../src/data/philosophies.js';
 import { AREA_IDS, cardPlayLimit } from '../src/data/facilities.js';
@@ -222,10 +225,10 @@ test('promotion and relegation move clubs between tiers', () => {
   assert.ok(userFixture(s.season, 'esp-2', 'racing'));
 });
 
-test('the world has 44 full divisions of 10 and a big card pool', () => {
+test('the world has 46 full divisions of 10 and a big card pool', () => {
   const s = fresh();
-  assert.equal(Object.keys(s.world.divisions).length, 44);
-  assert.equal(Object.keys(s.world.clubs).length, 440);
+  assert.equal(Object.keys(s.world.divisions).length, 46);
+  assert.equal(Object.keys(s.world.clubs).length, 460);
   assert.ok(POOLS.player.length >= 400, `pool ${POOLS.player.length}`);
   const seen = new Set(s.squad.map((c) => c.id));
   for (const c of Object.values(s.world.clubs)) {
@@ -310,24 +313,52 @@ test('cups, continental tournaments and the Club World Cup all finish', () => {
   assert.equal(s.phase, 'seasonEnd');
   const { comps } = s.season;
   for (const [code, cup] of Object.entries(comps.cups)) assert.ok(cup.winner, `${code} cup has no winner`);
-  for (const k of ['europe', 'americas', 'afap']) {
-    const c = comps.continental[k];
-    assert.ok(c.winner, `${k} has no winner`);
-    assert.equal(c.groups.length, 2);
-    for (const g of c.groups) assert.ok(Object.values(g.table).every((r) => r.p === 3));
+  const GROUPS = { europe: [2, 4], southamerica: [2, 4], northamerica: [1, 1], africa: [1, 1], asia: [2, 2], oceania: [1, null] };
+  for (const k of CONTINENTS) {
+    for (const [i, t] of [comps.continental[k], comps.continental2[k]].entries()) {
+      if (!GROUPS[k][i]) { assert.equal(t, undefined, `${k} has no tier-2 trophy`); continue; }
+      assert.ok(t.winner, `${k} tier ${i + 1} has no winner`);
+      assert.equal(t.groups.length, GROUPS[k][i], `${k} tier ${i + 1} groups`);
+      for (const g of t.groups) assert.ok(Object.values(g.table).every((r) => r.p === 3));
+      const ids = [...t.direct, ...(t.qualifying || []).flatMap((x) => [x.home, x.away])];
+      assert.equal(new Set(t.entrants).size, t.entrants.length, `${k} entrants are unique`);
+      assert.ok(ids.length >= 4);
+    }
   }
+  // Nobody plays in both continental tournaments.
+  for (const k of CONTINENTS2) assert.ok(!comps.continental[k].entrants.some((id) => comps.continental2[k].entrants.includes(id)));
+  for (const [code, sc] of Object.entries(comps.supercups)) assert.ok(sc.winner, `${code} super cup`);
+  for (const k of CONTINENTS2) assert.ok(comps.contSuper[k].winner, `${k} continental super cup`);
+  assert.equal(Object.keys(comps.supercups).length, new Set(DIVISIONS.map((d) => d.code)).size);
   assert.ok(comps.cwc.winner);
+  assert.equal(comps.cwc.clubs.length, 6);
+  assert.ok(comps.cwc.groups.every((g) => g.clubs.length === 3 && Object.values(g.table).every((r) => r.p === 2)));
   assert.ok(comps.cwc.clubs.includes(comps.cwc.winner));
+  const won = { cups: comps.cups, super: comps.supercups, k: comps.continental, k2: comps.continental2, ks: comps.contSuper };
   s = closeSeason(s, 3);
   assert.ok(s.lastSeason.continental.europe);
-  assert.equal(s.qualification.europe.direct.length, 4);
-  assert.equal(s.qualification.americas.length, 8);
-  assert.equal(s.qualification.afap.length, 8);
+  assert.ok(s.lastSeason.continental2.europe);
+  const entry = s.archive.at(-1);
+  const finals = finalsByKey(entry);
+  for (const key of ['C:ESP', 'S:ESP', 'K:europe', 'K2:europe', 'KS:europe', 'K:oceania', 'K2:northamerica', 'W']) assert.ok(finals[key]?.winner, `${key} archived`);
+  assert.equal(finals['K2:europe'].winner, won.k2.europe.winner);
+  // Next season: the super cup is the league champion against the cup winner (runner-up if the same).
+  const q = s.qualification;
+  for (const code of ['ESP', 'ENG', 'OCE', 'NAO']) {
+    const div = DIVISIONS.find((d) => d.code === code && d.tier === 1);
+    const champ = entry.leagues[div.id].table[0][0];
+    const cup = entry.cups[code];
+    assert.equal(q.super[code][0], champ);
+    assert.equal(q.super[code][1], cup.winner === champ ? cup.runnerUp : cup.winner);
+  }
+  for (const k of CONTINENTS2) assert.deepEqual(q.contSuper[k], [won.k[k].winner, won.k2[k].winner]);
+  assert.equal(q.continental.europe.k.direct.length, 4);
+  assert.equal(q.continental.europe.k2.direct.length + q.continental.europe.k2.qualifying.length, 30);
 });
 
 test('a qualified club plays its continental games through the season', () => {
   let s = fresh();
-  s.qualification.europe.direct[0] = 'racing';
+  s.qualification.continental.europe.k.direct[0] = 'racing';
   s.season = newSeason(s, 1, 77);
   let guard = 0;
   const seen = new Set();
@@ -620,7 +651,8 @@ test('v1.9 season: the league, cups and continental rounds all finish', () => {
   assert.equal(s.phase, 'seasonEnd');
   assert.ok(Object.values(s.season.divisions).every((d) => Object.values(d.table).every((r) => r.p === 18)));
   assert.ok(Object.values(s.season.comps.cups).every((c) => c.winner));
-  assert.ok(['europe', 'americas', 'afap'].every((k) => s.season.comps.continental[k].winner));
+  assert.ok(CONTINENTS.every((k) => s.season.comps.continental[k].winner));
+  assert.ok(CONTINENTS2.every((k) => s.season.comps.continental2[k].winner && s.season.comps.contSuper[k].winner));
   assert.ok(s.season.comps.cwc.winner);
 });
 
@@ -1310,6 +1342,60 @@ test('old saves: club cards move to the club inventory, events stay, market rest
   assert.equal(useOffseasonCard(m, 'o1', {}, 1).state.construction[0].to, Math.min(...Object.values(m.stadium.parts)) + 1, 'a moved card still plays (building works)');
   assert.equal(useOffseasonCard(m, 'o3', {}, 1).state.activeEvent.type, 'fortressSeason', 'old event cards still play');
   assert.deepEqual(migrateClubState(m).inventory, m.inventory, 'migration is idempotent');
+});
+
+test('v2.3 super cups: matchday 0, league champion against the cup winner', () => {
+  let s = fresh();
+  const strength = (divId) => [...s.world.divisions[divId]].sort((a, b) => s.world.clubs[b].strength - s.world.clubs[a].strength);
+  assert.equal(CALENDAR_V23[0], 'S');
+  // Season 1: the strongest club against the second strongest (placeholders, like qualification).
+  const esp = s.season.comps.supercups.ESP;
+  assert.deepEqual(esp.clubs, strength('esp-1').slice(0, 2));
+  assert.ok(esp.winner, 'played before the first league matchday');
+  assert.equal(s.season.matchday, 0);
+  // Only those two clubs play: no other ESP club has a super cup game.
+  const book = Object.values(s.stats.season.players).filter((p) => p.s['S:ESP']);
+  assert.ok(book.every((p) => esp.clubs.includes(p.c)));
+  // When the user's club is in it, it's the first game of the season.
+  s.qualification.super.ESP = ['racing', strength('esp-1')[0]];
+  s.season = newSeason(s, 1, 41);
+  const g = nextUserGame(s);
+  assert.equal(g.competition, 'supercup');
+  assert.equal(g.label, 'Spain Super Cup');
+  assert.ok(g.neutral && g.knockout);
+  assert.equal(s.season.matchday, 0);
+  s = playNext(s, 42);
+  assert.equal(s.history[0].comp.type, 'super');
+  assert.ok(s.season.comps.supercups.ESP.winner);
+  assert.equal(nextUserGame(s).competition, 'league');
+  assert.equal(compKey({ comp: 'super', key: 'ENG' }), 'S:ENG');
+});
+
+test('v2.3 formats: North America, the European Trophy and Oceania', () => {
+  const s = fresh();
+  const strength = (divId) => [...s.world.divisions[divId]].sort((a, b) => s.world.clubs[b].strength - s.world.clubs[a].strength);
+  const comps = createCompetitionsV23(s.world, qualifiersV23(tablesByStrengthV23(s.world)), 5);
+  // North America: three champions direct, the Mexican and US runners-up play off, one group, the top two meet in the final.
+  const na = comps.continental.northamerica;
+  assert.deepEqual(na.direct, [strength('mex-1')[0], strength('usa-1')[0], strength('nao-1')[0]]);
+  assert.equal(na.qualifying.length, 1);
+  assert.deepEqual(new Set([na.qualifying[0].home, na.qualifying[0].away]), new Set([strength('mex-1')[1], strength('usa-1')[1]]));
+  assert.equal(na.groups, null);
+  assert.equal(comps.continental2.northamerica.groups.length, 1);
+  // Europe's second trophy: 30 clubs, 8 straight to the groups, a 6-tie preliminary round, 8 qualifying ties.
+  const e2 = comps.continental2.europe;
+  assert.equal(e2.entrants.length, 30);
+  assert.equal(e2.direct.length, 8);
+  assert.equal(e2.prelim.length, 6);
+  assert.equal(e2.seeded.length, 10);
+  assert.equal(FORMATS.europe.k2.groups, 4);
+  // Oceania: the top three and the cup winner (season 1: next by strength), one group, no second trophy.
+  assert.deepEqual(comps.continental.oceania.direct.slice().sort(), strength('oce-1').slice(0, 4).sort());
+  assert.equal(comps.continental2.oceania, undefined);
+  assert.equal(comps.contSuper.oceania, undefined);
+  // South America: four direct, eight in the qualifying round.
+  assert.equal(comps.continental.southamerica.qualifying.length, 4);
+  assert.equal(comps.continental2.southamerica.qualifying.length, 4);
 });
 
 console.log(`\n${passed} tests passed`);

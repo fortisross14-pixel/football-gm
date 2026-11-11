@@ -27,6 +27,8 @@ const BASE_CHANCES = 1.0; // per team per segment at equal midfield control
 const BASE_CONVERSION = 0.3;
 const CONTROL_EXPONENT = 1.1;
 const HOME_BONUS = 0.03;
+// Continental and world competitions (Continental Nights, Big Game apply).
+export const INTL = new Set(['continental', 'continental2', 'contsuper', 'cwc']);
 
 const ATTACK_WEIGHT = { GK: 0, DEF: 0.2, MID: 0.6, FWD: 1 };
 const DEFENSE_WEIGHT = { GK: 0, DEF: 1, MID: 0.5, FWD: 0.15 };
@@ -386,7 +388,7 @@ function modifiers(state, side, seg) {
   if (opp.ovr > team.ovr + 1) all += season.underdog;
   if (seg >= 3) all += teamPassive(team, 'motivator');
   if (competition === 'cup') all += teamPassive(team, 'cupSpecialist') + season.cup;
-  if (competition === 'continental' || competition === 'cwc') all += season.continental;
+  if (INTL.has(competition)) all += season.continental;
   all += field.filter(({ p }) => p.card.trait === 'leader').length * 0.03;
   const att = sum('att') + teamPassive(team, 'attackMinded');
   const def = sum('def') + teamPassive(team, 'ironDiscipline') + field.filter(({ p }) => p.card.trait === 'wall').length * 0.1;
@@ -398,7 +400,7 @@ function effective(p, slotPos, mods, seg, competition) {
   const fatigue = 0.75 + 0.25 * (p.stamina / 100);
   let personal = 0;
   if (p.superSub) personal += 0.15;
-  if (p.card.trait === 'bigGame' && (competition === 'continental' || competition === 'cwc')) personal += 0.1;
+  if (p.card.trait === 'bigGame' && INTL.has(competition)) personal += 0.1;
   const clutch = p.card.trait === 'clutch' && seg === SEGMENTS - 1 ? 0.15 : 0;
   for (const e of mods.active) if (e.type === 'playerAtt' && e.playerId === p.card.id) personal += e.value;
   const base = fit * fatigue;
@@ -600,7 +602,7 @@ function announceEvents(state, seg) {
     if (seg === 0 && m.underdog && state.teams[1 - side].ovr > team.ovr + 1) say('underdog', `${team.eventName}: ${team.short} are the underdogs and love it (${pct(m.underdog)}).`);
     if (seg === 0 && m.home && team.isHome) say('home', `${team.eventName}: the home crowd roars (${pct(m.home)}).`);
     if (seg === 0 && m.cup && competition === 'cup') say('cup', `${team.eventName}: cup nights bring out the best in ${team.short} (${pct(m.cup)}).`);
-    if (seg === 0 && m.continental && (competition === 'continental' || competition === 'cwc')) say('cont', `${team.eventName}: ${team.short} rise to the occasion (${pct(m.continental)}).`);
+    if (seg === 0 && m.continental && INTL.has(competition)) say('cont', `${team.eventName}: ${team.short} rise to the occasion (${pct(m.continental)}).`);
   }
 }
 

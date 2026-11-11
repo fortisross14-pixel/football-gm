@@ -11,7 +11,7 @@ A 7v7 football card game. You are the club's GM: collect player and coach cards,
 2. Merge to `main`: the `Deploy Vite site to GitHub Pages` workflow (`.github/workflows/deploy.yml`) tests, builds and publishes the game.
 3. Open the Pages link on your phone, then **Add to Home Screen** (Safari share menu, or Chrome's ⋮ menu → Install app). It runs full-screen and works offline.
 
-Careers are saved on the device (saves from before v1.9's 10-club world show as "Older version — can't be continued" and can be deleted). Use **Back up** in the main menu to move a career between devices (download the file or copy the text, then **Restore** on the other device).
+Careers are saved on the device (saves from before v2.3's six confederations show as "Older version — can't be continued" and can be deleted). Use **Back up** in the main menu to move a career between devices (download the file or copy the text, then **Restore** on the other device).
 
 ## Run it
 
@@ -25,9 +25,9 @@ npm run build      # static build in dist/
 
 ## What's playable
 
-- **World:** 44 divisions of 10 clubs (440 real clubs) across Europe, the Americas, Asia and Africa: the Big 4 with three tiers, France, Portugal, the Netherlands, Argentina, Brazil, Mexico and Japan with two, and single leagues from Belgium and Turkey to Chile and Egypt. 18 matchdays a season; 2 up and 2 down between tiers. Every division plays each matchday. Browse any league's table, fixtures and scorers.
+- **World:** 46 divisions of 10 clubs (460 real clubs) in six confederations (Europe, South America, North America, Africa, Asia, Oceania): the Big 4 with three tiers, France, Portugal, the Netherlands, Argentina, Brazil, Mexico and Japan with two, and single leagues from Belgium and Turkey to Chile, Egypt, North America Other (Costa Rica, Honduras, Guatemala, Canada) and Oceania (Australia, New Zealand). 18 matchdays a season; 2 up and 2 down between tiers. Every division plays each matchday. Browse any league's table, fixtures and scorers.
 - **Season:** you start in Spain · Division 3 with Racing Santander. Win the league to go up (and earn bigger rewards), finish last to go down.
-- **Competitions:** domestic cups, the European / Americas / Africa–APAC Cups (qualify through your league) and the Club World Cup, all interleaved with league matchdays. Trophies pay prize money and reward packs.
+- **Competitions:** domestic cups, a **super cup** in every country on matchday 0 (league champion vs cup winner; England's Community Shield), a continental cup in each confederation (European, South American, North American, African, Asian, Oceania Cup), a **second continental trophy** for cup winners and the next-placed clubs (European, South American, North American, African, Asian Trophy), **continental super cups** and a six-club Club World Cup, all interleaved with league matchdays. Trophies pay prize money and reward packs. Formats: `docs/CARD_GAME_DESIGN.md` §3.3b–3.7.
 - **Matches:** 6 blocks of 15 minutes with live commentary, subs, mentality, boosts (up to 3 per match) and **skills**: elite players and coaches each carry one, and you can fire 2 per match. Penalties in knockout games.
 - **Tactics:** pressing, passing and defensive line, with counters (high press beats short passing, direct beats a high line…) and synergies with cards and coaches. Rivals' styles and skills are shown before kick-off.
 - **Shop:** two sections. **Player:** Bronze, Silver, Gold, Elite and Coach packs (odds shown) and the Transfer Market. **Club:** club packs (Bronze 200: 1 card; Silver 600: keep 1 of 3; Gold 1,800: keep 1 of 3, Rare or better) and sealed boost packs. Play a boost in a match and you get a free random boost card afterwards.

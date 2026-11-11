@@ -5,6 +5,7 @@
 //   Top Scorer: pure league goals, top-flight leagues only.
 
 import { DIVISION_BY_ID } from '../data/world/structure.js';
+import { CONTINENT_NAME, CONTINENT2_NAME, CONT_SUPER_NAME, cupName, superCupName } from './competitions.js';
 
 const LEVEL_FACTOR = { 1: 1, 2: 0.6, 3: 0.35 };
 const LEAGUE_TITLE = { 1: 6, 2: 2, 3: 1 };
@@ -23,8 +24,11 @@ export function titlePoints(entry) {
     const div = DIVISION_BY_ID[divId];
     add(lg.table[0][0], LEAGUE_TITLE[div.level] || 1, div.name);
   }
-  for (const [code, c] of Object.entries(entry.cups)) add(c?.winner, 2, `${code} Cup`);
-  for (const [k, c] of Object.entries(entry.continental)) add(c?.winner, 7, { europe: 'European Cup', americas: 'Americas Cup', afap: 'Africa–APAC Cup' }[k]);
+  for (const [code, c] of Object.entries(entry.cups)) add(c?.winner, 2, cupName(code));
+  for (const [code, c] of Object.entries(entry.supercups || {})) add(c?.winner, 0.5, superCupName(code));
+  for (const [k, c] of Object.entries(entry.continental)) add(c?.winner, 7, CONTINENT_NAME[k] || k);
+  for (const [k, c] of Object.entries(entry.continental2 || {})) add(c?.winner, 4, CONTINENT2_NAME[k] || k);
+  for (const [k, c] of Object.entries(entry.contSuper || {})) add(c?.winner, 1, CONT_SUPER_NAME[k] || k);
   add(entry.cwc?.winner, 4, 'Club World Cup');
   return pts;
 }

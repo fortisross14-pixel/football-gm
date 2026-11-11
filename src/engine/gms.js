@@ -59,12 +59,22 @@ export function updateGms(world, { archiveEntry, seed, userClubId, year }) {
       }
     });
   }
-  for (const c of [...Object.values(archiveEntry.cups), ...Object.values(archiveEntry.continental), archiveEntry.cwc]) {
-    const gm = c?.winner && world.gms?.[c.winner];
-    if (!gm) continue;
-    const intl = Object.values(archiveEntry.continental).includes(c) || c === archiveEntry.cwc;
-    if (intl) gm.intl += 1; else gm.cups += 1;
-    gm.rep = clamp(gm.rep + (intl ? 8 : 3), 0, 100);
+  // Trophies: [list, international?, reputation]
+  const groups = [
+    [Object.values(archiveEntry.cups), false, 3],
+    [Object.values(archiveEntry.supercups || {}), false, 1],
+    [Object.values(archiveEntry.continental), true, 8],
+    [Object.values(archiveEntry.continental2 || {}), true, 5],
+    [Object.values(archiveEntry.contSuper || {}), true, 2],
+    [[archiveEntry.cwc], true, 8],
+  ];
+  for (const [list, intl, rep] of groups) {
+    for (const c of list) {
+      const gm = c?.winner && world.gms?.[c.winner];
+      if (!gm) continue;
+      if (intl) gm.intl += 1; else gm.cups += 1;
+      gm.rep = clamp(gm.rep + rep, 0, 100);
+    }
   }
   // Former GMs keep their place in the all-time book.
   world.formerGms = [...(world.formerGms || []), ...sacked.map(({ clubId, gm }) => ({ ...gm, clubId, until: year }))]
