@@ -146,7 +146,7 @@ Each cup is a quick **single-match knockout**. One loss and you're out. The brac
 
 - Every country, **matchday 0** (before league matchday 1): last season's **league champion** against the **cup winner** (the cup runner-up if the champion did the double). One match at a neutral venue, penalties if level. Only those two clubs play; everyone else's calendar is unchanged. England's is the **Community Shield**.
 - Season 1 uses club strength: the strongest top-flight club against the second strongest.
-- Pays like a cup game; the winner gets 120 × multiplier coins, a Bronze pack and +2 reputation.
+- Pays like a cup game; the winner gets 80 × multiplier coins, a Bronze pack and +1 reputation.
 
 ### 3.4 Continental tournaments (v2.3: six confederations)
 
@@ -165,7 +165,7 @@ Rounds: more qualifiers than places → the last-listed (weakest leagues) play a
 
 **Continental super cup (KS)**: the K winner against the K2 winner of last season, one neutral match at the start of the season (after league matchday 1). Europe, South America, North America, Africa and Asia; season 1 uses the first-listed entrant of each.
 
-Prizes: K as before (win 100 / draw 40 / loss 20, title 1,500 + Elite pack, finalist 500, qualifying win 150). K2 about 60% for games and half for prizes (60 / 25 / 12, title 750 + Gold pack, finalist 250, qualifying win 75). KS 100 / 40 / 20 and 400 + a Gold pack. Reputation: K +10, K2 +6, KS +3, super cup +2 (before the league-level weight). Continental Nights and Big Game apply in K, K2, KS and the Club World Cup.
+Prizes: K as before (win 100 / draw 40 / loss 20, title 1,500 + Elite pack, finalist 500, qualifying win 150). K2 a bit under half (45 / 18 / 10, title 600 + Gold pack, finalist 200, qualifying win 75). KS 100 / 40 / 20 and 300 + a Gold pack. Reputation: K +10, K2 +5, KS +2, super cup +1 (before the league-level weight). Continental Nights and Big Game apply in K, K2, KS and the Club World Cup.
 
 ### 3.5 Club World Cup (every season, at the end)
 
@@ -639,8 +639,8 @@ Your GM reputation runs from **0 to 100** and decides which clubs want you.
 | Cup winner | +5 |
 | League title | +10 |
 | Continental title | +15 |
-| Second continental trophy (v2.3) | +6 |
-| Super cup / continental super cup (v2.3) | +2 / +3 |
+| Second continental trophy (v2.3) | +5 |
+| Super cup / continental super cup (v2.3) | +1 / +2 |
 | Club World Cup | +20 |
 
 ### 7.2 Board objective

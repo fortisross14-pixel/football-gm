@@ -44,7 +44,7 @@ export function judgeObjective(objective, position) {
 export const REPUTATION = {
   met: 9, exceeded: 13, missed: -8, promotion: 9, cup: 4, league: 9, continental: 10, cwc: 12, sacked: -15,
   // v2.3: smaller gains for the second continental trophy and the super cups.
-  continental2: 6, contsuper: 3, supercup: 2,
+  continental2: 5, contsuper: 2, supercup: 1,
 };
 
 export function reputationChanges({ verdict, promoted, leagueTitle, trophies }) {

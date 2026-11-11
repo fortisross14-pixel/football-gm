@@ -393,22 +393,22 @@ const RESULT_COINS = {
   cup: { win: 65, draw: 20, loss: 8, scaled: true },
   continental: { win: 100, draw: 40, loss: 20, scaled: false },
   cwc: { win: 150, draw: 60, loss: 30, scaled: false },
-  // v2.3: super cups pay like a cup game; the second continental trophy about 60% of the first.
+  // v2.3: super cups pay like a cup game; the second continental trophy under half of the first.
   supercup: { win: 65, draw: 20, loss: 8, scaled: true },
-  continental2: { win: 60, draw: 25, loss: 12, scaled: false },
+  continental2: { win: 45, draw: 18, loss: 10, scaled: false },
   contsuper: { win: 100, draw: 40, loss: 20, scaled: false },
 };
 
 // Trophy prize and reward pack per competition (cup and super cup scale with the division).
 const TROPHY_PRIZE = {
   cup: { coins: 400, scaled: true, pack: 'silver' },
-  supercup: { coins: 120, scaled: true, pack: 'bronze' },
+  supercup: { coins: 80, scaled: true, pack: 'bronze' },
   continental: { coins: 1500, pack: 'elite' },
-  continental2: { coins: 750, pack: 'gold' },
-  contsuper: { coins: 400, pack: 'gold' },
+  continental2: { coins: 600, pack: 'gold' },
+  contsuper: { coins: 300, pack: 'gold' },
   cwc: { coins: 2500, pack: 'elite' },
 };
-const FINALIST_PRIZE = { continental: 500, continental2: 250 };
+const FINALIST_PRIZE = { continental: 500, continental2: 200 };
 const QUALIFYING_PRIZE = { continental: 150, continental2: 75 };
 
 // Business income per match, scaled for the longer v1.9 season.
