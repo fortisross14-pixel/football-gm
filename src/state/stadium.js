@@ -58,8 +58,8 @@ export const starsOf = (state) => stadiumStars(stadiumOf(state).parts, state.fac
 export const homeStatBonus = (state) => { const p = stadiumOf(state).parts; return PART_HOME * ((p.lockers || 0) + (p.pitch || 0)); };
 
 // Ticket demand: a share of the local fans, more when they're happy, fewer at high prices.
-// 8,000 local fans want about 5,500 tickets at normal mood; 100,000 want 22,000; 2 million, 115,000.
-export const DEMAND_K = 39;
+// 8,000 local fans want about 5,900 tickets at normal mood; 100,000 want 23,600; 2 million, 124,000.
+export const DEMAND_K = 42;
 export const DEMAND_EXP = 0.55;
 export const moodFactor = (happiness) => Math.max(0.5, Math.min(1.4, 0.6 + (0.4 * happiness) / 55));
 

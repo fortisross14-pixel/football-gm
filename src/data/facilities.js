@@ -128,7 +128,7 @@ export const HOSPITALITY_WEIGHT = 1; // the boxes count towards the stars too
 // Gate per home game = attendance × price per fan, with price per fan =
 // GATE_BASE × division multiplier × stars price × floodlights × ticket price / stadium size.
 // So a full stadium at size × SEAT_MULT earns about what the old per-level gate did.
-export const GATE_BASE = 61;
+export const GATE_BASE = 58;
 export const starPrice = (stars) => 0.85 + 0.06 * stars;
 
 // Stars 1–5 in half steps from the weighted average level (seats count double, hospitality once).
