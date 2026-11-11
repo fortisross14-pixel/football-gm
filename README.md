@@ -37,12 +37,13 @@ npm run build      # static build in dist/
 - **Cards tab:** Owned (squad, items, album) and Shop (packs, boosts, Transfer Market).
 - **League tab:** every league by name, with table, fixtures, scorers, cups and **History**: champion, runner-up, top scorer, MVP and Golden Glove for every season, records by league, country or world, and your career season by season. Tap any club for its page (Overview, Squad, History with managers and transfers, Stats, Honours), any player for his profile (Overview, History club by club and season by season, Stats by competition) and any manager for his page.
 - **World tab:** manager rankings (you against 400+ AI managers), power ranking and most decorated clubs, world records, Hall of Fame.
-- **Season end:** prize money, reward packs and a free management card.
-- **Transfer Market, open all year:** 33 management card types (random signings, youth, club-area upgrades, sponsors, season events…), each with a rarity that sets its strength. 9 offers each summer, 6 new ones every 5 league matchdays. Play cards from Cards → Items any time, up to **8 card plays a season** (+1 at Analytics level 3 and 5).
-- **Card wear:** players and coaches lose a match each time they play and retire at 0.
+- **Season end:** prize money, reward packs, a free management card and the **season card deal**: 3 season cards, pick 1 for next season (redraw for ◎ 200 / 400 / 800).
+- **Transfer Market, open all year:** management cards (random signings, youth, club-area upgrades, sponsors…), each with a rarity that sets its strength. 9 offers each summer, 6 new ones every 5 league matchdays. Play cards from Cards → Items any time, up to **8 card plays a season** (+1 at Analytics level 3 and 5).
+- **Card wear:** players and coaches lose a match each time they play and retire at 0. Academy graduates start with their full career, pack players with 50–90% of it, signings with what they had left.
 
 - **Squad:** 12 cards, a starting 7 and 5 reserves (3 subs a match). Rotating keeps the team's shape up.
-- **Main menu:** 3 save slots, new career (pick your name and one of three small-club job offers), back up / restore, settings (match speed, auto-play, reduced motion, tips).
+- **Main menu:** 3 save slots, new career (your name, country and GM style, a GM card reveal, then one of three small-club job offers), back up / restore, settings (match speed, auto-play, reduced motion, tips).
+- **GM card:** one permanent card from your GM style (12 cards, Common to Epic): Money Man, Dealmaker, Tactics Connoisseur, Game Reader, Fitness Freak, Iron Squad, Dressing-room Leader, Continuity, CEO's Friend, Fan Favourite, Coach Tamer, Media Darling.
 - **GM career:** reputation, board objectives, owners and fans confidence, job offers, moving clubs with 2 cards, getting sacked (3 offers, a level lower if a top-flight club fires you).
 - **Club management:** ten club areas, levels 0–5, each raised by its own card. Business: stadium, hospitality, club store, merchandise, sponsorship (income every match). Sports: training fields, gym, spa & recovery, youth academy, analytics. Plus income per match, finances, popularity and the trophy cabinet.
 
@@ -64,6 +65,8 @@ Progress is saved in the browser, automatically.
 | `src/engine/careers.js` | Career log: every player's and manager's seasons, moves between clubs, club records |
 | `src/engine/gms.js` | AI managers: reputation, sackings, rankings |
 | `src/engine/career.js` | Board objective, reputation, owners/fans confidence, job offers |
+| `src/engine/gmTraits.js` | GM styles and the 12 GM cards: values and the effect helpers |
+| `src/data/seasonCards.js` | The season card deck, season-only cards, redraw costs |
 | `src/data/skills.js` | Intrinsic skills for Rare+ players and coaches |
 | `scripts/tactics-check.mjs` | Simulates every tactic against a neutral side |
 | `scripts/smoke.cjs` | Clicks through every screen with a save and reports errors |
@@ -72,7 +75,7 @@ Progress is saved in the browser, automatically.
 | `scripts/check-world.mjs` | Validates the world data |
 | `scripts/check-nations.mjs` | Every named player/coach has a known nation (`src/data/nations.js`: code → name + flag) |
 | `src/state/managers.js` | Managers book: every career you have played, ranked (main menu → Managers) |
-| `src/data/offseason.js` | The 33 management card types (Transfer Market) |
+| `src/data/offseason.js` | The 33 management card types (Transfer Market) plus the season-only cards |
 | `src/data/facilities.js` | The ten club areas: levels, effects, card plays per season |
 | `src/data/` | Demo club, league clubs, boosts, coach passives |
 | `src/ui/` | React screens and card components |
