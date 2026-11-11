@@ -3,7 +3,7 @@ import { PACKS, PACK_IDS, packOdds } from '../engine/packs.js';
 import { BOOSTS, BOOST_IDS, BOOST_PACKS } from '../data/boosts.js';
 import { TIERS } from '../data/offseason.js';
 import { CLUB_PACKS, CLUB_PACK_IDS } from '../data/clubPacks.js';
-import { packShift, marketRefreshIn } from '../state/club.js';
+import { packShift, marketRefreshIn, packPrice, boostPackPrice, clubPackPrice } from '../state/club.js';
 import { CardPlays } from './Collection.jsx';
 import { RARITIES } from '../engine/cards.js';
 import { PackArt, BoostCard, OffseasonCard } from './Card.jsx';
@@ -46,8 +46,8 @@ export default function Shop({ state, onBuyPack, onBuyBoostPack, onBuyOffer, onS
                     <b>{pack.name}</b>
                     <span className="hint">{pack.guarantee !== null ? `At least 1 ${RARITIES[TIERS[pack.guarantee]].label} or better` : 'No guarantee'}</span>
                     <Odds odds={packOdds(id, shift)} />
-                    <button type="button" className="btn btn--primary btn--small" disabled={state.coins < pack.price || busy} onClick={() => onBuyPack(id)}>
-                      ◎ {pack.price}
+                    <button type="button" className="btn btn--primary btn--small" disabled={state.coins < packPrice(state, id) || busy} onClick={() => onBuyPack(id)}>
+                      ◎ {packPrice(state, id)}{packPrice(state, id) < pack.price && <s className="price-was"> {pack.price}</s>}
                     </button>
                   </div>
                 </div>
@@ -74,8 +74,8 @@ export default function Shop({ state, onBuyPack, onBuyBoostPack, onBuyOffer, onS
                     <b>{pack.name}</b>
                     <span className="hint">{pack.text}</span>
                     <Odds odds={pack.odds} />
-                    <button type="button" className="btn btn--primary btn--small" disabled={state.coins < pack.price || busy} onClick={() => onBuyClubPack(id)}>
-                      ◎ {pack.price}
+                    <button type="button" className="btn btn--primary btn--small" disabled={state.coins < clubPackPrice(state, id) || busy} onClick={() => onBuyClubPack(id)}>
+                      ◎ {clubPackPrice(state, id)}{clubPackPrice(state, id) < pack.price && <s className="price-was"> {pack.price}</s>}
                     </button>
                   </div>
                 </div>
@@ -92,7 +92,7 @@ export default function Shop({ state, onBuyPack, onBuyBoostPack, onBuyOffer, onS
                 <div className="pack-row__body">
                   <b>{pack.name}</b>
                   <span className="hint">{pack.text}</span>
-                  <button type="button" className="btn btn--primary btn--small" disabled={state.coins < pack.price} onClick={() => setGot(onBuyBoostPack(id))}>◎ {pack.price}</button>
+                  <button type="button" className="btn btn--primary btn--small" disabled={state.coins < boostPackPrice(state, id)} onClick={() => setGot(onBuyBoostPack(id))}>◎ {boostPackPrice(state, id)}</button>
                 </div>
               </div>
             ))}

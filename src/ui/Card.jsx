@@ -175,12 +175,12 @@ export function BoostCard({ id, count, onClick, active, disabled, compact, reaso
   );
 }
 
-export function OffseasonCard({ item, onClick, footer, disabled, selected }) {
+export function OffseasonCard({ item, onClick, footer, disabled, selected, label }) {
   const def = OFFSEASON_CARDS[item.type];
   return (
     <button type="button" className={`ocard r-${item.rarity}${selected ? ' is-selected' : ''}`} onClick={onClick} disabled={disabled}>
       <div className="ocard__top">
-        <span className="ocard__group">{cardLabel(item.type)}</span>
+        <span className="ocard__group">{label || cardLabel(item.type)}</span>
         <span className="ocard__rarity">{RARITIES[item.rarity].label}</span>
       </div>
       <span className="ocard__icon" aria-hidden="true">{def.icon}</span>

@@ -446,8 +446,8 @@ function SkillBar({ match, side, live, picked, onPick, onUse }) {
     <div className="skillbar">
       <div className="skillbar__head">
         <span>Skills</span>
-        <span className="skillbar__pips" aria-label={`${team.skillsLeft} of ${MAX_SKILLS} left`}>
-          {Array.from({ length: MAX_SKILLS }, (_, i) => <i key={i} className={i < team.skillsLeft ? 'is-on' : ''} />)}
+        <span className="skillbar__pips" aria-label={`${team.skillsLeft} of ${team.skillsLeft + team.skillsUsed.length} left`}>
+          {Array.from({ length: team.skillsLeft + team.skillsUsed.length || MAX_SKILLS }, (_, i) => <i key={i} className={i < team.skillsLeft ? 'is-on' : ''} />)}
         </span>
       </div>
       <div className="skillbar__row">

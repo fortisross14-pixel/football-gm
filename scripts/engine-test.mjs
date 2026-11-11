@@ -36,6 +36,13 @@ import { teamFit } from '../src/engine/match.js';
 import { PHILOSOPHIES as PHILOSOPHIES_FOR_TEST } from '../src/data/philosophies.js';
 import { AREA_IDS, cardPlayLimit } from '../src/data/facilities.js';
 import { cardPrice } from '../src/data/offseason.js';
+import { drawGmTrait, GM_STYLES, GM_TRAITS, scaleConfidence } from '../src/engine/gmTraits.js';
+import { suitability } from '../src/engine/tactics.js';
+import { styleDistance, coachStyle, PHILOSOPHIES } from '../src/data/philosophies.js';
+import {
+  seasonDealOptions, pickSeasonCard, redrawSeasonCards, redrawCost, packPrice, PACK_LIFE,
+} from '../src/state/club.js';
+import { REDRAW_COSTS, SEASON_DECK } from '../src/data/seasonCards.js';
 
 let passed = 0;
 const test = (name, fn) => { fn(); passed += 1; console.log(`ok - ${name}`); };
@@ -175,8 +182,8 @@ test('a full season runs, ends and opens the Transfer Market', () => {
   assert.equal(s.season.year, 2);
 });
 
-test('all 42 management card types can be used', () => {
-  assert.equal(OFFSEASON_IDS.length, 42);
+test('all 42 management card types (and the season-only cards) can be used', () => {
+  assert.equal(OFFSEASON_IDS.filter((id) => OFFSEASON_CARDS[id].group !== 'season').length, 42);
   let base = fresh();
   for (let md = 0; md < MATCHDAYS; md += 1) base = playMatchday(base, 300 + md);
   base = resolve(closeSeason(base, 1));
@@ -185,6 +192,7 @@ test('all 42 management card types can be used', () => {
       assert.ok(cardText(type, rarity).length > 5);
       const s = structuredClone(base);
       s.inventory.offseason = [{ uid: 'x', type, rarity }];
+      s.seasonDeal = null; // an older save's summer: event cards are still played from the inventory
       s.facilities = { stadium: 0, merch: 0, training: 0, academy: 0 };
       const target = {
         playerId: s.lineup[3], position: 'FWD', trait: 'clutch', formation: '3-1-2', passive: 'tactician', coachRole: undefined,
@@ -902,6 +910,159 @@ test('v2.2 business fields: older saves without them load and play', () => {
   // An old summer save gets sponsor offers.
   const summer = migrateClubState({ ...old, phase: 'offseason' });
   assert.equal(sponsorOffers(summer).length, 3);
+});
+
+// ---------------------------------------------------------------------------
+// GM cards, season deal, card lifespans (v2.2)
+
+const withTrait = (s, id, rarity = 'rare') => ({ ...s, gm: { ...s.gm, trait: { id, rarity } } });
+
+test('GM card: each style deals only its own cards, every rarity Common to Epic', () => {
+  for (const [style, def] of Object.entries(GM_STYLES)) {
+    const seen = new Set();
+    for (let i = 0; i < 60; i += 1) {
+      const t = drawGmTrait(style, i);
+      assert.ok(def.cards.includes(t.id), `${style}: ${t.id}`);
+      assert.ok(['common', 'uncommon', 'rare', 'epic'].includes(t.rarity));
+      seen.add(t.id);
+    }
+    assert.equal(seen.size, def.cards.length, `${style} deals all its cards`);
+  }
+  assert.equal(Object.keys(GM_TRAITS).length, 12);
+  const s = newClubState(5, { gmName: 'T', nation: 'ESP', style: 'tactical', trait: { id: 'gameReader', rarity: 'epic' } });
+  assert.deepEqual(s.gm.trait, { id: 'gameReader', rarity: 'epic' });
+  assert.equal(s.gm.nation, 'ESP');
+  const old = structuredClone(s); delete old.gm.trait; delete old.seasonCard;
+  assert.equal(migrateClubState(old).gm.trait, null, 'older careers: no GM card');
+});
+
+test('Tactics Connoisseur turns red advice grey, and the grade with it', () => {
+  const A = { pas: 50, sho: 60, def: 60, phy: 50, set: 40, defDef: 55, defPhy: 50, fwdPhy: 50, wide: 60, central: 60 };
+  const t = { ...DEFAULT_TACTICS, press: 5, tempo: 5, line: 5 };
+  const reds = styleAdvice(t, A).filter((a) => a.tone === 'bad').length;
+  assert.ok(reds >= 2);
+  const one = styleAdvice(t, A, { cover: 1 });
+  assert.equal(one.filter((a) => a.tone === 'bad').length, reds - 1);
+  assert.ok(one.find((a) => a.tone === 'covered').note.includes('Tactics Connoisseur'));
+  assert.equal(styleAdvice(t, A, { cover: 2 }).filter((a) => a.tone === 'covered').length, 2);
+  assert.ok(suitability(t, A, { cover: 2 }) > suitability(t, A));
+  // In a match: the user's grade improves from red to grey.
+  const s = fresh();
+  const base = { ...buildUserTeam(s, [], true), tactics: t };
+  const squadA = { ...base, gm: { cover: 0 } };
+  const covered = { ...base, gm: { cover: 2 } };
+  assert.ok(teamFit(covered).suit >= teamFit(squadA).suit);
+  const conn = buildUserTeam(withTrait(s, 'tacticsConnoisseur', 'epic'), [], true);
+  assert.equal(conn.gm.cover, 2);
+  assert.equal(buildUserTeam(withTrait(s, 'tacticsConnoisseur', 'uncommon'), [], true).gm.cover, 1);
+});
+
+test('Coach Tamer cuts the coach-fit distance (a clash can become grey)', () => {
+  const s = fresh();
+  const coach = coachStyle(s.coaches.coach);
+  const far = Object.keys(PHILOSOPHIES).sort((a, b) => styleDistance(PHILOSOPHIES[b].t, coach) - styleDistance(PHILOSOPHIES[a].t, coach))[0];
+  const team = { ...buildUserTeam(s, [], true), tactics: PHILOSOPHIES[far].t };
+  const plain = teamFit(team);
+  const tamed = teamFit({ ...team, gm: buildUserTeam(withTrait(s, 'coachTamer', 'epic'), [], true).gm });
+  assert.equal(tamed.distance, Math.max(0, plain.distance - 2));
+  assert.equal(teamFit({ ...team, gm: buildUserTeam(withTrait(s, 'coachTamer', 'common'), [], true).gm }).distance, Math.max(0, plain.distance - 1));
+});
+
+test('Money Man adds a share of all match income; Dealmaker and Bargain Hunter cut prices', () => {
+  const s = fresh();
+  const fx = userFixture(s.season, s.club.divisionId, s.club.id);
+  const m = simulateMatch({ home: buildUserTeam(s, [], true), away: aiTeamFor(s.world, fx.opponentId, POOL_BY_ID, 1), seed: 3 });
+  const plain = matchRewards(s, m, 0);
+  const rich = matchRewards(withTrait(s, 'moneyMan', 'epic'), m, 0);
+  const bonus = rich.items.find((i) => i.label === 'Money Man bonus');
+  assert.equal(bonus.coins, Math.round(plain.total * 0.1));
+  assert.equal(rich.total, plain.total + bonus.coins);
+  assert.equal(packPrice(s, 'silver'), PACKS.silver.price);
+  assert.equal(packPrice(withTrait(s, 'dealmaker', 'epic'), 'silver'), Math.round(PACKS.silver.price * 0.85 / 10) * 10);
+  assert.equal(packPrice({ ...s, activeEvent: { type: 'bargainHunter', rarity: 'rare' } }, 'gold'), PACKS.gold.price * 0.8);
+  const bought = buyPack({ ...withTrait(s, 'dealmaker', 'epic'), coins: 1000 }, 'silver', 1);
+  assert.equal(bought.coins, 1000 - packPrice(withTrait(s, 'dealmaker', 'epic'), 'silver'));
+});
+
+test('cohesion, shape and confidence GM cards', () => {
+  const s = fresh();
+  const changed = { ...s, lastLineup: s.bench.slice(0, 7), cohesion: 80 };
+  const loss = 80 - effectiveCohesion(changed);
+  assert.ok(loss > 0);
+  assert.equal(80 - effectiveCohesion(withTrait(changed, 'continuity', 'epic')), Math.round(loss * 0.4));
+  assert.equal(teamShape(withTrait(s, 'fitnessFreak', 'epic')), Math.min(100, teamShape(s) + 12));
+  assert.ok(Math.abs(seasonMods(withTrait(s, 'ironSquad', 'epic')).drain - seasonMods(s).drain - 0.12) < 1e-9);
+  const conf = scaleConfidence({ board: 50, fans: 50 }, { board: 60, fans: 40 }, { id: 'ceosFriend', rarity: 'epic' });
+  assert.equal(conf.board, 64);
+  assert.equal(conf.fans, 40, 'only the owners change');
+  assert.equal(scaleConfidence({ board: 50, fans: 50 }, { board: 40, fans: 60 }, { id: 'fanFavourite', rarity: 'common' }).fans, 62);
+});
+
+test('season deal: 3 cards at season end, pick one, redraws cost 200/400/800', () => {
+  let s = fresh();
+  for (let md = 0; md < MATCHDAYS; md += 1) s = playMatchday(s, 900 + md);
+  s = resolve(closeSeason(s, 4));
+  assert.equal(s.seasonDeal.hand.length, 3);
+  assert.equal(new Set(s.seasonDeal.hand.map((c) => c.type)).size, 3);
+  for (const c of s.seasonDeal.hand) assert.ok(SEASON_DECK.includes(c.type));
+  assert.equal(s.seasonCard, null);
+  s = { ...s, coins: 2000 };
+  const costs = [];
+  for (let i = 0; i < 4; i += 1) {
+    const before = s.coins;
+    costs.push(redrawCost(s));
+    s = redrawSeasonCards(s, 10 + i);
+    if (costs[i] !== null) assert.equal(before - s.coins, costs[i]);
+  }
+  assert.deepEqual(costs, [...REDRAW_COSTS, null]);
+  assert.equal(s.coins, 2000 - 1400);
+  // An old event card in the inventory is a free option in the deal.
+  s.inventory.offseason.push({ uid: 'old1', type: 'fortressSeason', rarity: 'epic' });
+  const opts = seasonDealOptions(s);
+  assert.equal(opts.length, 4);
+  const picked = pickSeasonCard(s, 'inv:old1', 3);
+  assert.equal(picked.seasonCard.type, 'fortressSeason');
+  assert.equal(picked.seasonCard.rarity, 'epic');
+  assert.equal(picked.seasonCard.name, 'Fortress Season');
+  assert.ok(!picked.inventory.offseason.some((i) => i.uid === 'old1'));
+  assert.equal(picked.seasonDeal, null);
+  const next = startNextSeason(resolve(picked), 5);
+  assert.equal(next.phase, 'season');
+  assert.deepEqual(next.activeEvent, { type: 'fortressSeason', rarity: 'epic' });
+  assert.ok(seasonMods(next).home > 0);
+  // Nobody picked: the first card is played at kick-off.
+  const auto = startNextSeason(s, 6);
+  assert.ok(auto.seasonCard && auto.activeEvent);
+});
+
+test('academy graduates start with their full career; pack players with 50–90%', () => {
+  let s = fresh();
+  s.facilities = { ...s.facilities, academy: 5 };
+  for (let md = 0; md < MATCHDAYS; md += 1) s = playMatchday(s, 1300 + md);
+  for (const id of Object.keys(POOL_BY_ID)) s.world.cardLeft[id] = 1; // worn out elsewhere: graduates still start fresh
+  s = closeSeason(s, 9);
+  const named = (s.pendingOpen?.cards || []).filter((c) => POOL_BY_ID[c.id]);
+  assert.ok(named.length > 0, "the academy brings club legends");
+  for (const c of named) assert.equal(c.matchesLeft, POOL_BY_ID[c.id].matchesLeft, c.name);
+  const ratios = [];
+  for (let i = 0; i < 30; i += 1) {
+    const b = buyPack({ ...fresh(), coins: 5000 }, 'gold', 100 + i);
+    for (const c of b.pendingOpen.cards) {
+      const full = POOL_BY_ID[c.id].matchesLeft;
+      ratios.push(c.matchesLeft / full);
+      assert.ok(c.matchesLeft >= Math.floor(full * PACK_LIFE[0]) && c.matchesLeft <= Math.ceil(full * PACK_LIFE[1]), `${c.name} ${c.matchesLeft}/${full}`);
+    }
+  }
+  assert.ok(Math.min(...ratios) < 0.6 && Math.max(...ratios) > 0.8, 'spread across the range');
+});
+
+test('signings keep the career they had at their old club', () => {
+  const s = fresh();
+  for (const id of Object.keys(POOL_BY_ID)) s.world.cardLeft[id] = 42;
+  s.inventory.offseason = [{ uid: 'w', type: 'worldSigning', rarity: 'rare' }];
+  const r = useOffseasonCard(s, 'w', {}, 7);
+  assert.equal(r.success, true);
+  assert.equal(r.state.pendingOpen.cards[0].matchesLeft, 42);
 });
 
 // ---------------------------------------------------------------------------

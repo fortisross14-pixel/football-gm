@@ -29,6 +29,11 @@ import { styleDistance, clubIdentity } from '../data/philosophies.js';
 import { isDerby, derbyName } from '../data/rivals.js';
 import { normalizeTactics } from '../engine/tactics.js';
 import { RARITIES, TRAITS, POSITIONS, overall, rarityForOverall, autoArrange } from '../engine/cards.js';
+import {
+  revenueBonus, priceDiscount, adviceCover, shapeBonus, drainBonus, cohesionGainBonus, changeCostFactor, coachDistanceCut,
+  reputationBonus, extraJobOffers, extraSkills, skillPower, scaleConfidence,
+} from '../engine/gmTraits.js';
+import { SEASON_DECK, SEASON_WEIGHTS, REDRAW_COSTS, HAND_SIZE } from '../data/seasonCards.js';
 import { PACKS, openPack, mergeDuplicate, drawFromPool, MAX_STARS } from '../engine/packs.js';
 import { PROMOTION_SPOTS, applyCurses, buildWorld, createSeason, playMatchday, goalsFromMatch, standings, removeKeyPlayer, endOfSeason, divisionName, refreshStrengths, userFixture, quickResult } from '../engine/season.js';
 import {
@@ -124,7 +129,8 @@ const findClub = (clubId) => {
   return null;
 };
 
-export function newClubState(seed = 12345, { clubId = USER_CLUB.id, gmName = 'You' } = {}) {
+// gm: the GM's country (nation code), style and GM card ({ id, rarity }, engine/gmTraits.js).
+export function newClubState(seed = 12345, { clubId = USER_CLUB.id, gmName = 'You', nation = null, style = null, trait = null } = {}) {
   const found = findClub(clubId) || findClub(USER_CLUB.id);
   const base = { id: found.club.id, name: found.club.name, short: found.club.short, colors: found.club.colors };
   // A random Uncommon, Rare or Epic head coach (never Common, never a Legend).
@@ -147,6 +153,8 @@ export function newClubState(seed = 12345, { clubId = USER_CLUB.id, gmName = 'Yo
     cohesion: 50,
     lastLineup: [...lineup],
     activeEvent: null,
+    seasonCard: null, // the season card picked for this season ({ type, rarity }); it is the active event
+    seasonDeal: null, // end of season: { year, hand: [{ type, rarity }], redraws } (see dealSeasonCards)
     perks: { shape: 0 },
     cardPlays: 0, // management cards played this season (see cardPlayLimit)
     loads: {}, // time on the field per player (see teamShape)
@@ -172,7 +180,7 @@ export function newClubState(seed = 12345, { clubId = USER_CLUB.id, gmName = 'Yo
   state.world = buildWorld(CLUBS_BY_DIVISION, CLUB_POOLS, POOL_BY_ID, ownedIds(state), seed + 3);
   state.world.clubs[state.club.id].keyPlayers = [];
   ensureGms(state.world, seed + 5, 1, state.club.id);
-  state.gm = { reputation: START_REPUTATION, confidence: { ...START_CONFIDENCE }, objective: null, missedInRow: 0, sacked: false, offers: [], review: null, career: [{ clubId: state.club.id, name: state.club.name, from: 1, to: null }], contract: newContract(1, state.club.level) };
+  state.gm = { nation, style, trait, reputation: START_REPUTATION, confidence: { ...START_CONFIDENCE }, objective: null, missedInRow: 0, sacked: false, offers: [], review: null, career: [{ clubId: state.club.id, name: state.club.name, from: 1, to: null }], contract: newContract(1, state.club.level) };
   pushInbox(state, 'career', `Welcome to ${state.club.name}`, `The owners hand you the keys: a ${state.gm.contract.until - state.gm.contract.from + 1}-season contract. Your coach is ${state.coaches.coach.name}. Good luck.`);
   state.qualification = qualifiers(tablesByStrength(state.world));
   state.season = newSeason(state, 1, seed);
@@ -252,9 +260,11 @@ export const ownedIds = (state) => [...state.squad.map((c) => c.id), state.coach
 // ---------------------------------------------------------------------------
 // Match setup and effects
 
+const gmTrait = (state) => state.gm?.trait || null;
+
 export function effectiveCohesion(state) {
   const changed = state.lineup.filter((id) => !state.lastLineup.includes(id)).length;
-  return clamp(state.cohesion - changed * 10, cohesionFloor(state), 100);
+  return clamp(state.cohesion - Math.round(changed * 10 * changeCostFactor(gmTrait(state))), cohesionFloor(state), 100);
 }
 
 function cohesionFloor(state) {
@@ -275,7 +285,8 @@ export const loadOf = (state, id) => state.loads?.[id] ?? 0.5;
 export function teamShape(state) {
   let over = 0;
   for (const c of state.squad) over += Math.max(0, loadOf(state, c.id) - LOAD_FREE) * (c.pos === 'GK' ? 0.3 : 1);
-  return Math.round(clamp(100 - over * LOAD_COST + (state.perks?.shape || 0) + SPA_SHAPE[lvl(state, 'spa')] + effectSum(state, 'shape'), 30, 100));
+  const extra = shapeBonus(gmTrait(state)) + (state.activeEvent?.type === 'sportsScience' ? cardValue('sportsScience', state.activeEvent.rarity) : 0);
+  return Math.round(clamp(100 - over * LOAD_COST + (state.perks?.shape || 0) + SPA_SHAPE[lvl(state, 'spa')] + effectSum(state, 'shape') + extra, 30, 100));
 }
 export const shapeLabel = (v) => SHAPE_LABELS.find(([min]) => v >= min)[1];
 // Shape in the match: starting stamina, and a small penalty when Tired or Exhausted.
@@ -287,7 +298,7 @@ export function cohesionBonus(state) {
 }
 
 export function seasonMods(state) {
-  const mods = { all: cohesionBonus(state) + shapePenalty(teamShape(state)), home: ticketOf(state).home, comeback: 0, drain: GYM_DRAIN[lvl(state, 'gym')] / 100, finishing: 0, underdog: 0, cup: 0, continental: 0 };
+  const mods = { all: cohesionBonus(state) + shapePenalty(teamShape(state)), home: ticketOf(state).home, comeback: 0, drain: GYM_DRAIN[lvl(state, 'gym')] / 100 + drainBonus(gmTrait(state)), finishing: 0, underdog: 0, cup: 0, continental: 0 };
   const ev = state.activeEvent;
   if (!ev) return mods;
   const v = cardValue(ev.type, ev.rarity);
@@ -328,7 +339,14 @@ export function buildUserTeam(state, loadout, isHome) {
     startStamina: shapeStamina(teamShape(state)),
     gradeUp: effectSum(state, 'grade') > 0 ? 1 : 0, // Analyst Report: tactics grade one step better
     eventName: state.activeEvent ? OFFSEASON_CARDS[state.activeEvent.type].name : null,
+    gm: gmMatchEffects(state),
   };
+}
+
+// What the GM card changes inside a match (engine/match.js reads input.gm).
+export function gmMatchEffects(state) {
+  const t = gmTrait(state);
+  return { cover: adviceCover(t), coachCut: coachDistanceCut(t), extraSkills: extraSkills(t), skillPower: skillPower(t) };
 }
 
 // Popularity: rarity and stars, plus fame earned with goals, awards and trophies.
@@ -352,7 +370,7 @@ function track(state, kind, category, coins) {
 }
 
 const INCOME_CATEGORY = (label) => (
-  label.startsWith('Home gate') ? 'Gate' : label.startsWith('Merchandise') ? 'Merchandise' : label.startsWith('Sponsor') || label === 'Shirt sponsor' ? 'Sponsor'
+  label === 'Money Man bonus' ? 'GM card' : label.startsWith('Home gate') ? 'Gate' : label.startsWith('Merchandise') ? 'Merchandise' : label.startsWith('Sponsor') || label === 'Shirt sponsor' ? 'Sponsor'
     : label.startsWith('Hospitality') ? 'Hospitality' : label.startsWith('Club store') ? 'Store'
     : ['Trophy prize', 'Finalist prize', 'Qualified for the group stage'].includes(label) ? 'Prizes' : 'Results'
 );
@@ -439,7 +457,22 @@ export function matchRewards(state, match, userSide, game = { competition: 'leag
     const base = items.filter((i) => !/prize|Qualified|bonus/i.test(i.label)).reduce((s, i) => s + i.coins, 0);
     items.push({ label: `Derby day · ${derbyName(state.club.id, oppId)}`, coins: base });
   }
+  items.push(...bonusIncome(state, items, match.teams[userSide].isHome));
   return { items, total: items.reduce((s, i) => s + i.coins, 0) };
+}
+
+// Season card and GM card extras on top of a match's income. They stack with the v2.2 business
+// choices: Packed House is a % of the ticket-priced gate, Sponsor's Favourite is paid on top of
+// the sponsor contract, and Money Man takes its % of everything, sponsor bonuses included.
+function bonusIncome(state, items, isHome) {
+  const out = [];
+  const ev = state.activeEvent;
+  const biz = (area) => businessIncome(state).find((i) => i.area === area)?.coins || 0;
+  if (ev?.type === 'sponsorsFavourite') out.push({ label: "Sponsor bonus (Sponsor's Favourite)", coins: Math.round(cardValue(ev.type, ev.rarity) * mult(state)) });
+  if (ev?.type === 'packedHouse' && isHome) out.push({ label: 'Home gate bonus (Packed House)', coins: Math.round(biz('stadium') * cardValue(ev.type, ev.rarity) / 100) });
+  const money = revenueBonus(gmTrait(state));
+  if (money) out.push({ label: 'Money Man bonus', coins: Math.round([...items, ...out].reduce((s, i) => s + i.coins, 0) * money) });
+  return out.filter((i) => i.coins > 0);
 }
 
 // Applies a finished league match: coins, record, stats, wear, retirements, cohesion, table.
@@ -468,7 +501,7 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
   }
 
   // Cohesion
-  const gain = COHESION_GAIN[lvl(next, 'training')];
+  const gain = COHESION_GAIN[lvl(next, 'training')] + cohesionGainBonus(gmTrait(next));
   next.cohesion = clamp(effectiveCohesion(state) + gain, cohesionFloor(state), 100);
   next.lastLineup = [...state.lineup];
   // Time on the field: share of this match's minutes for every squad player.
@@ -592,12 +625,12 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
     const pos = standings(next.season, next.club.divisionId).findIndex((r) => r.id === next.club.id) + 1;
     const trophyNow = (next.season.userTrophies || []).length > (state.season?.userTrophies || []).length;
     const moodBefore = { ...(next.gm.confidence || {}) };
-    next.gm.confidence = matchConfidence(next.gm.confidence, {
+    next.gm.confidence = scaleConfidence(moodBefore, matchConfidence(next.gm.confidence, {
       outcome: winner === userSide ? 'W' : winner === null ? 'D' : 'L', gf: own, ga: conceded, competition, pos,
       derby: isDerby(next.club.id, opponent.id),
       styleDist: styleDistance(normalizeTactics(state.tactics), clubIdentity(next.world.clubs[next.club.id])),
       target: next.gm.objective?.target, eliminated: !!game?.knockout && winner !== userSide && !trophyNow, trophy: trophyNow, level: next.club.level,
-    });
+    }), gmTrait(next));
     ticketMoodInto(next, team.isHome); // ticket prices: the fans react after a home game
     moodNews(moodBefore, next.gm.confidence, next);
     if (isDerby(next.club.id, opponent.id)) {
@@ -646,12 +679,23 @@ function replaceInSquad(state, oldId, card) {
 // ---------------------------------------------------------------------------
 // Shop
 
+// What a pack costs you: Dealmaker (GM card) and Bargain Hunter (season card) take money off.
+export function priceFactor(state, kind = 'pack') {
+  const ev = state.activeEvent;
+  const season = kind === 'pack' && ev?.type === 'bargainHunter' ? cardValue('bargainHunter', ev.rarity) / 100 : 0;
+  return (1 - priceDiscount(gmTrait(state))) * (1 - season);
+}
+const discounted = (price, f) => (f === 1 ? price : Math.round((price * f) / 10) * 10);
+export const packPrice = (state, packId) => discounted(PACKS[packId].price, priceFactor(state, 'pack'));
+export const boostPackPrice = (state, packId) => discounted(BOOST_PACKS[packId].price, priceFactor(state, 'pack'));
+export const clubPackPrice = (state, packId) => discounted(CLUB_PACKS[packId].price, priceFactor(state, 'pack'));
+
 export function buyPack(state, packId, seed) {
-  const pack = PACKS[packId];
-  if (state.coins < pack.price || state.pendingOpen || state.pendingPick) return state;
+  const price = packPrice(state, packId);
+  if (state.coins < price || state.pendingOpen || state.pendingPick) return state;
   const next = structuredClone(state);
-  next.coins -= pack.price;
-  track(next, 'spent', 'Packs', pack.price);
+  next.coins -= price;
+  track(next, 'spent', 'Packs', price);
   return startOpening(next, packId, seed);
 }
 
@@ -664,8 +708,19 @@ export function openOwnedPack(state, index, seed) {
 
 function startOpening(next, packId, seed) {
   const { cards } = openPack(packId, seed, POOLS, packShift(next));
-  next.pendingOpen = { source: PACKS[packId].name, packId, cards, index: 0 };
+  const rng = makeRng(seed + 404);
+  next.pendingOpen = { source: PACKS[packId].name, packId, cards: cards.map((c) => packWear(c, rng)), index: 0 };
   return next;
+}
+
+// Pack players have been playing somewhere: they arrive with 50–90% of their career left
+// (random per card). Coaches and cards that never retire are untouched.
+export const PACK_LIFE = [0.5, 0.9];
+function packWear(card, rng) {
+  if (isCoach(card) || card.matchesLeft == null) return card;
+  const full = POOL_BY_ID[card.id]?.matchesLeft ?? card.matchesLeft;
+  const share = PACK_LIFE[0] + (PACK_LIFE[1] - PACK_LIFE[0]) * rng.next();
+  return { ...card, matchesLeft: Math.max(1, Math.round(full * share)) };
 }
 
 // Pack odds points moved from Common to higher rarities: Scouting Network plus Analytics.
@@ -677,10 +732,11 @@ export function packShift(state) {
 // Boosts come in sealed packs: you don't choose which ones.
 export function buyBoostPack(state, packId, seed) {
   const pack = BOOST_PACKS[packId];
-  if (!pack || state.coins < pack.price) return { state, got: [] };
+  const price = pack ? boostPackPrice(state, packId) : 0;
+  if (!pack || state.coins < price) return { state, got: [] };
   const next = structuredClone(state);
-  next.coins -= pack.price;
-  track(next, 'spent', 'Boosts', pack.price);
+  next.coins -= price;
+  track(next, 'spent', 'Boosts', price);
   const got = openBoostPack(makeRng(seed), packId);
   for (const id of got) next.inventory.boosts[id] = (next.inventory.boosts[id] || 0) + 1;
   return { state: next, got };
@@ -692,10 +748,11 @@ export function buyBoostPack(state, packId, seed) {
 
 export function buyClubPack(state, packId, seed) {
   const pack = CLUB_PACKS[packId];
-  if (!pack || state.coins < pack.price || state.pendingOpen || state.pendingPick) return state;
+  const price = pack ? clubPackPrice(state, packId) : 0;
+  if (!pack || state.coins < price || state.pendingOpen || state.pendingPick) return state;
   const next = structuredClone(state);
-  next.coins -= pack.price;
-  track(next, 'spent', 'Club packs', pack.price);
+  next.coins -= price;
+  track(next, 'spent', 'Club packs', price);
   return startClubOpening(next, packId, seed);
 }
 
@@ -855,7 +912,7 @@ export function seasonSummary(state) {
   const div = DIVISION_BY_ID[divId];
   const table = standings(state.season, divId);
   const position = table.findIndex((r) => r.id === state.club.id) + 1;
-  const prize = Math.round((PRIZES[position - 1] || 0) * mult(state));
+  const prize = Math.round((PRIZES[position - 1] || 0) * mult(state) * (1 + revenueBonus(gmTrait(state))));
   const upper = DIVISIONS.find((d) => d.code === div.code && d.tier === div.tier - 1);
   const lower = DIVISIONS.find((d) => d.code === div.code && d.tier === div.tier + 1);
   const promoted = position <= PROMOTION_SPOTS && !!upper;
@@ -986,10 +1043,10 @@ export function closeSeason(state, seed) {
     const summary = seasonSummary(state);
     const objective = state.gm.objective || { target: 10, text: 'Finish the season' };
     const verdict = judgeObjective(objective, position);
-    const items = weighReputation(reputationChanges({ verdict, promoted: summary.promoted, leagueTitle: position === 1, trophies: state.season.userTrophies || [] }), state.club.level, next.gm.reputation);
+    const items = mediaBoost(weighReputation(reputationChanges({ verdict, promoted: summary.promoted, leagueTitle: position === 1, trophies: state.season.userTrophies || [] }), state.club.level, next.gm.reputation), gmTrait(state));
     const before = next.gm.reputation;
     next.gm.missedInRow = verdict === 'missed' ? next.gm.missedInRow + 1 : 0;
-    next.gm.confidence = seasonConfidence(next.gm.confidence, verdict, summary.promoted);
+    next.gm.confidence = scaleConfidence(next.gm.confidence, seasonConfidence(next.gm.confidence, verdict, summary.promoted), gmTrait(state));
     next.gm.securityEnd = security(next.gm.confidence);
     // A first season at a club is a free pass: the owners give a new manager time.
     const stint = next.gm.career?.[next.gm.career.length - 1];
@@ -1019,6 +1076,7 @@ export function closeSeason(state, seed) {
     next.gm.offers = jobOffers(next.world, {
       passive: !next.gm.sacked,
       reputation: next.gm.reputation, currentClubId: next.club.id, sacked: next.gm.sacked, good: verdict !== 'missed', seed: seed + 41,
+      ...offerBoost(state),
     });
   }
   // Your academy intake: club legends where possible, waiting for Keep/Discard.
@@ -1027,7 +1085,7 @@ export function closeSeason(state, seed) {
     pools: CLUB_POOLS, poolById: POOL_BY_ID, allCards: PLAYER_CARDS, userIds: ownedIds(next), seed: seed + 23,
   });
   const rngYouth = makeRng(seed + 31);
-  const cards = intake.map((c) => (c.fallbackTier !== undefined ? youthPlayer(next, rngYouth, rngYouth.pick(['DEF', 'MID', 'FWD']), c.fallbackTier) : c));
+  const cards = intake.map((c) => (c.fallbackTier !== undefined ? youthPlayer(next, rngYouth, rngYouth.pick(['DEF', 'MID', 'FWD']), c.fallbackTier) : freshAcademy(c)));
   if (cards.length) next.pendingOpen = { source: 'Academy intake', cards, index: 0 };
   // One free management card as a season reward: a transfer card or a club card.
   const rng = makeRng(seed);
@@ -1037,10 +1095,106 @@ export function closeSeason(state, seed) {
     next.inventory.club = [...(next.inventory.club || []), { uid: uid(next), ...card }];
   }
   next.activeEvent = null;
+  next.seasonCard = null;
+  dealSeasonCards(next, seed + 59);
   next.perks = { shape: 0 };
   next.cardPlays = 0; // the summer opens next season's card plays
   next.phase = 'offseason';
   next.market = makeMarket(next, rng, 'summer');
+  return next;
+}
+
+// Media Darling: reputation gains count for more (losses unchanged).
+function mediaBoost(items, trait) {
+  const k = reputationBonus(trait);
+  return k ? items.map((i) => (i.value > 0 ? { ...i, value: Math.round(i.value * (1 + k)) } : i)) : items;
+}
+
+// More (and bigger) job offers at season end: Media Darling, and the High Visibility season card.
+function offerBoost(state) {
+  const ev = state.activeEvent;
+  const hv = ev?.type === 'highVisibility';
+  return { extra: extraJobOffers(gmTrait(state)) + (hv ? 1 : 0), reach: hv ? cardValue('highVisibility', ev.rarity) : 0 };
+}
+
+// ---------------------------------------------------------------------------
+// The season deal: at season end you're dealt 3 season cards and pick 1 for next season.
+// Redraws cost coins (REDRAW_COSTS, per summer). Event cards from older saves' inventories
+// show up in the deal as free extra options.
+
+function rollSeasonRarity(rng) {
+  return rng.weighted(TIERS, (r) => SEASON_WEIGHTS[TIERS.indexOf(r)]);
+}
+
+const inContinental = (state) => {
+  const q = state.qualification;
+  return !!q && [...(q.europe?.direct || []), ...(q.europe?.qualifying || []), ...(q.americas || []), ...(q.afap || [])].includes(state.club.id);
+};
+
+function dealHand(state, rng) {
+  const deck = SEASON_DECK.filter((t) => t !== 'continentalNights' || inContinental(state));
+  const hand = [];
+  while (hand.length < HAND_SIZE && deck.length) {
+    const type = deck.splice(Math.floor(rng.next() * deck.length), 1)[0];
+    hand.push({ type, rarity: rollSeasonRarity(rng) });
+  }
+  return hand;
+}
+
+// Mutates `next` (a fresh copy): a new deal for the summer.
+function dealSeasonCards(next, seed) {
+  next.seasonDeal = { year: next.season?.year || 1, hand: dealHand(next, makeRng(seed)), redraws: 0 };
+}
+
+// The season card as stored: type and rarity (the effect) plus name, icon and text for display.
+export const seasonCardOf = (type, rarity) => ({ type, rarity, name: OFFSEASON_CARDS[type].name, icon: OFFSEASON_CARDS[type].icon, text: cardText(type, rarity) });
+const eventOf = (card) => (card ? { type: card.type, rarity: card.rarity } : null);
+
+export const redrawCost = (state) => (state.seasonDeal ? REDRAW_COSTS[state.seasonDeal.redraws] ?? null : null);
+
+// Everything you can pick right now: the 3 dealt cards plus old event cards you own.
+export function seasonDealOptions(state) {
+  if (!state.seasonDeal) return [];
+  const dealt = state.seasonDeal.hand.map((c, i) => ({ ...c, key: `deal:${i}`, owned: false }));
+  const owned = (state.inventory?.offseason || []).filter((i) => OFFSEASON_CARDS[i.type]?.group === 'event').map((i) => ({ type: i.type, rarity: i.rarity, key: `inv:${i.uid}`, owned: true }));
+  return [...dealt, ...owned];
+}
+
+export function canPickSeasonCard(state, key) {
+  const opt = seasonDealOptions(state).find((o) => o.key === key);
+  if (!opt) return { ok: false, reason: 'No season deal open.' };
+  if (opt.type === 'goldenGeneration' && state.pendingOpen) return { ok: false, reason: 'Finish deciding on your new cards first.' };
+  return { ok: true, option: opt };
+}
+
+export function redrawSeasonCards(state, seed) {
+  const cost = redrawCost(state);
+  if (cost == null || state.coins < cost) return state;
+  const next = structuredClone(state);
+  next.coins -= cost;
+  track(next, 'spent', 'Season cards', cost);
+  next.seasonDeal.hand = dealHand(next, makeRng(seed));
+  next.seasonDeal.redraws += 1;
+  return next;
+}
+
+// Picks a season card: it becomes next season's active event.
+export function pickSeasonCard(state, key, seed = 1) {
+  const check = canPickSeasonCard(state, key);
+  if (!check.ok) return state;
+  const { type, rarity } = check.option;
+  const next = structuredClone(state);
+  if (check.option.owned) removeItem(next, key.slice(4));
+  next.seasonCard = seasonCardOf(type, rarity);
+  next.activeEvent = { type, rarity };
+  next.seasonDeal = null;
+  if (type === 'goldenGeneration') {
+    const rng = makeRng(seed);
+    const v = cardValue(type, rarity);
+    const cards = academyCards(next, seed, { count: 2, tier: v }).map((c) => (c.fallbackTier !== undefined ? youthPlayer(next, rng, rng.pick(['DEF', 'MID', 'FWD']), v) : freshAcademy(c)));
+    next.pendingOpen = { source: 'Golden Generation', cards, index: 0 };
+  }
+  pushInbox(next, 'career', `Season card: ${OFFSEASON_CARDS[type].name}`, `${cardText(type, rarity)} Active all next season.`);
   return next;
 }
 
@@ -1086,7 +1240,7 @@ function makeMarket(state, rng, kind) {
   if (kind === 'summer' && !offers.some((o) => OFFSEASON_CARDS[o.type].scope)) offers[0] = { ...offers[0], type: 'worldSigning' };
   const priced = offers.map((o) => {
     const area = OFFSEASON_CARDS[o.type].facility;
-    return { ...o, price: cardPrice(o.type, o.rarity, area ? lvl(state, area) : null), sold: false };
+    return { ...o, price: discounted(cardPrice(o.type, o.rarity, area ? lvl(state, area) : null), priceFactor(state, 'market')), sold: false };
   });
   return { offers: priced, round: Math.floor((state.season?.matchday || 0) / MARKET_EVERY), fresh: true, kind };
 }
@@ -1126,10 +1280,17 @@ export function buyMarketCard(state, offerUid) {
 export function startNextSeason(state, seed) {
   if (state.phase !== 'offseason' || state.pendingOpen || state.pendingPick) return state;
   if (state.gm?.sacked) return state; // a sacked GM must take a new job first
+  // Nobody picked a season card: the first dealt card that needs no decisions is played.
+  if (state.seasonDeal && !state.seasonCard) {
+    const auto = seasonDealOptions(state).find((o) => !o.owned && o.type !== 'goldenGeneration') || seasonDealOptions(state)[0];
+    if (auto) return startNextSeason(pickSeasonCard(state, auto.key, seed), seed);
+  }
   const next = structuredClone(state);
   recordFinanceInto(next, state.season.year); // the summer's money belongs to the season just ended
   advanceConstructionInto(next, { all: true }); // summer building works are ready for matchday 1
   settleSponsorInto(next); // no contract chosen → the steady offer
+  next.seasonDeal = null;
+  if (next.seasonCard) next.activeEvent = eventOf(next.seasonCard);
   next.season = newSeason(next, state.season.year + 1, seed);
   next.lastFinance = next.finance || null;
   next.finance = { income: {}, spent: {} };
@@ -1236,7 +1397,7 @@ export function acceptOffer(state, clubId, carryKeys = [], seed = 1) {
   next.coins = start.coins;
   next.facilities = fullFacilities(start.facilities);
   next.construction = []; // building works belong to the old club
-  next.activeEvent = null;
+  next.activeEvent = eventOf(next.seasonCard); // the season card is the GM's: it moves with you
   next.perks = { shape: 0 };
   next.clubEffects = []; // temporary club cards stay with the old club
   next.market = makeMarket(next, rng, 'summer');
@@ -1278,11 +1439,11 @@ export function lookForOffers(state, seed) {
   if (state.phase !== 'offseason' || !state.gm || state.gm.searched || state.gm.sacked) return state;
   const next = structuredClone(state);
   const verdict = next.gm.review?.verdict || 'met';
-  const found = jobOffers(next.world, { reputation: next.gm.reputation, currentClubId: next.club.id, good: verdict !== 'missed', seed });
+  const found = jobOffers(next.world, { reputation: next.gm.reputation, currentClubId: next.club.id, good: verdict !== 'missed', seed, extra: extraJobOffers(gmTrait(next)) });
   const have = new Set(next.gm.offers.map((o) => o.clubId));
   next.gm.offers = [...next.gm.offers, ...found.filter((o) => !have.has(o.clubId))];
   next.gm.searched = true;
-  next.gm.confidence = { ...next.gm.confidence, board: Math.max(0, (next.gm.confidence?.board ?? 60) - LOOK_COST) };
+  next.gm.confidence = scaleConfidence(next.gm.confidence, { ...next.gm.confidence, board: Math.max(0, (next.gm.confidence?.board ?? 60) - LOOK_COST) }, gmTrait(next));
   return next;
 }
 
@@ -1323,7 +1484,8 @@ export function canUseOffseason(state, item) {
     const { used, limit } = cardPlays(state);
     return { ok: false, reason: `No card plays left (${used} / ${limit}). They reset when the season ends.` };
   }
-  if (def.group === 'event' && state.activeEvent) return { ok: false, reason: 'One season event per season, and one is already active.' };
+  if (def.group === 'event' && state.seasonDeal) return { ok: false, reason: 'Pick it for free in the season deal (Home) instead.' };
+  if ((def.group === 'event' || def.group === 'season') && state.activeEvent) return { ok: false, reason: 'One season event per season, and one is already active.' };
   if (def.effect && (state.clubEffects || []).some((e) => e.type === item.type)) return { ok: false, reason: `${def.name} is already running. Play it when it ends.` };
   if (def.facility) {
     const level = lvl(state, def.facility);
@@ -1374,8 +1536,9 @@ function playCard(state, itemUid, target, seed) {
   };
 
   const when = state.phase === 'season' ? 'for the rest of this season' : 'all next season';
-  if (def.group === 'event') {
+  if (def.group === 'event' || def.group === 'season') {
     next.activeEvent = { type: item.type, rarity: item.rarity };
+    next.seasonCard = seasonCardOf(item.type, item.rarity);
     return { state: next, message: `${def.name} is active ${when}.`, success: true };
   }
   if (def.facility) {
@@ -1460,7 +1623,7 @@ function playCard(state, itemUid, target, seed) {
     case 'nationalSigning': {
       const pick = rng.pick(signingCandidates(state, SIGNING_TIERS[t], def.scope));
       const from = holderOf(state, pick.id);
-      queue([structuredClone(pick)], from ? `Signed from ${from.name}` : 'Free agent');
+      queue([signedCard(state, pick)], from ? `Signed from ${from.name}` : 'Free agent');
       return { state: next, message: `${pick.name} ${from ? `agrees to leave ${from.name}` : 'is a free agent'} and wants to join you.`, success: true };
     }
     case 'veteranSigning': {
@@ -1476,13 +1639,13 @@ function playCard(state, itemUid, target, seed) {
     case 'youthIntake': {
       if (!POSITIONS.includes(target.position)) return { state, message: 'Pick a position.' };
       const [found] = t > 0 ? academyCards(next, seed, { count: 1, tier: t, pos: target.position }) : [];
-      const card = found && found.fallbackTier === undefined ? found : null;
+      const card = found && found.fallbackTier === undefined ? freshAcademy(found) : null;
       queue([card || youthPlayer(next, rng, target.position, t)], 'Youth Intake');
       return { state: next, message: card ? `${card.name} comes through the academy.` : 'A new youngster is ready.', success: true };
     }
     case 'goldenGeneration': {
       const found = academyCards(next, seed, { count: 2, tier: v })
-        .map((c) => (c.fallbackTier !== undefined ? youthPlayer(next, rng, rng.pick(['DEF', 'MID', 'FWD']), v) : c));
+        .map((c) => (c.fallbackTier !== undefined ? youthPlayer(next, rng, rng.pick(['DEF', 'MID', 'FWD']), v) : freshAcademy(c)));
       queue(found, 'Golden Generation');
       return { state: next, message: 'Your academy has produced two special talents!', success: true };
     }
@@ -1498,6 +1661,20 @@ function academyCards(state, seed, { count, tier, pos = null }) {
     nation: DIVISION_BY_ID[state.club.divisionId].code, pools: CLUB_POOLS, poolById: POOL_BY_ID,
     allCards: PLAYER_CARDS, userIds: ownedIds(state), seed,
   });
+}
+
+// Academy graduates start fresh: a club legend coming through the academy has his full career
+// ahead of him (the pool's matchesLeft), whatever an earlier spell elsewhere left.
+// Generic academy cards ('academy' rarity) keep matchesLeft null: they never retire.
+function freshAcademy(card) {
+  const full = POOL_BY_ID[card.id]?.matchesLeft;
+  return full != null && card.rarity !== 'academy' ? { ...card, matchesLeft: full } : card;
+}
+
+// A signing keeps the career he has left at his old club (free agents: what the world book says).
+function signedCard(state, card) {
+  const left = state.world?.cardLeft?.[card.id];
+  return { ...structuredClone(card), matchesLeft: left ?? card.matchesLeft };
 }
 
 export const academyInfo = (level) => ({ count: ACADEMY_COUNT[level], best: TIERS[ACADEMY_MAX_TIER[level]] });
@@ -1562,6 +1739,15 @@ export function migrateClubState(state) {
   if (!next.market && (next.phase === 'season' || next.phase === 'offseason')) {
     next.market = makeMarket(next, makeRng((next.season?.year || 1) * 31 + (next.season?.matchday || 0)), next.phase === 'season' ? 'season' : 'summer');
   }
+  // Season cards (v2.2): an event already active is this season's card; a summer that opened
+  // before season cards existed gets its deal now.
+  if (next.seasonCard === undefined) {
+    next.seasonCard = next.activeEvent ? seasonCardOf(next.activeEvent.type, next.activeEvent.rarity) : null;
+    if (next.phase === 'offseason' && !next.activeEvent && !next.seasonDeal) {
+      next.seasonDeal = { year: next.season?.year || 1, hand: dealHand(next, makeRng((next.season?.year || 1) * 97 + 5)), redraws: 0 };
+    }
+  }
+  if (next.gm && next.gm.trait === undefined) next.gm = { ...next.gm, trait: null }; // careers from before GM cards: "No card"
   return next;
 }
 

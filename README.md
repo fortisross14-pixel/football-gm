@@ -38,12 +38,13 @@ npm run build      # static build in dist/
 - **Club cards:** infrastructure cards raise one club area for good (rarity caps the level); temporary cards last a few games: High Season (home gate ×2), Viral Merchandise, Ticket Promo, Recovery Camp, Analyst Report (tactics grade one step better), or pay off at once: Sponsor Night, Team Building, Press Charm, Local Hero.
 - **League tab:** every league by name, with table, fixtures, scorers, cups and **History**: champion, runner-up, top scorer, MVP and Golden Glove for every season, records by league, country or world, and your career season by season. Tap any club for its page (Overview, Squad, History with managers and transfers, Stats, Honours), any player for his profile (Overview, History club by club and season by season, Stats by competition) and any manager for his page.
 - **World tab:** manager rankings (you against 400+ AI managers), power ranking and most decorated clubs, world records, Hall of Fame.
-- **Season end:** prize money, reward packs and a free management card.
+- **Season end:** prize money, reward packs, a free management card and the **season card deal**: 3 season cards, pick 1 for next season (redraw for ◎ 200 / 400 / 800).
 - **Transfer Market, open all year:** transfer cards (random signings, youth, veterans, trainers, retraining…), each with a rarity that sets its strength. 5 offers each summer, 3 new ones every 5 league matchdays. Play cards (transfer and club) from the Cards tab any time, up to **8 card plays a season** (+1 at Analytics level 3 and 5).
-- **Card wear:** players and coaches lose a match each time they play and retire at 0.
+- **Card wear:** players and coaches lose a match each time they play and retire at 0. Academy graduates start with their full career, pack players with 50–90% of it, signings with what they had left.
 
 - **Squad:** 12 cards, a starting 7 and 5 reserves (3 subs a match). Rotating keeps the team's shape up.
-- **Main menu:** 3 save slots, new career (pick your name and one of three small-club job offers), back up / restore, settings (match speed, auto-play, reduced motion, tips).
+- **Main menu:** 3 save slots, new career (your name, country and GM style, a GM card reveal, then one of three small-club job offers), back up / restore, settings (match speed, auto-play, reduced motion, tips).
+- **GM card:** one permanent card from your GM style (12 cards, Common to Epic): Money Man, Dealmaker, Tactics Connoisseur, Game Reader, Fitness Freak, Iron Squad, Dressing-room Leader, Continuity, CEO's Friend, Fan Favourite, Coach Tamer, Media Darling.
 - **GM career:** reputation, board objectives, owners and fans confidence, job offers, moving clubs with 2 cards, getting sacked (3 offers, a level lower if a top-flight club fires you).
 - **Club tab:** Overview (what the owners want, owners and fans, objective, contract, budget, this vs last season), Infrastructure (ten club areas, levels 0–5; an infrastructure card starts **building works** that take 2 + the new level league matchdays, summer works are ready for matchday 1, one project per area), Finance (income per match by source, season money in/out, **season-by-season history**, **ticket prices** Low / Normal / High, the **summer sponsor contract**: Steady, Performance or Glory), Effects (temporary club cards in play) and Trophies.
 - **Tabs:** Home, Squad, Club, Cards, Competitions, World.
@@ -66,6 +67,8 @@ Progress is saved in the browser, automatically.
 | `src/engine/careers.js` | Career log: every player's and manager's seasons, moves between clubs, club records |
 | `src/engine/gms.js` | AI managers: reputation, sackings, rankings |
 | `src/engine/career.js` | Board objective, reputation, owners/fans confidence, job offers |
+| `src/engine/gmTraits.js` | GM styles and the 12 GM cards: values and the effect helpers |
+| `src/data/seasonCards.js` | The season card deck, season-only cards, redraw costs |
 | `src/data/skills.js` | Intrinsic skills for Rare+ players and coaches |
 | `scripts/tactics-check.mjs` | Simulates every tactic against a neutral side |
 | `scripts/smoke.cjs` | Clicks through every screen with a save and reports errors |
@@ -74,7 +77,7 @@ Progress is saved in the browser, automatically.
 | `scripts/check-world.mjs` | Validates the world data |
 | `scripts/check-nations.mjs` | Every named player/coach has a known nation (`src/data/nations.js`: code → name + flag) |
 | `src/state/managers.js` | Managers book: every career you have played, ranked (main menu → Managers) |
-| `src/data/offseason.js` | The 42 management card types: transfer (Transfer Market), club (infrastructure + temporary), season events |
+| `src/data/offseason.js` | The 42 management card types: transfer (Transfer Market), club (infrastructure + temporary), season events, plus the season-only cards |
 | `src/data/clubPacks.js` | Club packs: prices, odds, pick 1 of 3 |
 | `src/data/facilities.js` | The ten club areas: levels, effects, card plays per season, build times, ticket prices, sponsor deals |
 | `src/state/business.js` | Building works, ticket prices, sponsor contracts, season finance history |

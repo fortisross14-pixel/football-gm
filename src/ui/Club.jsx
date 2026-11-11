@@ -331,7 +331,7 @@ function Effects({ state }) {
         <h2 className="section-title">Active effects</h2>
         {effects.length === 0 && !ev && !ticket.home ? <p className="hint">Nothing in play right now. Club cards with a temporary effect show up here with the matches they have left.</p> : (
           <ul className="effects">
-            {ev && (
+            {ev && OFFSEASON_CARDS[ev.type] && (
               <li>
                 <span className="effects__icon" aria-hidden="true">{OFFSEASON_CARDS[ev.type].icon || '★'}</span>
                 <span><b>{OFFSEASON_CARDS[ev.type].name}</b> <small>({RARITIES[ev.rarity].label} season event)</small><br />{cardText(ev.type, ev.rarity)}</span>

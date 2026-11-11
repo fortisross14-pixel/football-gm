@@ -4,6 +4,7 @@ import { Crest } from './Art.jsx';
 import { Segmented } from './Home.jsx';
 import { listManagers } from '../state/storage.js';
 import { MANAGER_SORTS, rankManagers, managerScore, winPct, played } from '../state/managers.js';
+import { GmCard, GmTraitTag, GmFlag } from './GmCard.jsx';
 
 const ordinal = (n) => `${n}${['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 < 14) ? 0 : n % 10] || 'th'}`;
 const wdl = (r) => `${r.w}-${r.d}-${r.l}`;
@@ -55,7 +56,7 @@ export default function ManagersSheet({ onClose }) {
                     <td className="table__club">
                       <button type="button" className="mgr-link" onClick={(e) => { e.stopPropagation(); setOpenId(m.id); }}>
                         <Crest colors={m.club.colors} short={m.club.short} size={18} />
-                        <span><b>{m.gmName}</b> <em>{m.club.short}</em></span>
+                        <span><GmFlag nation={m.nation} /><b>{m.gmName}</b> <em>{m.club.short}</em><br /><GmTraitTag trait={m.gmTrait} /></span>
                       </button>
                     </td>
                     <td><b>{managerScore(m)}</b></td>
@@ -84,7 +85,7 @@ function ManagerDetail({ m, rank, total, onBack }) {
       <div className="club-head">
         <Crest colors={m.club.colors} short={m.club.short} size={48} />
         <div>
-          <b>{m.gmName}</b>
+          <b><GmFlag nation={m.nation} />{m.gmName}</b>
           <span>{m.status === 'active' ? `${m.club.name} · Season ${m.season} · slot ${m.slot}` : `Retired · last at ${m.club.name}`}</span>
         </div>
         <button type="button" className="btn btn--small btn--ghost" onClick={onBack}>Back</button>
@@ -98,6 +99,7 @@ function ManagerDetail({ m, rank, total, onBack }) {
         <div><span>Seasons</span><b>{m.seasonsPlayed}</b><small>{m.clubs.length} club{m.clubs.length === 1 ? '' : 's'}</small></div>
         <div><span>Best finish</span><b>{m.best ? ordinal(m.best.pos) : '—'}</b><small>{m.best ? `${m.best.div} · S${m.best.year}` : 'no season finished'}</small></div>
       </div>
+      <div className="gm-panel"><GmCard trait={m.gmTrait || null} small /></div>
       {m.sackedSeasons.length > 0 && <p className="hint hint--warn">Sacked {m.sackedSeasons.length}× (season {m.sackedSeasons.join(', ')}).</p>}
 
       <section>

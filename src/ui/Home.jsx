@@ -4,7 +4,6 @@ import { clubVars } from './clubTheme.js';
 import { Table } from './League.jsx';
 import { teamOverall, RARITIES } from '../engine/cards.js';
 import { clubById, standings } from '../engine/season.js';
-import { OFFSEASON_CARDS, cardText } from '../data/offseason.js';
 import { effectiveCohesion, cohesionBonus, teamShape, shapeLabel, seasonSummary, academyInfo, nextUserGame, cardPlays } from '../state/club.js';
 import { PACKS } from '../engine/packs.js';
 import { ClubLink, LeagueLink, CompLink } from './nav.jsx';
@@ -12,8 +11,9 @@ import { compOfGame } from './Competitions.jsx';
 import { Confidence } from './Career.jsx';
 import { opinions, ownerLine, fanLine, unreadCount } from '../state/chronicle.js';
 import { isDerby, derbyName } from '../data/rivals.js';
+import SeasonDeal from './SeasonDeal.jsx';
 
-export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo }) {
+export default function Home({ state, onPlay, onCloseSeason, onStartSeason, onPickSeason, onRedrawSeason, goTo }) {
   const { season, phase } = state;
   return (
     <div className="screen screen--home">
@@ -22,7 +22,7 @@ export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo
       {phase === 'season' && <NextMatch state={state} onPlay={onPlay} />}
       {phase === 'season' && <MarketNote state={state} goTo={goTo} />}
       {phase === 'seasonEnd' && <SeasonEnd state={state} onClose={onCloseSeason} />}
-      {phase === 'offseason' && <Offseason state={state} goTo={goTo} onStart={onStartSeason} />}
+      {phase === 'offseason' && <Offseason state={state} goTo={goTo} onStart={onStartSeason} onPickSeason={onPickSeason} onRedrawSeason={onRedrawSeason} />}
 
       <Opinions state={state} goTo={goTo} />
       <StatusRow state={state} goTo={goTo} />
@@ -123,6 +123,7 @@ function SeasonEnd({ state, onClose }) {
         <li><span>Prize money</span><b>◎ {prize}</b></li>
         {packs.map((p, i) => <li key={i}><span>Reward pack</span><b>{PACKS[p].name}</b></li>)}
         <li><span>Off-season card</span><b>1 random</b></li>
+        <li><span>Season cards</span><b>Pick 1 of 3</b></li>
       </ul>
       {promoted && <p className="promo is-up">▲ Promoted to {upper.name}! Bigger crowds, bigger prizes (×{upper.level === 1 ? 3 : 2} rewards) and tougher rivals.</p>}
       {relegated && <p className="promo is-down">▼ Relegated to {lower.name}. Time to rebuild.</p>}
@@ -131,8 +132,7 @@ function SeasonEnd({ state, onClose }) {
   );
 }
 
-function Offseason({ state, goTo, onStart }) {
-  const ev = state.activeEvent;
+function Offseason({ state, goTo, onStart, onPickSeason, onRedrawSeason }) {
   const move = state.lastSeason?.userMove?.clubId === state.club.id ? state.lastSeason.userMove : null;
   return (
     <section className="offseason">
@@ -160,12 +160,10 @@ function Offseason({ state, goTo, onStart }) {
           <b>Sponsor ›</b>
         </button>
       )}
+      <SeasonDeal state={state} onPick={onPickSeason} onRedraw={onRedrawSeason} />
       <b className="offseason__title">Summer Transfer Market</b>
       <p className="hint">Fresh transfer cards in the market, club packs in Shop → Club. Play them from the Cards tab: sign players, upgrade the club's areas. Summer plays count towards next season ({cardPlays(state).used} / {cardPlays(state).limit} used).</p>
       <p className="hint">Youth academy L{state.facilities.academy || 0}: {academyInfo(state.facilities.academy || 0).count} player(s) a year, up to {RARITIES[academyInfo(state.facilities.academy || 0).best].label}. Club legends come first.</p>
-      {ev ? (
-        <p className="hint hint--accent">Next season's event: {OFFSEASON_CARDS[ev.type].name} ({RARITIES[ev.rarity].label}): {cardText(ev.type, ev.rarity)}</p>
-      ) : <p className="hint">No season event picked yet.</p>}
       <div className="cta-row">
         <button type="button" className="btn btn--ghost" onClick={() => goTo('shop')}>Market</button>
         <button type="button" className="btn btn--ghost" onClick={() => goTo('cards')}>My cards</button>

@@ -10,11 +10,12 @@ import { COACH_PASSIVES } from '../data/coachPassives.js';
 import { PLAYER_POOL, COACH_POOL } from '../data/pool.js';
 import { canUseOffseason, cardPlays, clubEffects, SQUAD_SIZE } from '../state/club.js';
 import { PlayerLink, ProfileButton } from './nav.jsx';
+import SeasonDeal from './SeasonDeal.jsx';
 
 // Cards → Owned: Players (squad, coaches, player packs, transfer cards), Club (club packs,
 // club cards, active effects, match boosts), Season (the season card) and the Album.
-export default function Collection({ state, onOpenPack, onOpenClubPack, onUseCard, initialSection }) {
-  const [tab, setTab] = useState(initialSection || 'players');
+export default function Collection({ state, onOpenPack, onOpenClubPack, onUseCard, onPickSeason, onRedrawSeason, initialSection }) {
+  const [tab, setTab] = useState(initialSection || (state.seasonDeal ? 'season' : 'players'));
   const [viewing, setViewing] = useState(null);
   const [using, setUsing] = useState(null);
   const inv = state.inventory;
@@ -44,7 +45,7 @@ export default function Collection({ state, onOpenPack, onOpenClubPack, onUseCar
         options={[
           { id: 'players', label: `Players${count(inv.packs.length + transfer.length)}` },
           { id: 'club', label: `Club${count(clubPacks.length + club.length)}` },
-          { id: 'season', label: `Season${count(events.length + (state.seasonCard ? 1 : 0))}` },
+          { id: 'season', label: state.seasonDeal ? 'Season · pick' : `Season${count(events.length + (state.seasonCard ? 1 : 0))}` },
           { id: 'album', label: 'Album' },
         ]}
         onChange={setTab}
@@ -131,7 +132,8 @@ export default function Collection({ state, onOpenPack, onOpenClubPack, onUseCar
         </>
       )}
 
-      {tab === 'season' && <SeasonCards state={state} events={events} cardGrid={cardGrid} />}
+      {tab === 'season' && state.seasonDeal && <SeasonDeal state={state} onPick={onPickSeason} onRedraw={onRedrawSeason} />}
+      {tab === 'season' && !state.seasonDeal && <SeasonCards state={state} events={events} cardGrid={cardGrid} />}
 
       {tab === 'album' && <Album state={state} />}
 

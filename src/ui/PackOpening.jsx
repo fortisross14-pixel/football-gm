@@ -81,6 +81,7 @@ export default function PackOpening({ state, onKeep, onMerge, onDiscard, onDisca
               flipped={flipped.includes(i)}
               isNew={!!POOL_BY_ID[c.id] && !album.has(c.id)}
               isDup={!!duplicateOf(state, c)}
+              life={p.packId ? careerLeft(c) : null}
               onFlip={() => flip(i)}
             />
           ))}
@@ -126,6 +127,9 @@ export default function PackOpening({ state, onKeep, onMerge, onDiscard, onDisca
 
       {!choosing && (
         <div className="opening__actions">
+          {p.packId && careerLeft(card) && !dup && (
+            <p className="hint">Career: {careerLeft(card).left} of {careerLeft(card).full} matches left ({careerLeft(card).pct}%). Pack players have been playing somewhere already.</p>
+          )}
           {dup ? (
             <>
               <p className="hint">You already own {card.name}{dup.stars ? ` (${'★'.repeat(dup.stars)})` : ''}.</p>
@@ -167,10 +171,17 @@ export default function PackOpening({ state, onKeep, onMerge, onDiscard, onDisca
   );
 }
 
+// Pack players arrive part-way through their career: matches left out of the full career.
+export function careerLeft(card) {
+  const full = POOL_BY_ID[card.id]?.matchesLeft;
+  if (isCoach(card) || card.matchesLeft == null || !full) return null;
+  return { left: card.matchesLeft, full, pct: Math.round((card.matchesLeft / full) * 100) };
+}
+
 const TIER = (c) => ['academy', 'common', 'uncommon', 'rare', 'epic', 'legend'].indexOf(c.rarity) - 1;
 
 // A face-down card in the fan. Rare+ glow at the edge; Epic and Legend tremble before the flip.
-function FanCard({ card, index, colors, flipped, isNew, isDup, onFlip }) {
+function FanCard({ card, index, colors, flipped, isNew, isDup, life, onFlip }) {
   const coach = isCoach(card);
   const tier = TIER(card);
   return (
@@ -189,6 +200,7 @@ function FanCard({ card, index, colors, flipped, isNew, isDup, onFlip }) {
           {!coach && <span className="flip__art"><Silhouette colors={colors} pos={card.pos} seed={card.id} /></span>}
           <span className="flip__name">{card.name}</span>
           <span className="flip__rarity">{RARITIES[card.rarity]?.label}</span>
+          {life && <span className="flip__life">{life.left} matches · {life.pct}%</span>}
           {flipped && isNew && <span className="flip__badge">NEW</span>}
           {flipped && isDup && <span className="flip__badge flip__badge--dup">DUPLICATE</span>}
           {flipped && tier >= 2 && <span className="flip__ring" aria-hidden="true" />}
