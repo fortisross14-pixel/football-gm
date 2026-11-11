@@ -56,7 +56,7 @@ export function reputationChanges({ verdict, promoted, leagueTitle, trophies }) 
 }
 
 // Gains count for less in smaller leagues and get harder as reputation rises; losses count in full.
-const LEVEL_WEIGHT = { 1: 1, 2: 0.75, 3: 0.6 };
+const LEVEL_WEIGHT = { 1: 1, 2: 0.7, 3: 0.5 };
 export function weighReputation(items, level, rep) {
   return items.map((i) => (i.value > 0 ? { ...i, value: Math.max(1, Math.round(i.value * LEVEL_WEIGHT[level] * (1 - rep / 150))) } : i));
 }
