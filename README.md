@@ -46,7 +46,8 @@ npm run build      # static build in dist/
 - **Main menu:** 3 save slots, new career (your name, country and GM style, a GM card reveal, then one of three small-club job offers), back up / restore, settings (match speed, auto-play, reduced motion, tips).
 - **GM card:** one permanent card from your GM style (12 cards, Common to Epic): Money Man, Dealmaker, Tactics Connoisseur, Game Reader, Fitness Freak, Iron Squad, Dressing-room Leader, Continuity, CEO's Friend, Fan Favourite, Coach Tamer, Media Darling.
 - **GM career:** reputation, board objectives, owners and fans confidence, job offers, moving clubs with 2 cards, getting sacked (3 offers, a level lower if a top-flight club fires you).
-- **Club tab:** Overview (what the owners want, owners and fans, objective, contract, budget, this vs last season), Infrastructure (ten club areas, levels 0–5; an infrastructure card starts **building works** that take 2 + the new level league matchdays, summer works are ready for matchday 1, one project per area), Finance (income per match by source, season money in/out, **season-by-season history**, **ticket prices** Low / Normal / High, the **summer sponsor contract**: Steady, Performance or Glory), Effects (temporary club cards in play) and Trophies.
+- **Stadium and fans (v2.3):** the stadium has six parts (capacity, locker rooms, pitch, access & parking, floodlights, scoreboard & screens) and a 1–5 star rating; capacity is a real number of seats. Home crowds come from local fans × happiness × ticket price, capped by capacity; the gate is the crowd × a price per fan that grows with the stars. Fans (local and worldwide) grow with wins, derbies, trophies, promotion and star players, and with the fan cards (Local Event, Social Media Campaign, Fan Day, Stadium Tour, International Tour).
+- **Club tab:** Overview (what the owners want, owners and fans, objective, contract, budget, this vs last season), Infrastructure (the stadium card with its stars, seats and parts, then the other club areas, levels 0–5; an infrastructure card starts **building works** that take 2 + the new level league matchdays, summer works are ready for matchday 1, one project per area), Fans (local and worldwide fans, happiness, attendance), Finance (ticket demand vs capacity, income per match by source, season money in/out, **season-by-season history**, **ticket prices** Low / Normal / High, the **summer sponsor contract**: Steady, Performance or Glory), Effects (temporary club cards in play) and Trophies.
 - **Tabs:** Home, Squad, Club, Cards, Competitions, World.
 
 Progress is saved in the browser, automatically.
@@ -77,9 +78,11 @@ Progress is saved in the browser, automatically.
 | `scripts/check-world.mjs` | Validates the world data |
 | `scripts/check-nations.mjs` | Every named player/coach has a known nation (`src/data/nations.js`: code → name + flag) |
 | `src/state/managers.js` | Managers book: every career you have played, ranked (main menu → Managers) |
-| `src/data/offseason.js` | The 42 management card types: transfer (Transfer Market), club (infrastructure + temporary), season events, plus the season-only cards |
+| `src/data/offseason.js` | The 53 management card types: transfer (Transfer Market), club (infrastructure + temporary), season events, plus the season-only cards |
 | `src/data/clubPacks.js` | Club packs: prices, odds, pick 1 of 3 |
 | `src/data/facilities.js` | The ten club areas: levels, effects, card plays per season, build times, ticket prices, sponsor deals |
 | `src/state/business.js` | Building works, ticket prices, sponsor contracts, season finance history |
+| `src/state/stadium.js` | Stadium parts, star rating, capacity, ticket demand and the gate |
+| `src/state/fans.js` | Local and worldwide fans, growth, crowds, `fansOf(state)` (happiness = the fans' confidence) |
 | `src/data/` | Demo club, league clubs, boosts, coach passives |
 | `src/ui/` | React screens and card components |

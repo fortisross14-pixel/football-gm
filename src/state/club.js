@@ -10,7 +10,7 @@ import { BOOST_IDS, BOOSTS, BOOST_PACKS, openBoostPack, drawBoost } from '../dat
 import { OFFSEASON_CARDS, OFFSEASON_IDS, MARKET_WEIGHTS, TIERS, tierIndex, cardValue, cardPrice, SIGNING_TIERS, RENAMED_CARDS, cardGames, cardText, effectText, isClubCard } from '../data/offseason.js';
 import { CLUB_PACKS, drawClubCards } from '../data/clubPacks.js';
 import {
-  STADIUM_INCOME, HOSPITALITY_INCOME, STORE_INCOME, MERCH_MULT, COHESION_GAIN, COHESION_MAX_BONUS,
+  HOSPITALITY_INCOME, PART_IDS, STORE_INCOME, MERCH_MULT, COHESION_GAIN, COHESION_MAX_BONUS,
   GYM_DRAIN, SPA_SHAPE, ANALYTICS_ODDS, FACILITY_LABEL, fullFacilities, cardPlayLimit,
 } from '../data/facilities.js';
 import { makeGenericCard, FILLER_RATING, squadStrength } from '../engine/aiTeam.js';
@@ -22,6 +22,8 @@ import {
   queueConstruction, constructionOf, advanceConstructionInto, ticketOf, ticketMoodInto, activeSponsor, offerSponsorsInto, settleSponsorInto,
   sponsorSeasonBonusInto, recordFinanceInto, migrateBusinessInto,
 } from './business.js';
+import { newStadium, stadiumOf, matchdayOf, homeStatBonus, partLevel, weakestPart, ensureStadiumInto, capacityOf, starsOf } from './stadium.js';
+import { initialFans, ensureFansInto, fanMatchInto, fanSeasonInto, recordCrowdInto, boostFansInto, addHappinessInto, fansOf } from './fans.js';
 import { decideAwards } from '../engine/awards.js';
 import { foldSeason, recordMove, holders, diffMoves } from '../engine/careers.js';
 import { newStats, emptyBook, recordGame as recordStats, recordTitle, coachKey } from '../engine/statsbook.js';
@@ -53,6 +55,7 @@ export const PRIZES = [600, 380, 280, 210, 160, 120, 90, 60, 40, 20];
 export const START_DIVISION = 'esp-3';
 
 export { FACILITY_LABEL };
+export { stadiumOf, matchdayOf, capacityOf, starsOf, fansOf };
 export {
   startConstruction, constructionOf, constructionList, constructionProgress, setTicketPrice, ticketOf, signSponsor, sponsorOffers, sponsorTerms, activeSponsor,
 } from './business.js';
@@ -179,6 +182,9 @@ export function newClubState(seed = 12345, { clubId = USER_CLUB.id, gmName = 'Yo
   };
   state.world = buildWorld(CLUBS_BY_DIVISION, CLUB_POOLS, POOL_BY_ID, ownedIds(state), seed + 3);
   state.world.clubs[state.club.id].keyPlayers = [];
+  state.stadium = newStadium(state.world, state.club.id, state.facilities.stadium);
+  state.facilities.stadium = partsLevelOf(state);
+  state.fans = initialFans(state.world, state.club.id, 1);
   ensureGms(state.world, seed + 5, 1, state.club.id);
   state.gm = { nation, style, trait, reputation: START_REPUTATION, confidence: { ...START_CONFIDENCE }, objective: null, missedInRow: 0, sacked: false, offers: [], review: null, career: [{ clubId: state.club.id, name: state.club.name, from: 1, to: null }], contract: newContract(1, state.club.level) };
   pushInbox(state, 'career', `Welcome to ${state.club.name}`, `The owners hand you the keys: a ${state.gm.contract.until - state.gm.contract.from + 1}-season contract. Your coach is ${state.coaches.coach.name}. Good luck.`);
@@ -298,7 +304,7 @@ export function cohesionBonus(state) {
 }
 
 export function seasonMods(state) {
-  const mods = { all: cohesionBonus(state) + shapePenalty(teamShape(state)), home: ticketOf(state).home, comeback: 0, drain: GYM_DRAIN[lvl(state, 'gym')] / 100 + drainBonus(gmTrait(state)), finishing: 0, underdog: 0, cup: 0, continental: 0 };
+  const mods = { all: cohesionBonus(state) + shapePenalty(teamShape(state)), home: ticketOf(state).home + homeStatBonus(state), comeback: 0, drain: GYM_DRAIN[lvl(state, 'gym')] / 100 + drainBonus(gmTrait(state)), finishing: 0, underdog: 0, cup: 0, continental: 0 };
   const ev = state.activeEvent;
   if (!ev) return mods;
   const v = cardValue(ev.type, ev.rarity);
@@ -398,15 +404,18 @@ const MATCH_PACE = 0.8;
 
 // Income from the business areas (data/facilities.js), per match at today's levels.
 // homeOnly items are paid at home games only. Labels match the season finance categories.
-export function businessIncome(state) {
+// ctx ({ derby, competition }) is the home game being paid; without it, a normal league game.
+export function businessIncome(state, ctx = {}) {
   const m = mult(state);
   const f = (k) => lvl(state, k);
   let merch = squadPopularity(state) * MERCH_MULT[f('merch')] * 0.3;
   if (state.activeEvent?.type === 'marketingTour') merch *= cardValue('marketingTour', state.activeEvent.rarity) / 100;
-  const ticket = ticketOf(state); // v2.2 ticket prices: gate and hospitality
-  const gate = Math.round(STADIUM_INCOME[f('stadium')] * m * ticket.gate);
+  const ticket = ticketOf(state); // ticket prices: price per fan, demand, hospitality
+  // v2.3: the gate is the crowd x the price per fan (state/stadium.js).
+  const day = matchdayOf(state, ctx);
+  const gate = Math.round(day.gate);
   const items = [
-    { area: 'stadium', label: `Home gate (stadium L${f('stadium')})`, coins: gate, homeOnly: true },
+    { area: 'stadium', label: `Home gate · ${day.attendance.toLocaleString('en')} / ${day.capacity.toLocaleString('en')} fans${day.soldOut ? ' (sold out)' : ''}`, coins: gate, homeOnly: true, crowd: day },
     { area: 'hospitality', label: `Hospitality (L${f('hospitality')})`, coins: Math.round(HOSPITALITY_INCOME[f('hospitality')] * m * ticket.hospitality), homeOnly: true },
     { area: 'store', label: `Club store (L${f('store')})`, coins: Math.round(STORE_INCOME[f('store')] * m) },
     { area: 'merch', label: `Merchandise (L${f('merch')})`, coins: Math.round(merch) },
@@ -440,7 +449,8 @@ export function matchRewards(state, match, userSide, game = { competition: 'leag
   else items.push({ label: lostOnPens ? 'Lost on penalties' : 'Defeat', coins: Math.round(pay.loss * k) });
   if (conceded === 0) items.push({ label: 'Clean sheet', coins: Math.round(15 * m) });
   if (own >= 3) items.push({ label: '3+ goals', coins: Math.round(15 * m) });
-  for (const it of businessIncome(state)) if (it.coins > 0 && (!it.homeOnly || match.teams[userSide].isHome)) items.push({ label: it.label, coins: it.coins });
+  const derbyGame = isDerby(state.club.id, match.teams[1 - userSide].id);
+  for (const it of businessIncome(state, { derby: derbyGame, competition: game.competition })) if (it.coins > 0 && (!it.homeOnly || match.teams[userSide].isHome)) items.push({ label: it.label, coins: it.coins });
   const sponsor = activeSponsor(state);
   if (winner === userSide && sponsor.perWin) items.push({ label: `Sponsor win bonus · ${sponsor.brand}`, coins: sponsor.perWin });
   const final = game.label?.endsWith('Final');
@@ -631,8 +641,15 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
       styleDist: styleDistance(normalizeTactics(state.tactics), clubIdentity(next.world.clubs[next.club.id])),
       target: next.gm.objective?.target, eliminated: !!game?.knockout && winner !== userSide && !trophyNow, trophy: trophyNow, level: next.club.level,
     }), gmTrait(next));
-    ticketMoodInto(next, team.isHome); // ticket prices: the fans react after a home game
+    const outcome = winner === userSide ? 'W' : winner === null ? 'D' : 'L';
+    ticketMoodInto(next, team.isHome, outcome); // ticket prices and screens: the fans react after a home game
     moodNews(moodBefore, next.gm.confidence, next);
+    // v2.3 fans: the crowd at home games, and the fan base grows (or shrinks) with results.
+    if (team.isHome) {
+      const day = matchdayOf(state, { derby: isDerby(next.club.id, opponent.id), competition });
+      recordCrowdInto(next, { opponent: opponent.short || opponent.name, attendance: day.attendance, capacity: day.capacity, soldOut: day.soldOut, gate: Math.round(day.gate * MATCH_PACE), competition, md: next.history[0]?.competition });
+    }
+    fanMatchInto(next, { outcome, competition, derby: isDerby(next.club.id, opponent.id), trophy: trophyNow ? competition : null });
     if (isDerby(next.club.id, opponent.id)) {
       const w = winner === userSide; const d = winner === null;
       pushInbox(next, 'match', w ? `Derby won: ${own}–${conceded} against ${opponent.name}` : d ? `Derby draw with ${opponent.name}` : `Derby lost to ${opponent.name}`,
@@ -801,9 +818,10 @@ function tickClubEffects(next, isHome) {
 
 // Raises a club area: since v2.2 it starts building works (state/business.js), which finish
 // after 2 + the new level league matchdays (summer works by matchday 1). Returns the message.
-function raiseArea(next, area, levels) {
-  return queueConstruction(next, area, levels).message;
+function raiseArea(next, area, levels, part = null) {
+  return queueConstruction(next, area, levels, part).message;
 }
+const partsLevelOf = (state) => Math.round(Object.values(stadiumOf(state).parts).reduce((a, b) => a + b, 0) / 6);
 
 // ---------------------------------------------------------------------------
 // Keep / merge / discard for any new card (packs, signings, academy)
@@ -1046,6 +1064,7 @@ export function closeSeason(state, seed) {
     const items = mediaBoost(weighReputation(reputationChanges({ verdict, promoted: summary.promoted, leagueTitle: position === 1, trophies: state.season.userTrophies || [] }), state.club.level, next.gm.reputation), gmTrait(state));
     const before = next.gm.reputation;
     next.gm.missedInRow = verdict === 'missed' ? next.gm.missedInRow + 1 : 0;
+    fanSeasonInto(next, { year: state.season.year, promoted: summary.promoted, relegated: summary.relegated, title: position === 1, verdict, popularity: squadPopularity(state) });
     next.gm.confidence = scaleConfidence(next.gm.confidence, seasonConfidence(next.gm.confidence, verdict, summary.promoted), gmTrait(state));
     next.gm.securityEnd = security(next.gm.confidence);
     // A first season at a club is a free pass: the owners give a new manager time.
@@ -1212,11 +1231,23 @@ function rollRarity(rng) {
 const canRaise = (state, type, rarity) => {
   const def = OFFSEASON_CARDS[type];
   if (!def.facility) return true;
+  if (def.facility === 'stadium' && !def.part) return PART_IDS.some((part) => canRaisePart(state, part, rarity)); // Stadium Evolution: any part
+  if (def.part) return canRaisePart(state, def.part, rarity);
   // Works under way count as done: no card for a level that's already being built.
   const level = Math.max(lvl(state, def.facility), constructionOf(state, def.facility)?.to ?? 0);
   const t = tierIndex(rarity);
   return level < 5 && (t === 4 || level < def.values[t]);
 };
+
+// A stadium part card at a rarity: the part's level is under the cap and nothing is being built there.
+function canRaisePart(state, part, rarity) {
+  if (constructionOf(state, 'stadium', part)) return false;
+  const level = partLevel(state, part);
+  const t = tierIndex(rarity);
+  return level < 5 && (t === 4 || level < [2, 3, 4, 5, 5][t]);
+}
+// Stadium Evolution builds the weakest part this rarity can still raise.
+const evolutionPart = (state, rarity) => weakestPart(state, (id) => !canRaisePart(state, id, rarity));
 
 function randomOffseasonCard(state, rng, group = 'transfer') {
   const types = OFFSEASON_IDS.filter((id) => OFFSEASON_CARDS[id].group === group && !(OFFSEASON_CARDS[id].summerOnly && state.phase !== 'offseason'));
@@ -1397,6 +1428,9 @@ export function acceptOffer(state, clubId, carryKeys = [], seed = 1) {
   next.inventory = inventory;
   next.coins = start.coins;
   next.facilities = fullFacilities(start.facilities);
+  next.stadium = newStadium(world, clubId, next.facilities.stadium); // the new club's ground and fans
+  next.facilities.stadium = partsLevelOf(next);
+  next.fans = initialFans(world, clubId, next.season.year + 1);
   next.construction = []; // building works belong to the old club
   next.activeEvent = eventOf(next.seasonCard); // the season card is the GM's: it moves with you
   next.perks = { shape: 0 };
@@ -1488,7 +1522,15 @@ export function canUseOffseason(state, item) {
   if (def.group === 'event' && state.seasonDeal) return { ok: false, reason: 'Pick it for free in the season deal (Home) instead.' };
   if ((def.group === 'event' || def.group === 'season') && state.activeEvent) return { ok: false, reason: 'One season event per season, and one is already active.' };
   if (def.effect && (state.clubEffects || []).some((e) => e.type === item.type)) return { ok: false, reason: `${def.name} is already running. Play it when it ends.` };
-  if (def.facility) {
+  if (def.facility === 'stadium') {
+    const part = def.part || evolutionPart(state, item.rarity);
+    if (!part) return { ok: false, reason: 'No stadium part this rarity can still raise.' };
+    const level = partLevel(state, part);
+    const t = tierIndex(item.rarity);
+    if (level >= 5) return { ok: false, reason: 'Already at max level.' };
+    if (constructionOf(state, 'stadium', part)) return { ok: false, reason: 'Building works are already under way on this part.' };
+    if (t < 4 && level >= def.values[t]) return { ok: false, reason: `This rarity only builds up to level ${def.values[t]}. You're at ${level}.` };
+  } else if (def.facility) {
     const level = lvl(state, def.facility);
     const t = tierIndex(item.rarity);
     const cap = def.values[t];
@@ -1543,7 +1585,8 @@ function playCard(state, itemUid, target, seed) {
     return { state: next, message: `${def.name} is active ${when}.`, success: true };
   }
   if (def.facility) {
-    return { state: next, message: raiseArea(next, def.facility, t === 4 ? 2 : 1), success: true };
+    const part = def.facility === 'stadium' ? def.part || evolutionPart(state, item.rarity) : null;
+    return { state: next, message: raiseArea(next, def.facility, t === 4 ? 2 : 1, part), success: true };
   }
   // Temporary club cards that last a few games: one entry in state.clubEffects.
   if (def.effect) {
@@ -1610,6 +1653,40 @@ function playCard(state, itemUid, target, seed) {
       const key = item.type === 'pressCharm' ? 'board' : 'fans';
       if (next.gm) next.gm.confidence = { ...START_CONFIDENCE, ...next.gm.confidence, [key]: clamp((next.gm.confidence?.[key] ?? START_CONFIDENCE[key]) + v, 0, 100) };
       return { state: next, message: `${def.name}: ${key === 'board' ? 'owners' : 'fans'} +${v}.`, success: true };
+    }
+    // v2.3 fan cards.
+    case 'localEvent':
+    case 'socialMedia': {
+      const local = item.type === 'localEvent' ? v / 100 : 0;
+      const global = item.type === 'socialMedia' ? v / 100 : 0;
+      const before = fansOf(next);
+      boostFansInto(next, { local, global });
+      const after = fansOf(next);
+      return { state: next, message: local ? `${def.name}: +${(after.local - before.local).toLocaleString('en')} local fans.` : `${def.name}: +${(after.global - before.global).toLocaleString('en')} fans worldwide.`, success: true };
+    }
+    case 'fanDay': {
+      addHappinessInto(next, v);
+      boostFansInto(next, { local: def.local[t] / 100, global: 0 });
+      return { state: next, message: `${def.name}: happiness +${v}, local fans +${def.local[t]}%.`, success: true };
+    }
+    case 'stadiumTour': {
+      const coins = Math.round(v * (TIER_PAY[next.club.level] || 1));
+      next.coins += coins;
+      track(next, 'income', 'Gate', coins);
+      boostFansInto(next, { local: def.local[t] / 100, global: 0 });
+      return { state: next, message: `${def.name}: +◎ ${coins} and local fans +${def.local[t]}%.`, success: true };
+    }
+    case 'internationalTour': {
+      const coins = Math.round(def.coins[t] * (TIER_PAY[next.club.level] || 1));
+      next.coins += coins;
+      track(next, 'income', 'Sponsor', coins);
+      boostFansInto(next, { local: 0, global: v / 100 });
+      // Jet lag: team shape down for the first matches.
+      next.clubEffects = [...(next.clubEffects || []), {
+        id: item.uid, type: item.type, name: `${def.name} jet lag`, icon: def.icon, rarity: item.rarity, text: `${def.shape[t]} team shape.`,
+        gamesLeft: def.shapeGames, games: def.shapeGames, kind: 'shape', value: def.shape[t], homeOnly: false,
+      }];
+      return { state: next, message: `${def.name}: fans worldwide +${v}%, +◎ ${coins}, and ${def.shape[t]} team shape for the first ${def.shapeGames} matches.`, success: true };
     }
     case 'boostCrate': {
       const got = [];
@@ -1711,6 +1788,7 @@ export function migrateClubState(state) {
   next.facilities = fullFacilities(state.facilities);
   if (typeof next.cardPlays !== 'number') next.cardPlays = 0;
   migrateBusinessInto(next); // v2.2: building works, ticket prices, sponsor contract, finance history
+  if (next.world && next.club) { ensureStadiumInto(next); ensureFansInto(next); } // v2.3 stadium parts and fans
   if (!Array.isArray(next.clubEffects)) next.clubEffects = [];
   // Club cards became their own family (inventory.club, from club packs). Event cards stay in
   // inventory.offseason, for the season-card draw to pick up.
