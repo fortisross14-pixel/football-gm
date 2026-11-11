@@ -101,7 +101,7 @@ function ManagerDetail({ m, rank, total, onBack }) {
         <div><span>Best finish</span><b>{m.best ? ordinal(m.best.pos) : '—'}</b><small>{m.best ? `${m.best.div} · ${yearLabel(m.best.year)}` : 'no season finished'}</small></div>
       </div>
       <div className="gm-panel"><GmCard trait={m.gmTrait || null} small /></div>
-      {m.sackedSeasons.length > 0 && <p className="hint hint--warn">Sacked {m.sackedSeasons.length}× (season {m.sackedSeasons.join(', ')}).</p>}
+      {m.sackedSeasons.length > 0 && <p className="hint hint--warn">Sacked {m.sackedSeasons.length}× ({m.sackedSeasons.map(yearLabel).join(', ')}).</p>}
 
       <section>
         <h2 className="section-title">Clubs managed</h2>

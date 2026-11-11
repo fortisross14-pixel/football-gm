@@ -195,6 +195,19 @@ export function clubStart(world, clubId) {
   return { coins: Math.round(base.coins * (0.7 + 0.6 * share)), facilities: fac, coachRarity: base.coachRarity };
 }
 
+// How big a club is: its league level and where it sits by strength among the clubs of that
+// level (share 0 smallest … 1 biggest); the giants are their own class. Used for the stadium
+// size and the starting fan base (state/stadium.js, state/fans.js).
+export function clubSize(world, clubId) {
+  const club = world?.clubs?.[clubId];
+  if (!club) return { level: 3, share: 0, giant: false };
+  const level = DIVISION_BY_ID[club.divisionId]?.level || 3;
+  if (TOP_CLUBS.includes(clubId)) return { level, share: 1, giant: true, strength: club.strength };
+  const peers = Object.values(world.clubs).filter((c) => DIVISION_BY_ID[c.divisionId]?.level === level && !TOP_CLUBS.includes(c.id));
+  const share = peers.filter((c) => c.strength < club.strength).length / Math.max(1, peers.length - 1);
+  return { level, share: Math.max(0, Math.min(1, share)), giant: false, strength: club.strength };
+}
+
 export const CLUB_START = {
   1: { coins: 4000, facilities: { stadium: 4, hospitality: 2, store: 2, merch: 4, sponsor: 2, training: 3, gym: 2, spa: 1, academy: 3, analytics: 1 }, coachRarity: 'rare' },
   2: { coins: 1500, facilities: { stadium: 2, hospitality: 1, store: 0, merch: 2, sponsor: 1, training: 2, gym: 1, spa: 0, academy: 1, analytics: 0 }, coachRarity: 'uncommon' },

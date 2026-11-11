@@ -5,7 +5,7 @@ import Sheet from './Sheet.jsx';
 import { RARITIES, POSITIONS, TRAITS, FORMATIONS, overall } from '../engine/cards.js';
 import { BOOST_IDS } from '../data/boosts.js';
 import { OFFSEASON_CARDS, TIERS, cardValue, cardText } from '../data/offseason.js';
-import { FACILITY_LABEL } from '../data/facilities.js';
+import { FACILITY_LABEL, STADIUM_PARTS } from '../data/facilities.js';
 import { COACH_PASSIVES } from '../data/coachPassives.js';
 import { PLAYER_POOL, COACH_POOL } from '../data/pool.js';
 import { canUseOffseason, cardPlays, clubEffects, SQUAD_SIZE } from '../state/club.js';
@@ -362,7 +362,7 @@ function UseCardSheet({ state, item, onClose, onUse }) {
           disabled={!ready}
           onClick={() => onUse({ playerId, position, trait, formation, passive, coachRole })}
         >
-          {OFFSEASON_CARDS[item.type].scope || item.type === 'veteranSigning' ? 'Sign someone' : def.facility ? `Build: ${FACILITY_LABEL[def.facility]} +${item.rarity === 'legend' ? 2 : 1}` : 'Play card'}
+          {OFFSEASON_CARDS[item.type].scope || item.type === 'veteranSigning' ? 'Sign someone' : def.facility ? `Build: ${def.part ? STADIUM_PARTS[def.part].label : FACILITY_LABEL[def.facility]} +${item.rarity === 'legend' ? 2 : 1}` : 'Play card'}
         </button>
       </div>
     </Sheet>
