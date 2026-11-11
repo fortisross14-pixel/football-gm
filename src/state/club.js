@@ -43,9 +43,9 @@ import {
   CONTINENT_NAME, CONTINENT2_NAME, CONT_SUPER_NAME, CONTINENTS, cupName, superCupName,
 } from '../engine/competitions.js';
 
-// v5: six confederations, super cups and second continental trophies (v4: 10-club divisions,
-// 44 leagues, 12-card squads). Older saves can't be continued.
-export const SAVE_VERSION = 5;
+// v6: 47 leagues (A-League and Oceania Other, v2.4). v5: six confederations, super cups and second
+// continental trophies (v4: 10-club divisions, 44 leagues, 12-card squads). Older saves can't be continued.
+export const SAVE_VERSION = 6;
 // The user's squad: 7 starters and 5 reserves. Starting squads use this shape.
 export const SQUAD_SIZE = 12;
 const SQUAD_SHAPE = ['GK', 'GK', 'DEF', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'MID', 'FWD', 'FWD'];

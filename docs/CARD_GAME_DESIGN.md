@@ -3,6 +3,12 @@
 > Replaces the old management-sim design (`GAME_DESIGN_DOCUMENT.md`), which is kept for reference only.
 > Language: English. Platform: web (React + Vite), mobile-first.
 
+**Changes in v2.4 (Oceania split, more of North America)**
+- Oceania has two leagues (§3.1): **Australia — A-League** (eight Australian clubs plus Wellington Phoenix and Auckland FC, who play in it; Macarthur FC new) and **Oceania Other** (Auckland City, Christchurch United, Ba, Rewa, Hekari United, AS Pirae, AS Vénus, Hienghène Sport, Solomon Warriors, Galaxy). 47 divisions, 470 clubs.
+- North America Other swaps Herediano, Toronto FC, CF Montréal and Forge FC for **Tauro, Plaza Amador** (Panama), **Cavalier, Harbour View** (Jamaica).
+- The **Oceania Cup** takes both leagues' top two (§3.4). New rivalries: Sydney and Melbourne derbies, Auckland, Tahiti, Fiji, Panama, Kingston, Costa Rica and Honduras clásicos.
+- Clubs whose real squads aren't well documented (Panama, Jamaica, the Pacific islands, Christchurch) get **invented players**, marked `fictional: true` on the card (tier-3 Uncommons, OVR 62–65). Saves are version 6.
+
 **Changes in v2.3 (confederations, super cups, second continental trophies)**
 - Six **confederations** (§3.4): Europe, South America, North America, Africa, Asia, Oceania (they were Europe, Americas, Africa–APAC).
 - New leagues: **North America Other** (Costa Rica, Honduras, Guatemala, Canada) and **Oceania** (Australia and New Zealand; Melbourne City and Sydney FC moved there from East Asia Other, which took FC Seoul and Shandong Taishan). 46 divisions, 460 clubs.
@@ -99,8 +105,8 @@ Every division has **10 clubs** and plays a double round-robin: **18 matchdays**
 |---|---|---|---|
 | Big 4 | England, Spain, Italy, Germany | 3 each | 120 |
 | Two divisions | France, Portugal, Netherlands, Argentina, Brazil, Mexico (Liga MX + Liga de Expansión), Japan (J1 + J2) | 2 each | 140 |
-| Single-division | Turkey, Belgium, Switzerland, Denmark, Scotland, Austria, Greece, Europe Other, USA, North America Other, Colombia, Chile, South America Other, Asia Other, East Asia Other, Saudi Arabia, Nigeria, Egypt, Africa Other, Oceania | 1 each | 200 |
-| **Total** | | **46 divisions** | **460 clubs** |
+| Single-division | Turkey, Belgium, Switzerland, Denmark, Scotland, Austria, Greece, Europe Other, USA, North America Other, Colombia, Chile, South America Other, Asia Other, East Asia Other, Saudi Arabia, Nigeria, Egypt, Africa Other, Australia (A-League), Oceania Other | 1 each | 210 |
+| **Total** | | **47 divisions** | **470 clubs** |
 
 v1.9 added two real clubs to every existing division, four leagues (**Belgium** Pro League, level 2; **Switzerland** Super League, **Denmark** Superliga and **Chile** Primera División, level 3) and two second divisions (**Mexico** Liga de Expansión, **Japan** J2). Club Brugge, FC Basel, FC Copenhagen, Colo-Colo and Universidad de Chile moved from the "Other" divisions into their new national leagues.
 
@@ -112,8 +118,10 @@ v1.9 added two real clubs to every existing division, four leagues (**Belgium** 
 | South America Other | LDU Quito, Independiente del Valle, Barcelona SC, Peñarol, Nacional, Libertad, Cerro Porteño, Olimpia, Universitario, Alianza Lima |
 | Asia Other | Qatar, UAE, Iran (Persepolis, Tractor, Esteghlal), Uzbekistan (Pakhtakor) |
 | East Asia Other (was APAC Other) | South Korea (incl. FC Seoul), China (incl. Guangzhou FC, Shandong Taishan), Thailand |
-| North America Other (v2.3, Liga Norte) | Saprissa, Alajuelense, Herediano (Costa Rica), Olimpia, Motagua (Honduras), Municipal (Guatemala), Vancouver Whitecaps, Toronto FC, CF Montréal, Forge FC (Canada) |
-| Oceania (v2.3, Oceania Premier League) | Melbourne City, Sydney FC, Melbourne Victory, Western Sydney Wanderers, Brisbane Roar, Adelaide United, Central Coast Mariners (Australia), Auckland City, Auckland FC, Wellington Phoenix (New Zealand) |
+| North America Other (v2.3, Liga Norte) | Saprissa, Alajuelense (Costa Rica), Olimpia, Motagua (Honduras), Municipal (Guatemala), Vancouver Whitecaps (Canada), Tauro, Plaza Amador (Panama), Cavalier, Harbour View (Jamaica) |
+| Oceania Other (v2.4, Oceania Premier League) | Auckland City, Christchurch United (New Zealand), Ba, Rewa (Fiji), Hekari United (Papua New Guinea), AS Pirae, AS Vénus (Tahiti), Hienghène Sport (New Caledonia), Solomon Warriors (Solomon Islands), Galaxy (Vanuatu) |
+
+Australia's **A-League** (v2.4, a national league, not an "Other" one): Melbourne City, Sydney FC, Melbourne Victory, Western Sydney Wanderers, Brisbane Roar, Adelaide United, Central Coast Mariners, Macarthur FC, Wellington Phoenix and Auckland FC (the two New Zealand clubs play in it, as in real life).
 | Africa Other | South Africa (incl. Kaizer Chiefs), Morocco, Tunisia, Algeria, Sudan, DR Congo (TP Mazembe) |
 
 Every league has a name (LaLiga, Pro League, J2 League…); the "Other" divisions have invented ones.
@@ -161,7 +169,7 @@ Rounds: more qualifiers than places → the last-listed (weakest leagues) play a
 | **North America** | **North American Cup**, 5: MEX, USA and North America Other champions direct; the Mexican and US runners-up play off; 1 group of 4 → the top two play the final | **North American Trophy**, 4: MEX cup winner + next placed, USA and NAO cup winners; 1 group → final |
 | **Africa** | **African Cup**, 5: EGY, NGA, Africa Other champions direct; EGY and AFR runners-up play off; 1 group → final | **African Trophy**, 4: EGY and NGA cup winners, AFR cup winner + next placed; 1 group → final |
 | **Asia** | **Asian Cup**, 8: top two of Japan (J1), Saudi Arabia, Asia Other and East Asia Other; 2 groups → SF → F | **Asian Trophy**, 8: each country's cup winner + next placed; 2 groups → SF → F |
-| **Oceania** | **Oceania Cup**, 4: the league's top three and the cup winner (next placed if already in); 1 group → final | none |
+| **Oceania** | **Oceania Cup**, 4: the A-League's and Oceania Other's champions and runners-up direct; 1 group → final | none |
 
 **Continental super cup (KS)**: the K winner against the K2 winner of last season, one neutral match at the start of the season (after league matchday 1). Europe, South America, North America, Africa and Asia; season 1 uses the first-listed entrant of each.
 

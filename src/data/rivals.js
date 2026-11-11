@@ -76,6 +76,17 @@ export const RIVAL_GROUPS = [
   { name: 'Hidalgo–Toluca', clubs: ['pachuca', 'toluca'] },
   { name: 'MLS rivals', clubs: ['inter-miami', 'lafc', 'seattle-sounders'] },
   { name: 'Hell is Real', clubs: ['fc-cincinnati', 'columbus-crew'] },
+  { name: 'Clásico nacional (CRC)', clubs: ['saprissa', 'alajuelense'] },
+  { name: 'Clásico capitalino (HON)', clubs: ['olimpia-hon', 'motagua'] },
+  { name: 'Clásico panameño', clubs: ['tauro', 'plaza-amador'] },
+  { name: 'Kingston derby', clubs: ['harbour-view', 'cavalier'] },
+  // Oceania
+  { name: 'Sydney derby', clubs: ['sydney-fc', 'western-sydney'] },
+  { name: 'Melbourne derby', clubs: ['melbourne-city', 'melbourne-victory'] },
+  { name: 'Auckland derby', clubs: ['auckland-city', 'auckland-fc'] },
+  { name: 'New Zealand rivals', clubs: ['auckland-city', 'christchurch-united'] },
+  { name: 'Tahiti derby', clubs: ['as-pirae', 'as-venus'] },
+  { name: 'Fiji derby', clubs: ['ba-fc', 'rewa-fc'] },
   // Asia, Africa
   { name: 'Riyadh derby / Clásico', clubs: ['al-hilal', 'al-nassr', 'al-ittihad'] },
   { name: 'Jeddah derby', clubs: ['al-ittihad', 'al-ahli-sau'] },
