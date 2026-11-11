@@ -54,7 +54,7 @@ export const TV_BASE = { 1: 240, 2: 110, 3: 55 };
 export const TV_KINDS = {
   game: { label: 'Per game', icon: '📺', fee: 0.45, per: 0.55 / SEASON_GAMES, unit: 'a game', text: 'Every match you play, any result.' },
   home: { label: 'Per home game', icon: '🏟', fee: 0.35, per: 0.65 / 11, unit: 'a home game', text: 'Every home match, any competition.' },
-  intl: { label: 'International', icon: '🌐', fee: 0.6, per: 0.12, unit: 'an international game', text: 'Continental and Club World Cup matches only.' },
+  intl: { label: 'International', icon: '🌐', fee: 0.6, per: 0.12, unit: 'an international game', text: 'Continental cups, continental super cup and Club World Cup matches only.' },
 };
 export const TV_KIND_IDS = Object.keys(TV_KINDS);
 export const TV_BRANDS = ['PitchView', 'StreamGoal', 'Arena+', 'Channel 9 Sport', 'Velo TV', 'Matchday One', 'Touchline TV', 'Northstar Sports'];

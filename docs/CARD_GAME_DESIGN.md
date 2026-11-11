@@ -703,7 +703,7 @@ The Transfer Market, cards and job offers stay available throughout. A new job b
 |---|---|---|
 | 📺 Per game | 0.45 T | 0.55 T ÷ 22 a game |
 | 🏟 Per home game | 0.35 T | 0.65 T ÷ 11 a home game (any competition) |
-| 🌐 International | 0.6 T | 0.12 T a continental or Club World Cup game |
+| 🌐 International | 0.6 T | 0.12 T a game in either continental cup, the continental super cup or the Club World Cup |
 
 Every signed deal (and every default) sends an inbox message; the season finances get **Sponsor**, **Kit deal**, **TV** and **Kit design** lines.
 
