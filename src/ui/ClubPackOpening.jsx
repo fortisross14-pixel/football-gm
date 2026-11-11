@@ -3,7 +3,7 @@ import { PackArt } from './Card.jsx';
 import { sfx, haptic } from './motion.js';
 import { RARITIES } from '../engine/cards.js';
 import { OFFSEASON_CARDS, cardLabel, cardText, TIERS } from '../data/offseason.js';
-import { FACILITY_LABEL } from '../data/facilities.js';
+import { FACILITY_LABEL, STADIUM_PARTS } from '../data/facilities.js';
 
 // Club pack opening, the same studio as player packs:
 //   sealed → the pack breathes; tap to open
@@ -127,7 +127,7 @@ function ClubFlip({ card, index, flipped, chosen, dim, onTap }) {
           <span className="flip__icon" aria-hidden="true">{def.icon}</span>
           <span className="flip__name">{def.name}</span>
           <span className="flip__rarity">{RARITIES[card.rarity].label}</span>
-          <span className="flip__blurb">{def.facility ? `${FACILITY_LABEL[def.facility]} ${card.rarity === 'legend' ? '+2 levels' : `+1, up to L${def.values[tier]}`}` : cardText(card.type, card.rarity)}</span>
+          <span className='flip__blurb'>{def.facility ? `${def.part ? STADIUM_PARTS[def.part].label : def.facility === 'stadium' ? 'Weakest stadium part' : FACILITY_LABEL[def.facility]} ${card.rarity === 'legend' ? '+2 levels' : `+1, up to L${def.values[tier]}`}` : cardText(card.type, card.rarity)}</span>
           {flipped && tier >= 2 && <span className="flip__ring" aria-hidden="true" />}
           {flipped && tier >= 3 && <span className="flip__sweep" aria-hidden="true" />}
         </span>

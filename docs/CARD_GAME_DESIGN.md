@@ -271,7 +271,7 @@ Club packs only deal an infrastructure card at a rarity that can still raise tha
 
 | Group | Area · card | Effect at levels 0 / 1 / 2 / 3 / 4 / 5 |
 |---|---|---|
-| Business | 🏟 **Stadium** · Stadium Evolution | Home gate 30 / 45 / 54 / 64 / 74 / 85 a home game |
+| Business | 🏟 **Stadium** · Stadium Evolution + six part cards (§6.4) | Six parts with their own levels and a 1–5 star rating; the gate is the crowd × the price per fan (§6.4). The Stadium level shown elsewhere is the parts' average |
 | Business | 🍽 **Hospitality** · Restaurant & Boxes | 0 / 10 / 18 / 27 / 36 / 46 a home game |
 | Business | 🏪 **Club store** · Club Store | 0 / 4 / 7 / 10 / 14 / 18 every match |
 | Business | 👕 **Merchandise** · Merchandise Line (kits → lifestyle → global) | Squad popularity × 0.5 / 0.9 / 1.3 / 1.7 / 2.1 / 2.5 × 0.3 every match |
@@ -300,7 +300,7 @@ The **Transfer Market is open all year** and, since v2.2, sells **transfer cards
 - **Season events:** 1 per season. Played in the summer they last all season; played mid-season they apply for the rest of that season. They end when the season ends.
 - **Summer only:** Pre-season Camp (it boosts the first matchdays). Everything else, signings included, works mid-season too: a mid-season signing is the winter window.
 
-There are **42 card types** in three groups:
+There are **53 card types** in three groups (v2.3 added the six stadium part cards and five fan cards):
 - **Transfer:** squad moves (Transfer Market).
 - **Club:** one infrastructure card per club area (§4.5), plus Sports Science, Boost Crate and the temporary club cards (§4.6b). Club packs only.
 - **Season event:** one per season (the year-end season card draw).
@@ -370,7 +370,12 @@ The 3 cards of a pack are all different. An infrastructure card is only dealt at
 | 🧊 **Recovery Camp** | Team shape for N matches | +6 / 8 / 10 / 12 / 15 for 3 / 3 / 3 / 4 / 5 |
 | 📑 **Analyst Report** | Tactics grade one step better (red → grey, grey → green) for N matches | 2 / 3 / 3 / 4 / 5 matches |
 | 🎙 **Press Charm** | Owners' confidence now | +3 / 4 / 6 / 8 / 10 |
-| 🦸 **Local Hero** | Fans' confidence now | +3 / 4 / 6 / 8 / 10 |
+| 🦸 **Local Hero** | Fans' confidence (happiness) now | +3 / 4 / 6 / 8 / 10 |
+| 🎪 **Local Event** (v2.3) | Local fans now | +2 / 3 / 5 / 7 / 10% |
+| 📱 **Social Media Campaign** (v2.3) | Fans worldwide now | +3 / 5 / 8 / 12 / 18% |
+| 🎉 **Fan Day** (v2.3) | Happiness and local fans now | +2 / 3 / 4 / 5 / 7, local +1 / 1 / 2 / 2 / 3% |
+| 🗺 **Stadium Tour** (v2.3) | Coins (×1.5 tier 2, ×2 tier 1) and local fans now | 60 / 100 / 160 / 260 / 400, local +1 / 1 / 2 / 2 / 3% |
+| 🌏 **International Tour** (v2.3, summer only) | Fans worldwide and coins now, jet lag after | +6 / 9 / 13 / 18 / 25%, 120 / 200 / 320 / 500 / 800 coins (×1.5 / ×2), −10 / 9 / 8 / 7 / 6 team shape for the first 3 matches |
 | 🧪 **Sports Science** | Team shape until the season ends | +8 → +30 |
 | 📦 **Boost Crate** | Random in-game boosts | 3 → 8 |
 
@@ -581,11 +586,13 @@ Odds are per card. The guarantee upgrades one card if none of the three meets it
 
 **Ticket prices** (Club → Finance), changeable any time:
 
-| Price | Gate | Hospitality | Fans | Home |
-|---|---|---|---|---|
-| Low | −20% | — | +0.6 a home match | +1% all stats at home |
-| Normal | — | — | — | — |
-| High | +25% | +25% | −0.6 a home match | — |
+| Price | Per fan | Demand | Hospitality | Happiness after a home game | Home |
+|---|---|---|---|---|---|
+| Low | −20% | +20% | — | +0.6 | +1% all stats at home |
+| Normal | — | — | — | — | — |
+| High | +25% | −20% | +25% | win 0 · draw −0.8 · defeat −1.5 | — |
+
+Since v2.3 the price works through ticket demand (§6.4): when demand is above capacity every price sells out, so High is +25% gate at the cost of happiness after every home game you don't win; below capacity, High leaves seats empty (about the same money for less happiness) and Low fills them.
 
 **Sponsor contract.** When the season closes the club gets three offers for next season, one of each kind; you sign one in Club → Finance before the season starts (no choice: the Steady one). Amounts are live: they grow with the Sponsorship area (base 3 / 6 / 11 / 17 / 24 / 32 at levels 0–5) × the division multiplier × 0.8.
 
@@ -598,6 +605,40 @@ Odds are per card. The guarantee upgrades one card if none of the three meets it
 Performance beats Steady above a 45% win rate; Glory beats it with one trophy or promotion. Measured (`BOT=… node scripts/career-sim.mjs 12 6`): the average bot (Performance when 4+ stronger than its division, Normal tickets) earns about what it did (+1–2% a season); the great bot (Glory when 6+ stronger, Performance when 1+ stronger, High tickets while fans ≥ 60, Low under 40) earns about 5–7% more a season from these choices, which is 20–25% more on the gate, hospitality and sponsor lines they touch.
 
 **Finance history:** every season keeps a compact entry (income by category, spending, closing balance), written when the season closes and brought up to date with the summer's money when the next one starts.
+
+### 6.4 The stadium and the fans (v2.3)
+
+**Stadium parts** (`state.stadium = { size, parts }`, `src/state/stadium.js`, tables in `src/data/facilities.js`). Six parts, levels 0–5, each built by its own club card (or Stadium Evolution, which builds the weakest part its rarity can still raise). Same rarity caps and building works as the other areas; one project per part at a time, so two parts can be built at once.
+
+| Part · card | Effect per level |
+|---|---|
+| 💺 Capacity · New Stand | seats = stadium size × 0.6 / 0.82 / 1 / 1.12 / 1.22 / 1.32 |
+| 🚿 Locker rooms · Locker Room Refit | +0.2% all stats at home |
+| 🌱 Pitch · Pitch Renewal | +0.2% all stats at home |
+| 🚗 Access & parking · Access & Parking | +4% ticket demand |
+| 💡 Floodlights · Floodlights | +2% per fan |
+| 📺 Scoreboard & screens · Big Screen | +0.05 happiness after every home game |
+
+**Stars** = 1 + 0.8 × the weighted average level (capacity counts double, hospitality counts once), rounded down to a half star: 1★ with nothing, 5★ only when every part and hospitality are level 5. A small level-3 club starts at 1.5★, the giants at 4.5★. Inbox messages at 4★ and 5★ (and on any star gained).
+
+**Stadium size** is fixed per club (it does not change on promotion): level 3 10,000 × 0.75–1.25 by club size, level 2 18,000, level 1 34,000, the giants 62,000. Capacity: a small level-3 club 6,000–8,000 seats, a giant 82,000 at capacity level 5.
+
+**Fans** (`state.fans`, `src/state/fans.js`). Local fans buy tickets; fans worldwide are for TV and shirt deals (read with `fansOf(state)`). Starting bases by club size within the level: level 3 8k–30k local, level 2 50k–200k, level 1 250k–900k, the giants 2M+; worldwide = local × 2.5 / 5 / 15 (giants × 60, so 120M+).
+
+| Event | Local | Worldwide |
+|---|---|---|
+| League win / defeat | +0.3% / −0.15% | +0.2% / −0.1% |
+| Continental or Club World Cup win | +0.3% | +0.6% |
+| Derby win / defeat | +1% / −0.4% extra | +0.3% extra |
+| Cup / continental / Club World Cup trophy | +4 / 6 / 6% | +5 / 12 / 20% |
+| Promotion · league title · relegation · objective missed (season end) | +6 · +4 · −6 · −2% | +10 · +6 · −8 · −1% |
+| Squad popularity (season end) | — | + popularity / 10 % (max 15%) |
+
+**Happiness is the fans' confidence meter** (`gm.confidence.fans`, 0–100). There is one number, not two: results, derbies, trophies, ticket prices, screens and fan cards all move it, and it is what job security already reads (35%), so nothing counts twice. It resets with a new job (new club, new fans) and drifts back towards 50 each summer, as before.
+
+**Ticket demand** = 42 × local fans^0.55 × mood × price × access × derby 1.25 × continental 1.15, with mood = 0.6 + 0.4 × happiness / 55 (0.5–1.4). 8,000 local fans want about 5,900 tickets, 100,000 want 23,600, 2 million 124,000: small clubs fill most of the ground, big ones sell out. **Attendance** = min(capacity, demand).
+
+**Gate** per home game = attendance × price per fan, price per fan = 58 × division multiplier × (0.85 + 0.06 × stars) × floodlights × ticket price / stadium size (× 0.8 per match, as all business income since v1.9). A full ground earns about what the old per-level gate paid. The Finance tab shows demand, capacity, the price per 1,000 fans and the last home crowds; the match result shows "Home gate · 7,110 / 7,800 fans". Club → Fans shows local and worldwide fans with this season's change, the happiness meter with a sentence, the last home crowds, season history and what moves them. Inbox: 100k / 1M local, 1M / 10M / 100M worldwide, 5 / 10 / 20 sell-outs in a row.
 
 ---
 

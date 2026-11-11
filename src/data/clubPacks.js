@@ -4,7 +4,7 @@
 //
 // odds: per card, Common → Legend. permanent: chance each card is an infrastructure card
 // (if one can still raise an area at that rarity; otherwise it's a temporary card).
-import { AREA_CARD_IDS, TEMP_CARD_IDS, TIERS } from './offseason.js';
+import { AREA_CARD_IDS, STADIUM_CARD_IDS, TEMP_CARD_IDS, TIERS } from './offseason.js';
 
 export const CLUB_PACKS = {
   clubBronze: { name: 'Bronze Club Pack', short: 'Bronze', price: 200, show: 1, odds: [55, 33, 10, 2, 0], permanent: 0.6, text: '1 club card, mostly Common or Uncommon' },
@@ -31,9 +31,14 @@ export function drawClubCards(rng, packId, canRaise = () => true) {
   const used = new Set();
   for (let i = 0; i < pack.show; i += 1) {
     const rarity = TIERS[rollTier(rng, pack.odds)];
-    const areas = AREA_CARD_IDS.filter((id) => !used.has(id) && canRaise(id, rarity));
+    // The stadium's cards (one per part, plus Stadium Evolution) count as one area, so the
+    // stadium comes up as often as any other area; then one of its playable cards is picked.
+    const stadium = STADIUM_CARD_IDS.filter((id) => !used.has(id) && canRaise(id, rarity));
+    const areas = AREA_CARD_IDS.filter((id) => !STADIUM_CARD_IDS.includes(id) && !used.has(id) && canRaise(id, rarity));
+    if (stadium.length) areas.push('stadium');
     const temps = TEMP_CARD_IDS.filter((id) => !used.has(id));
-    const type = areas.length && rng.next() < pack.permanent ? rng.pick(areas) : rng.pick(temps);
+    let type = areas.length && rng.next() < pack.permanent ? rng.pick(areas) : rng.pick(temps);
+    if (type === 'stadium') type = rng.pick(stadium);
     used.add(type);
     cards.push({ type, rarity });
   }
