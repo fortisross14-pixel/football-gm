@@ -154,6 +154,12 @@ function Offseason({ state, goTo, onStart }) {
           </button>
         );
       })()}
+      {state.sponsorOffers?.offers?.length > 0 && (
+        <button type="button" className="career-link" onClick={() => goTo('club')}>
+          <span>🤝 {state.sponsorOffers.signed ? `Sponsor signed for season ${state.sponsorOffers.year}: ${state.sponsor?.brand}` : `3 sponsor offers for season ${state.sponsorOffers.year}: Steady, Performance or Glory. Pick one before the season starts.`}</span>
+          <b>Sponsor ›</b>
+        </button>
+      )}
       <b className="offseason__title">Summer Transfer Market</b>
       <p className="hint">9 fresh cards. Buy them, then play them from Cards → Items: sign players, upgrade the club's areas and pick a season event. Summer plays count towards next season ({cardPlays(state).used} / {cardPlays(state).limit} used).</p>
       <p className="hint">Youth academy L{state.facilities.academy || 0}: {academyInfo(state.facilities.academy || 0).count} player(s) a year, up to {RARITIES[academyInfo(state.facilities.academy || 0).best].label}. Club legends come first.</p>

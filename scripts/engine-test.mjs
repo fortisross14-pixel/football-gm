@@ -28,6 +28,7 @@ import {
   newClubState, buildUserTeam, matchRewards, applyMatch, buyPack, keepPending, mergePending, discardPending,
   pendingCard, duplicateOf, nextUserGame, newSeason, closeSeason, toggleCurse, teamShape, shapeLabel, acceptOffer, carryOptions, starterOffers, discardCommons, buyMarketCard, useOffseasonCard, startNextSeason, POOLS, POOL_BY_ID,
   canUseOffseason, cardPlays, migrateClubState, effectiveCohesion, seasonMods, packShift, MARKET_EVERY,
+  startConstruction, constructionOf, setTicketPrice, signSponsor, sponsorOffers, activeSponsor, businessIncome,
 } from '../src/state/club.js';
 import { AREA_IDS, cardPlayLimit } from '../src/data/facilities.js';
 import { cardPrice } from '../src/data/offseason.js';
@@ -677,7 +678,8 @@ test('management cards can be played mid-season; events last the rest of the sea
   assert.ok(seasonMods(r.state).home > 0);
   r = useOffseasonCard(r.state, 'b', {}, 2);
   assert.equal(r.success, true, r.message);
-  assert.equal(r.state.facilities.store, 1);
+  assert.equal(r.state.facilities.store, 0, 'building works first');
+  assert.equal(r.state.construction[0].area, 'store');
   assert.equal(r.state.cardPlays, 2);
   assert.equal(canUseOffseason(r.state, { type: 'preseasonCamp', rarity: 'rare' }).ok, false, 'pre-season camp is summer only');
   // The event ends with the season; the club area stays.
@@ -766,7 +768,7 @@ test('old saves load: missing club areas, card plays and market are filled in', 
   assert.equal(m.cardPlays, 0);
   assert.ok(m.market.offers.length > 0);
   assert.equal(m.inventory.offseason[0].type, 'findSponsor');
-  assert.equal(useOffseasonCard(m, 'o1', {}, 1).state.facilities.sponsor, m.facilities.sponsor + 1);
+  assert.equal(useOffseasonCard(m, 'o1', {}, 1).state.construction[0].to, m.facilities.sponsor + 1);
   assert.deepEqual(migrateClubState(m).facilities, m.facilities, 'migration is idempotent');
   // An old save with only the four facilities still plays a match.
   const legacy = { ...old, facilities: { stadium: 1, merch: 0, training: 1, academy: 0 } };
@@ -774,6 +776,126 @@ test('old saves load: missing club areas, card plays and market are filled in', 
   const mt = simulateMatch({ home: buildUserTeam(legacy, [], true), away: aiTeamFor(legacy.world, fx.opponentId, POOL_BY_ID, 1), seed: 2 });
   assert.ok(matchRewards(legacy, mt, 0).items.some((i) => i.label === 'Shirt sponsor'));
   assert.ok(effectiveCohesion(legacy) >= 0);
+});
+
+test('building works: an area card queues a project that finishes after 2 + level league matchdays', () => {
+  let s = fresh();
+  const from = s.facilities.stadium;
+  let r = startConstruction(s, 'stadium', 1);
+  assert.equal(r.success, true, r.message);
+  s = r.state;
+  const p = constructionOf(s, 'stadium');
+  assert.equal(p.to, from + 1);
+  assert.equal(p.total, 2 + from + 1);
+  assert.equal(s.facilities.stadium, from, 'not instant');
+  assert.equal(startConstruction(s, 'stadium', 1).success, false, 'one project per area');
+  assert.equal(canUseOffseason(s, { type: 'stadiumEvolution', rarity: 'legend' }).ok, false);
+  assert.equal(startConstruction(s, 'gym', 1).success, true, 'other areas can build at the same time');
+  for (let md = 0; md < p.total - 1; md += 1) s = playMatchday(s, 2100 + md);
+  assert.equal(s.facilities.stadium, from, 'still building');
+  assert.equal(constructionOf(s, 'stadium').left, 1);
+  s = playMatchday(s, 2199);
+  assert.equal(s.facilities.stadium, from + 1);
+  assert.equal(constructionOf(s, 'stadium'), null);
+  assert.ok(s.inbox.some((m) => m.title.startsWith('🏗 Construction finished: Stadium')));
+  // A Legend card builds +2; a summer project is ready for the first matchday.
+  let o = resolve(closeSeason(playFull(fresh()), 31));
+  o.inventory.offseason = [{ uid: 'leg', type: 'clubStore', rarity: 'legend' }];
+  const store = o.facilities.store;
+  r = useOffseasonCard(o, 'leg', {}, 1);
+  assert.equal(r.success, true, r.message);
+  assert.match(r.message, /first matchday/);
+  assert.equal(constructionOf(r.state, 'store').to, Math.min(5, store + 2));
+  o = startNextSeason(r.state, 4);
+  assert.equal(o.facilities.store, Math.min(5, store + 2));
+  assert.equal(o.construction.length, 0);
+});
+
+const fakeMatch = (s, score, winner, home = true) => ({
+  score, result: { winner, appeared: [[], []] }, teams: [{ id: s.club.id, isHome: home }, { id: 'nobody', isHome: !home }],
+});
+
+test('ticket prices: High earns more at the gate and upsets the fans, Low helps at home', () => {
+  const s = fresh();
+  const gate = (st) => businessIncome(st).find((i) => i.area === 'stadium').coins;
+  const high = setTicketPrice(s, 'high');
+  const low = setTicketPrice(s, 'low');
+  assert.equal(high.ticketPrice, 'high');
+  assert.ok(Math.abs(gate(high) - gate(s) * 1.25) <= 1, `${gate(high)} vs ${gate(s)}`);
+  assert.ok(gate(low) < gate(s));
+  assert.equal(seasonMods(low).home - seasonMods(s).home, 0.01);
+  assert.equal(setTicketPrice(s, 'silly'), s);
+  const fans = (st) => {
+    const fx = userFixture(st.season, st.club.divisionId, st.club.id);
+    const me = buildUserTeam(st, [], true);
+    const m = simulateMatch({ home: me, away: aiTeamFor(st.world, fx.opponentId, POOL_BY_ID, 5), seed: 6 });
+    return applyMatch(st, m, 0, clubById(st.world, fx.opponentId), matchRewards(st, m, 0), 7).state.gm.confidence.fans;
+  };
+  const f = fans(s);
+  assert.ok(Math.abs(fans(high) - (f - 0.6)) < 0.02, 'high prices: fans −0.6 a home match');
+  assert.ok(Math.abs(fans(low) - (f + 0.6)) < 0.02, 'low prices: fans +0.6 a home match');
+});
+
+test('sponsor contracts: three summer offers, Performance pays per win, Glory per trophy, Steady by default', () => {
+  let s = fresh();
+  const steady = activeSponsor(s);
+  assert.equal(steady.type, 'steady');
+  assert.ok(matchRewards(s, fakeMatch(s, [0, 1], 1), 0).items.some((i) => i.label.startsWith('Sponsor ·')), 'steady pays every match');
+  s = resolve(closeSeason(playFull(s), 41));
+  assert.equal(sponsorOffers(s).length, 3);
+  assert.equal(startNextSeason(s, 1).sponsor.type, 'steady', 'no choice → steady');
+  const r = signSponsor(s, 'performance');
+  assert.equal(r.success, true, r.message);
+  assert.ok(r.state.inbox[0].title.startsWith('🤝 Sponsor signed'));
+  let p = startNextSeason(r.state, 2);
+  assert.equal(p.sponsor.type, 'performance');
+  const terms = activeSponsor(p);
+  assert.equal(terms.perMatch, 0);
+  assert.ok(terms.perWin >= 2 * activeSponsor({ ...p, sponsor: { type: 'steady', brand: 'x' } }).perMatch);
+  const win = matchRewards(p, fakeMatch(p, [2, 0], 0), 0);
+  const loss = matchRewards(p, fakeMatch(p, [0, 2], 1), 0);
+  assert.equal(win.items.find((i) => i.label.startsWith('Sponsor win bonus')).coins, terms.perWin);
+  assert.ok(!loss.items.some((i) => i.label.startsWith('Sponsor')));
+  for (let md = 0; md < 12 && !p.record.w; md += 1) p = playMatchday(p, 2300 + md);
+  assert.ok(p.record.w > 0);
+  assert.ok((p.finance.income.Sponsor || 0) >= terms.perWin, 'win bonus in the season finances');
+  // Glory: a cup final win pays the trophy bonus.
+  const g = { ...p, sponsor: { type: 'glory', brand: 'Crown Airways' } };
+  const final = matchRewards(g, fakeMatch(g, [1, 0], 0), 0, { competition: 'cup', label: 'Cup · Final' });
+  assert.equal(final.items.find((i) => i.label.startsWith('Sponsor trophy bonus')).coins, activeSponsor(g).perTrophy);
+  assert.ok(activeSponsor(g).perTrophy > 10 * activeSponsor(g).perMatch);
+  assert.equal(signSponsor(p, 'glory').success, false, 'signed in the summer only');
+});
+
+test('finance history: one entry per season with income, spending and balance', () => {
+  const closed = closeSeason(playFull(fresh()), 51);
+  assert.equal(closed.financeHistory.length, 1);
+  const e = closed.financeHistory[0];
+  assert.equal(e.year, 1);
+  assert.ok(e.in > 0 && e.income.Prizes > 0);
+  assert.equal(e.balance, closed.coins);
+  let s = resolve(closed); // summer: academy cards sold
+  s = startNextSeason(s, 3);
+  assert.equal(s.financeHistory.length, 1, 'the same season, brought up to date');
+  assert.equal(s.financeHistory[0].balance, s.coins);
+  assert.deepEqual(s.finance, { income: {}, spent: {} });
+});
+
+test('v2.2 business fields: older saves without them load and play', () => {
+  const s = fresh();
+  const old = structuredClone(s);
+  for (const k of ['construction', 'ticketPrice', 'sponsor', 'sponsorOffers', 'financeHistory', 'clubEffects']) delete old[k];
+  const m = migrateClubState(old);
+  assert.deepEqual(m.construction, []);
+  assert.equal(m.ticketPrice, 'normal');
+  assert.equal(m.sponsor.type, 'steady');
+  assert.deepEqual(m.financeHistory, []);
+  assert.deepEqual(m.clubEffects, []);
+  assert.equal(activeSponsor(old).type, 'steady', 'works even before migration');
+  assert.ok(playMatchday(m, 77).history.length === 1);
+  // An old summer save gets sponsor offers.
+  const summer = migrateClubState({ ...old, phase: 'offseason' });
+  assert.equal(sponsorOffers(summer).length, 3);
 });
 
 console.log(`\n${passed} tests passed`);
