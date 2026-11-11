@@ -40,9 +40,9 @@ const track = (s, kind, cat, coins) => {
   s.finance[kind][cat] = (s.finance[kind][cat] || 0) + coins;
 };
 
-// International games for the TV deals: continental cups and the Club World Cup (any
-// competition id that names a continental or intercontinental tournament).
-export const isInternational = (competition = '') => competition === 'cwc' || /continental|intercontinental|cwc/i.test(competition);
+// International games for the TV deals: both continental cups, the continental super cup and
+// the Club World Cup (not the domestic super cup).
+export const isInternational = (competition = '') => ['cwc', 'contsuper'].includes(competition) || /continental/i.test(competition);
 
 // ---------------------------------------------------------------------------
 // What the club is worth to brands

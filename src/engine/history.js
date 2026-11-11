@@ -6,6 +6,8 @@ import { DIVISIONS } from '../data/world/structure.js';
 import { standings, topScorers } from './season.js';
 import { CONTINENTS } from './competitions.js';
 
+const finalOfGame = (g) => (g?.winner ? { winner: g.winner, runnerUp: g.winner === g.home ? g.away : g.home } : null);
+
 // Player of the Season: goals, with a bonus for where the club finished.
 const POS_BONUS = [4, 2, 1];
 
@@ -45,9 +47,31 @@ export function archiveSeason(season, { gkOf, known = () => false }) {
     const last = cup.rounds.at(-1);
     cups[code] = last?.length === 1 ? finalOf(last[0]) : (cup.winner ? { winner: cup.winner, runnerUp: null } : null);
   }
+  const comps = season.comps || {};
   const continental = {};
-  for (const k of CONTINENTS) continental[k] = finalOf(season.comps?.continental?.[k]?.final);
-  return { year: season.year, leagues, cups, continental, cwc: finalOf(season.comps?.cwc?.final) };
+  const continental2 = {};
+  for (const k of CONTINENTS) {
+    continental[k] = finalOf(comps.continental?.[k]?.final);
+    if (comps.continental2?.[k]) continental2[k] = finalOf(comps.continental2[k].final);
+  }
+  const supercups = Object.fromEntries(Object.entries(comps.supercups || {}).map(([code, sc]) => [code, finalOfGame(sc.game)]));
+  const contSuper = Object.fromEntries(Object.entries(comps.contSuper || {}).map(([k, sc]) => [k, finalOfGame(sc.game)]));
+  return { year: season.year, leagues, cups, supercups, continental, continental2, contSuper, cwc: finalOf(comps.cwc?.final) };
+}
+
+// Every final of an archived season by competition key ('C:ESP', 'S:ESP', 'K:europe', 'K2:europe',
+// 'KS:europe', 'W'; league champions as 'L:<divId>' with the runner-up): { key: { winner, runnerUp } }.
+export function finalsByKey(entry) {
+  const out = {};
+  for (const [divId, lg] of Object.entries(entry.leagues || {})) out[`L:${divId}`] = { winner: lg.table[0]?.[0] || null, runnerUp: lg.table[1]?.[0] || null };
+  const add = (prefix, group) => { for (const [k, r] of Object.entries(group || {})) if (r?.winner) out[`${prefix}:${k}`] = r; };
+  add('C', entry.cups);
+  add('S', entry.supercups);
+  add('K', entry.continental);
+  add('K2', entry.continental2);
+  add('KS', entry.contSuper);
+  if (entry.cwc?.winner) out.W = entry.cwc;
+  return out;
 }
 
 // All-time records folded season by season (so we never re-scan the archive for players).
@@ -100,7 +124,7 @@ export const scorerRow = (t, nameOf) => ({ id: t[0], clubId: t[1], goals: t[2], 
 
 // Honours and season-by-season finishes for one club, from the archive.
 export function clubHistory(archive, clubId) {
-  const honours = { league: 0, cup: 0, continental: 0, cwc: 0, runnerUp: 0 };
+  const honours = { league: 0, cup: 0, supercup: 0, continental: 0, continental2: 0, contsuper: 0, cwc: 0, runnerUp: 0 };
   const seasons = [];
   for (const entry of archive) {
     for (const [divId, lg] of Object.entries(entry.leagues)) {
@@ -115,7 +139,10 @@ export function clubHistory(archive, clubId) {
       seasons.push(row);
     }
     for (const c of Object.values(entry.cups)) if (c?.winner === clubId) { honours.cup += 1; seasons.at(-1)?.trophies.push('cup'); }
+    for (const c of Object.values(entry.supercups || {})) if (c?.winner === clubId) { honours.supercup += 1; seasons.at(-1)?.trophies.push('supercup'); }
     for (const c of Object.values(entry.continental)) if (c?.winner === clubId) { honours.continental += 1; seasons.at(-1)?.trophies.push('continental'); }
+    for (const c of Object.values(entry.continental2 || {})) if (c?.winner === clubId) { honours.continental2 += 1; seasons.at(-1)?.trophies.push('continental2'); }
+    for (const c of Object.values(entry.contSuper || {})) if (c?.winner === clubId) { honours.contsuper += 1; seasons.at(-1)?.trophies.push('contsuper'); }
     if (entry.cwc?.winner === clubId) { honours.cwc += 1; seasons.at(-1)?.trophies.push('cwc'); }
   }
   return { honours, seasons: seasons.reverse() };
@@ -124,7 +151,7 @@ export function clubHistory(archive, clubId) {
 // Title counts for every club (optionally only one league), most decorated first.
 export function titleTable(archive, divIds = null) {
   const rows = {};
-  const get = (id) => (rows[id] = rows[id] || { id, league: 0, runnerUp: 0, cup: 0, continental: 0, cwc: 0 });
+  const get = (id) => (rows[id] = rows[id] || { id, league: 0, runnerUp: 0, cup: 0, supercup: 0, continental: 0, continental2: 0, contsuper: 0, cwc: 0 });
   for (const entry of archive) {
     for (const [divId, lg] of Object.entries(entry.leagues)) {
       if (divIds && !divIds.includes(divId)) continue;
@@ -133,11 +160,14 @@ export function titleTable(archive, divIds = null) {
     }
     if (!divIds) {
       for (const c of Object.values(entry.cups)) if (c?.winner) get(c.winner).cup += 1;
+      for (const c of Object.values(entry.supercups || {})) if (c?.winner) get(c.winner).supercup += 1;
       for (const c of Object.values(entry.continental)) if (c?.winner) get(c.winner).continental += 1;
+      for (const c of Object.values(entry.continental2 || {})) if (c?.winner) get(c.winner).continental2 += 1;
+      for (const c of Object.values(entry.contSuper || {})) if (c?.winner) get(c.winner).contsuper += 1;
       if (entry.cwc?.winner) get(entry.cwc.winner).cwc += 1;
     }
   }
-  const total = (r) => r.league + r.cup + r.continental * 2 + r.cwc * 3;
+  const total = (r) => r.league + r.cup + r.continental * 2 + r.cwc * 3 + r.continental2 + (r.supercup + r.contsuper) * 0.5;
   return Object.values(rows).sort((a, b) => total(b) - total(a) || b.league - a.league || b.runnerUp - a.runnerUp);
 }
 

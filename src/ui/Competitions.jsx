@@ -1,33 +1,47 @@
 import React, { useMemo } from 'react';
 import { DIVISIONS, DIVISION_BY_ID, CONTINENT_LABEL } from '../data/world/structure.js';
-import { CONTINENTS, CONTINENT_NAME } from '../engine/competitions.js';
+import {
+  CONTINENTS, CONTINENT_NAME, CONTINENT2_NAME, CONT_SUPER_NAME, compRefOf, refKey, keyName, superCupName,
+} from '../engine/competitions.js';
+import { finalsByKey } from '../engine/history.js';
 import { standings } from '../engine/season.js';
 import { nextUserGame } from '../state/club.js';
 import { Crest } from './Art.jsx';
 import { CompLink, ClubLink } from './nav.jsx';
-import { DomesticCup, Continental, ClubWorldCup } from './Cups.jsx';
+import { DomesticCup, Continental, ClubWorldCup, SuperCup } from './Cups.jsx';
 import CompStats from './CompStats.jsx';
 import { Segmented } from './Home.jsx';
 import League from './League.jsx';
 
-// A competition reference: { type: 'league' | 'cup' | 'cont' | 'cwc', id }.
-export const compName = (c) => {
-  if (!c) return '';
-  if (c.type === 'league') return DIVISION_BY_ID[c.id]?.name || c.id;
-  if (c.type === 'cup') return `${DIVISIONS.find((d) => d.code === c.id)?.country || c.id} Cup`;
-  if (c.type === 'cont') return CONTINENT_NAME[c.id];
-  return 'Club World Cup';
-};
-export const compOfGame = (state, game) => {
-  if (!game) return null;
-  if (game.competition === 'league') return { type: 'league', id: state.club.divisionId };
-  if (game.competition === 'cup') return { type: 'cup', id: DIVISION_BY_ID[state.club.divisionId].code };
-  if (game.competition === 'continental') return { type: 'cont', id: DIVISION_BY_ID[state.club.divisionId].continent };
-  return { type: 'cwc', id: 'cwc' };
+// A competition reference: { type: 'league' | 'cup' | 'super' | 'cont' | 'cont2' | 'csuper' | 'cwc', id }.
+export const compName = (c) => (c ? keyName(refKey(c)) : '');
+export const compOfGame = (state, game) => (game ? compRefOf(game.competition, state.club.divisionId) : null);
+const TYPE_LABEL = {
+  league: 'League', cup: 'Domestic cup', super: 'Super cup', cont: 'Continental', cont2: 'Continental · tier 2', csuper: 'Continental super cup', cwc: 'World',
 };
 
 const ordinal = (n) => `${n}${['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 < 14) ? 0 : n % 10] || 'th'}`;
 const COUNTRIES = [...new Map(DIVISIONS.map((d) => [d.code, d])).values()];
+const isIn = (g, me) => g && (g.home === me || g.away === me);
+
+// Where the user stands in a continental tournament.
+function tournamentStatus(state, t) {
+  const me = state.club.id;
+  const short = (id) => state.world.clubs[id]?.short;
+  if (t.winner) return t.winner === me ? 'Winners 🏆' : `Won by ${short(t.winner)}`;
+  const ko = [...(t.prelim || []), ...(t.qualifying || []), ...(t.quarters || []), ...(t.semis || []), ...(t.final ? [t.final] : [])];
+  if (ko.some((g) => isIn(g, me) && g.winner && g.winner !== me)) return 'Knocked out';
+  const gi = (t.groups || []).findIndex((g) => g.clubs.includes(me));
+  if (gi >= 0) return `Group ${'ABCD'[gi]}`;
+  if ((t.prelim || []).some((g) => isIn(g, me))) return 'Preliminary round';
+  if ((t.qualifying || []).some((g) => isIn(g, me))) return 'Qualifying round';
+  return 'You qualified';
+}
+function singleStatus(state, sc) {
+  const short = (id) => state.world.clubs[id]?.short;
+  if (!sc.winner) return `vs ${short(sc.clubs.find((id) => id !== state.club.id))} · one match`;
+  return sc.winner === state.club.id ? 'Winners 🏆' : `Won by ${short(sc.winner)}`;
+}
 
 // The Competitions tab: your competitions first, then every league and cup in the world.
 export default function Competitions({ state }) {
@@ -37,11 +51,19 @@ export default function Competitions({ state }) {
   const pos = standings(state.season, div.id).findIndex((r) => r.id === me) + 1;
   const cup = comps.cups[div.code];
   const cupStatus = !cup ? null : cup.winner === me ? 'Winners 🏆' : cup.winner ? `Won by ${state.world.clubs[cup.winner]?.short}` : cup.rounds.length && !cup.rounds.at(-1).some((g) => g.home === me || g.away === me) && cup.rounds.some((r) => r.some((g) => (g.home === me || g.away === me) && g.winner && g.winner !== me)) ? 'Knocked out' : `In the draw · ${cup.size} clubs`;
+  const conf = div.continent;
+  const sup = comps.supercups?.[div.code];
+  const csup = comps.contSuper?.[conf];
+  const k1 = comps.continental?.[conf];
+  const k2 = comps.continental2?.[conf];
   const mine = [
     { c: { type: 'league', id: div.id }, sub: `${div.country} · ${pos ? `you're ${ordinal(pos)}` : 'starts soon'}` },
+    sup?.clubs.includes(me) && { c: { type: 'super', id: div.code }, sub: singleStatus(state, sup) },
     cup && { c: { type: 'cup', id: div.code }, sub: cupStatus },
-    ...CONTINENTS.filter((k) => comps.continental[k].entrants.includes(me)).map((k) => ({ c: { type: 'cont', id: k }, sub: comps.continental[k].winner ? `Won by ${state.world.clubs[comps.continental[k].winner]?.short}` : 'You qualified' })),
-    comps.cwc?.clubs?.includes(me) && { c: { type: 'cwc', id: 'cwc' }, sub: 'You qualified' },
+    csup?.clubs.includes(me) && { c: { type: 'csuper', id: conf }, sub: singleStatus(state, csup) },
+    k1?.entrants.includes(me) && { c: { type: 'cont', id: conf }, sub: tournamentStatus(state, k1) },
+    k2?.entrants.includes(me) && { c: { type: 'cont2', id: conf }, sub: tournamentStatus(state, k2) },
+    comps.cwc?.clubs?.includes(me) && { c: { type: 'cwc', id: 'cwc' }, sub: comps.cwc.winner ? (comps.cwc.winner === me ? 'Winners 🏆' : `Won by ${state.world.clubs[comps.cwc.winner]?.short}`) : 'You qualified' },
   ].filter(Boolean);
   const next = nextUserGame(state);
   const byContinent = useMemo(() => Object.keys(CONTINENT_LABEL).map((k) => ({ k, countries: COUNTRIES.filter((d) => d.continent === k) })), []);
@@ -53,7 +75,7 @@ export default function Competitions({ state }) {
         <div className="comp-cards">
           {mine.map(({ c, sub }) => (
             <CompLink key={`${c.type}-${c.id}`} comp={c} className={`comp-card comp-card--${c.type}`}>
-              <span className="comp-card__type">{{ league: 'League', cup: 'Domestic cup', cont: 'Continental', cwc: 'World' }[c.type]}</span>
+              <span className="comp-card__type">{TYPE_LABEL[c.type]}</span>
               <b>{compName(c)}</b>
               <small>{sub}</small>
             </CompLink>
@@ -80,9 +102,21 @@ export default function Competitions({ state }) {
 
       <section>
         <h2 className="section-title">International</h2>
-        <div className="chip-row">
-          {CONTINENTS.map((k) => <CompLink key={k} comp={{ type: 'cont', id: k }} className="chip-btn">{CONTINENT_NAME[k]}</CompLink>)}
-          <CompLink comp={{ type: 'cwc', id: 'cwc' }} className="chip-btn">Club World Cup</CompLink>
+        <div className="league-grid">
+          {CONTINENTS.map((k) => (
+            <div key={k} className="league-grid__country">
+              <span className="league-grid__name">{CONTINENT_LABEL[k]}</span>
+              <div className="chip-row">
+                <CompLink comp={{ type: 'cont', id: k }} className={`chip-btn${k === conf ? ' is-on' : ''}`}>{CONTINENT_NAME[k]}</CompLink>
+                {comps.continental2?.[k] && <CompLink comp={{ type: 'cont2', id: k }} className="chip-btn">{CONTINENT2_NAME[k]}</CompLink>}
+                {comps.contSuper?.[k] && <CompLink comp={{ type: 'csuper', id: k }} className="chip-btn chip-btn--cup">{CONT_SUPER_NAME[k]}</CompLink>}
+              </div>
+            </div>
+          ))}
+          <div className="league-grid__country">
+            <span className="league-grid__name">World</span>
+            <div className="chip-row"><CompLink comp={{ type: 'cwc', id: 'cwc' }} className="chip-btn">Club World Cup</CompLink></div>
+          </div>
         </div>
       </section>
 
@@ -98,6 +132,7 @@ export default function Competitions({ state }) {
                     <CompLink key={x.id} comp={{ type: 'league', id: x.id }} className={`chip-btn${x.id === div.id ? ' is-on' : ''}`}>{x.name}</CompLink>
                   ))}
                   {comps.cups[d.code] && <CompLink comp={{ type: 'cup', id: d.code }} className="chip-btn chip-btn--cup">{d.country} Cup</CompLink>}
+                  {comps.supercups?.[d.code] && <CompLink comp={{ type: 'super', id: d.code }} className="chip-btn chip-btn--cup">{superCupName(d.code)}</CompLink>}
                 </div>
               </div>
             ))}
@@ -114,26 +149,34 @@ export function Competition({ state, comp, tab: initialTab, onBack }) {
   return <CupScreen state={state} comp={comp} initialTab={initialTab} onBack={onBack} />;
 }
 
+function CompDraw({ state, comp }) {
+  const comps = state.season.comps;
+  switch (comp.type) {
+    case 'cup': return comps.cups[comp.id] ? <DomesticCup state={state} cup={comps.cups[comp.id]} /> : <p className="hint">No cup in this country.</p>;
+    case 'super': return <SuperCup state={state} sc={comps.supercups?.[comp.id]} name={compName(comp)} kind="super" />;
+    case 'csuper': return <SuperCup state={state} sc={comps.contSuper?.[comp.id]} name={compName(comp)} kind="csuper" />;
+    case 'cont': return <Continental state={state} c={comps.continental[comp.id]} name={CONTINENT_NAME[comp.id]} />;
+    case 'cont2': return comps.continental2?.[comp.id] ? <Continental state={state} c={comps.continental2[comp.id]} name={CONTINENT2_NAME[comp.id]} /> : <p className="hint">No second continental trophy in {CONTINENT_LABEL[comp.id]}.</p>;
+    default: return <ClubWorldCup state={state} cwc={comps.cwc} />;
+  }
+}
+
 function CupScreen({ state, comp, initialTab, onBack }) {
   const [tab, setTab] = React.useState(initialTab || 'draw');
-  const comps = state.season.comps;
-  const statsKey = comp.type === 'cup' ? `C:${comp.id}` : comp.type === 'cont' ? `K:${comp.id}` : 'W';
+  const single = comp.type === 'super' || comp.type === 'csuper';
+  const intl = ['cont', 'cont2', 'csuper'].includes(comp.type);
   return (
     <div className="screen comp-screen">
       <div className="comp-head">
         <div>
-          <span className="comp-head__type">{{ cup: 'Domestic cup', cont: 'Continental', cwc: 'Club World Cup' }[comp.type]} · Season {state.season.year}</span>
+          <span className="comp-head__type">{comp.type === 'cwc' ? 'Club World Cup' : TYPE_LABEL[comp.type]}{intl ? ` · ${CONTINENT_LABEL[comp.id]}` : ''} · Season {state.season.year}</span>
           <b className="comp-head__name">{compName(comp)}</b>
         </div>
         {onBack && <button type="button" className="btn btn--small btn--ghost" onClick={onBack}>Back</button>}
       </div>
-      <Segmented small label="View" value={tab} options={[{ id: 'draw', label: comp.type === 'cup' ? 'Draw' : 'Groups & knockouts' }, { id: 'stats', label: 'Stats' }, { id: 'history', label: 'History' }]} onChange={setTab} />
-      {tab === 'draw' && (
-        comp.type === 'cup' ? (comps.cups[comp.id] ? <DomesticCup state={state} cup={comps.cups[comp.id]} /> : <p className="hint">No cup in this country.</p>)
-          : comp.type === 'cont' ? <Continental state={state} c={comps.continental[comp.id]} name={CONTINENT_NAME[comp.id]} />
-            : <ClubWorldCup state={state} cwc={comps.cwc} />
-      )}
-      {tab === 'stats' && <CompStats state={state} comp={statsKey} />}
+      <Segmented small label="View" value={tab} options={[{ id: 'draw', label: comp.type === 'cup' ? 'Draw' : single ? 'Match' : 'Groups & knockouts' }, { id: 'stats', label: 'Stats' }, { id: 'history', label: 'History' }]} onChange={setTab} />
+      {tab === 'draw' && <CompDraw state={state} comp={comp} />}
+      {tab === 'stats' && <CompStats state={state} comp={refKey(comp)} />}
       {tab === 'history' && <CupHistory state={state} comp={comp} />}
     </div>
   );
@@ -141,10 +184,8 @@ function CupScreen({ state, comp, initialTab, onBack }) {
 
 // Winners and runners-up by season, from the history book.
 function CupHistory({ state, comp }) {
-  const rows = (state.archive || []).map((e) => ({
-    year: e.year,
-    r: comp.type === 'cup' ? e.cups?.[comp.id] : comp.type === 'cont' ? e.continental?.[comp.id] : e.cwc,
-  })).filter((x) => x.r?.winner).reverse();
+  const key = refKey(comp);
+  const rows = (state.archive || []).map((e) => ({ year: e.year, r: finalsByKey(e)[key] })).filter((x) => x.r?.winner).reverse();
   if (!rows.length) return <p className="hint">Winners appear here after each season.</p>;
   const counts = {};
   for (const x of rows) counts[x.r.winner] = (counts[x.r.winner] || 0) + 1;

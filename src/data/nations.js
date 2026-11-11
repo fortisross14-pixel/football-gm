@@ -8,7 +8,7 @@ const subdivision = (tag) => String.fromCodePoint(0x1f3f4, ...[...tag].map((ch) 
 const LIST = [
   ['CYP', 'cy', 'Cyprus'], ['LUX', 'lu', 'Luxembourg'], ['LVA', 'lv', 'Latvia'], ['MLT', 'mt', 'Malta'],
   ['PHI', 'ph', 'Philippines'], ['PRK', 'kp', 'North Korea'], ['SLV', 'sv', 'El Salvador'], ['TAN', 'tz', 'Tanzania'],
-  ['ZAM', 'zm', 'Zambia'],
+  ['ZAM', 'zm', 'Zambia'], ['ALB', 'al', 'Albania'], ['MNE', 'me', 'Montenegro'], ['FIJ', 'fj', 'Fiji'], ['GUA', 'gt', 'Guatemala'],
   ['ALG', 'dz', 'Algeria'], ['ANG', 'ao', 'Angola'], ['ARG', 'ar', 'Argentina'], ['ARM', 'am', 'Armenia'],
   ['AUS', 'au', 'Australia'], ['AUT', 'at', 'Austria'], ['BEL', 'be', 'Belgium'], ['BER', 'bm', 'Bermuda'],
   ['BFA', 'bf', 'Burkina Faso'], ['BIH', 'ba', 'Bosnia and Herzegovina'], ['BOL', 'bo', 'Bolivia'], ['BRA', 'br', 'Brazil'],

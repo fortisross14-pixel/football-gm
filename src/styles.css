@@ -952,6 +952,8 @@ button:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 .next-match--cup .matchup__vs small { background: var(--blue); }
 .next-match--continental .matchup__vs small { background: var(--r-epic); }
 .next-match--cwc .matchup__vs small { background: var(--red); }
+.next-match--supercup .matchup__vs small { background: var(--blue); }
+.next-match--continental2 .matchup__vs small, .next-match--contsuper .matchup__vs small { background: var(--r-epic); }
 
 /* ---------- Shop & packs ---------- */
 .pack-list { display: flex; flex-direction: column; gap: 10px; }
@@ -1822,6 +1824,9 @@ html.reduce-motion .sealed, html.reduce-motion .flip, html.reduce-motion .pack__
 .comp-card--cup { background: var(--blue); }
 .comp-card--cont { background: #6a1fd1; }
 .comp-card--cwc { background: var(--red); }
+.comp-card--super { background: #0f5f8c; }
+.comp-card--cont2 { background: #3d2a8f; }
+.comp-card--csuper { background: #4b1590; }
 .comp-card__type { font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--yellow); }
 .comp-card b { font-family: var(--font-display); font-weight: 400; font-size: 20px; text-transform: uppercase; line-height: 1.05; }
 .comp-card small { font-size: 12px; opacity: .85; }

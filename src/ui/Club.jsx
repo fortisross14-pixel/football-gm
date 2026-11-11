@@ -437,7 +437,7 @@ function Trophies({ state }) {
     <section>
       <h2 className="section-title">Trophy cabinet</h2>
       {won.length === 0 ? (
-        <p className="hint">Empty, for now. League titles, cups, continental cups and the Club World Cup will live here.</p>
+        <p className="hint">Empty, for now. League titles, cups, super cups, continental trophies and the Club World Cup will live here.</p>
       ) : (
         <ul className="trophies">
           {won.map((t, i) => (

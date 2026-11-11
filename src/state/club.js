@@ -39,11 +39,13 @@ import { SEASON_DECK, SEASON_WEIGHTS, REDRAW_COSTS, HAND_SIZE } from '../data/se
 import { PACKS, openPack, mergeDuplicate, drawFromPool, MAX_STARS } from '../engine/packs.js';
 import { PROMOTION_SPOTS, applyCurses, buildWorld, createSeason, playMatchday, goalsFromMatch, standings, removeKeyPlayer, endOfSeason, divisionName, refreshStrengths, userFixture, quickResult } from '../engine/season.js';
 import {
-  CALENDAR, createCompetitions, prepareSlot, recordGame, quickKnockout, involves, compKey, qualifiers, tablesByStrength, tablesFromSeason, CONTINENT_NAME, CONTINENTS,
+  CALENDAR, createCompetitions, prepareSlot, recordGame, quickKnockout, involves, compKey, qualifiers, tablesByStrength, tablesFromSeason, seasonResults, continentalClubs, compRefOf,
+  CONTINENT_NAME, CONTINENT2_NAME, CONT_SUPER_NAME, CONTINENTS, cupName, superCupName,
 } from '../engine/competitions.js';
 
-// v4: 10-club divisions, 44 leagues, 12-card squads. Older saves can't be continued.
-export const SAVE_VERSION = 4;
+// v5: six confederations, super cups and second continental trophies (v4: 10-club divisions,
+// 44 leagues, 12-card squads). Older saves can't be continued.
+export const SAVE_VERSION = 5;
 // The user's squad: 7 starters and 5 reserves. Starting squads use this shape.
 export const SQUAD_SIZE = 12;
 const SQUAD_SHAPE = ['GK', 'GK', 'DEF', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'MID', 'FWD', 'FWD'];
@@ -406,7 +408,23 @@ const RESULT_COINS = {
   cup: { win: 62, draw: 19, loss: 7.5, scaled: true },
   continental: { win: 100, draw: 40, loss: 20, scaled: false },
   cwc: { win: 150, draw: 60, loss: 30, scaled: false },
+  // v2.3: super cups pay like a cup game; the second continental trophy under half of the first.
+  supercup: { win: 65, draw: 20, loss: 8, scaled: true },
+  continental2: { win: 45, draw: 18, loss: 10, scaled: false },
+  contsuper: { win: 100, draw: 40, loss: 20, scaled: false },
 };
+
+// Trophy prize and reward pack per competition (cup and super cup scale with the division).
+const TROPHY_PRIZE = {
+  cup: { coins: 400, scaled: true, pack: 'silver' },
+  supercup: { coins: 80, scaled: true, pack: 'bronze' },
+  continental: { coins: 1500, pack: 'elite' },
+  continental2: { coins: 600, pack: 'gold' },
+  contsuper: { coins: 300, pack: 'gold' },
+  cwc: { coins: 2500, pack: 'elite' },
+};
+const FINALIST_PRIZE = { continental: 500, continental2: 200 };
+const QUALIFYING_PRIZE = { continental: 150, continental2: 75 };
 
 // Business income per match, scaled for the longer v1.9 season.
 const MATCH_PACE = 0.8;
@@ -462,13 +480,14 @@ export function matchRewards(state, match, userSide, game = { competition: 'leag
   for (const it of businessIncome(state, { derby: derbyGame, competition: game.competition })) if (it.coins > 0 && (!it.homeOnly || match.teams[userSide].isHome)) items.push({ label: it.label, coins: it.coins });
   // v2.3 deals: sponsor per win and signing bonus, kit and TV instalments, TV per game.
   items.push(...dealMatchItems(state, { won: winner === userSide, isHome: !!match.teams[userSide].isHome && !game.neutral, competition: game.competition || 'league' }));
-  const final = game.label?.endsWith('Final');
+  // Super cups are a single match: it is the final.
+  const final = game.label?.endsWith('Final') || game.competition === 'supercup' || game.competition === 'contsuper';
   if (game.competition === 'cup' && state.activeEvent?.type === 'cupRun') items[0].coins = Math.round(items[0].coins * 1.5);
   if (winner === userSide && final) {
-    const prize = { cup: { coins: 400 * m, pack: 'silver' }, continental: { coins: 1500, pack: 'elite' }, cwc: { coins: 2500, pack: 'elite' } }[game.competition];
-    if (prize) items.push({ label: 'Trophy prize', coins: Math.round(prize.coins * (game.competition === 'cup' && state.activeEvent?.type === 'cupRun' ? 1.5 : 1)) });
-  } else if (final && game.competition === 'continental') items.push({ label: 'Finalist prize', coins: 500 });
-  if (game.label?.endsWith('Qualifying') && winner === userSide) items.push({ label: 'Qualified for the group stage', coins: 150 });
+    const prize = TROPHY_PRIZE[game.competition];
+    if (prize) items.push({ label: 'Trophy prize', coins: Math.round(prize.coins * (prize.scaled ? m : 1) * (game.competition === 'cup' && state.activeEvent?.type === 'cupRun' ? 1.5 : 1)) });
+  } else if (final && FINALIST_PRIZE[game.competition]) items.push({ label: 'Finalist prize', coins: FINALIST_PRIZE[game.competition] });
+  if (game.label?.endsWith('Qualifying') && winner === userSide && QUALIFYING_PRIZE[game.competition]) items.push({ label: 'Qualified for the group stage', coins: QUALIFYING_PRIZE[game.competition] });
   // Derby day: double revenue from the game itself (trophy prizes aside).
   const oppId = match.teams[1 - userSide].id;
   if (isDerby(state.club.id, oppId)) {
@@ -586,9 +605,7 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
   next.history.unshift({
     opponentId: opponent.id,
     opponent: opponent.name,
-    comp: !game || game.competition === 'league' ? { type: 'league', id: next.club.divisionId }
-      : game.competition === 'cup' ? { type: 'cup', id: DIVISION_BY_ID[next.club.divisionId].code }
-        : game.competition === 'continental' ? { type: 'cont', id: DIVISION_BY_ID[next.club.divisionId].continent } : { type: 'cwc', id: 'cwc' },
+    comp: compRefOf(game?.competition || 'league', next.club.divisionId),
     derby: isDerby(next.club.id, opponent.id),
     opponentShort: opponent.short,
     score: [own, conceded],
@@ -674,13 +691,16 @@ function awardTrophy(next, entry) {
   const comps = next.season.comps;
   const won = (id) => id === next.club.id;
   let trophy = null;
-  if (entry.comp === 'cup' && won(comps.cups[entry.key].winner)) trophy = { competition: `${comps.cups[entry.key].country} Cup`, packs: ['silver'] };
+  if (entry.comp === 'cup' && won(comps.cups[entry.key].winner)) trophy = { competition: cupName(entry.key), packs: ['silver'] };
+  if (entry.comp === 'super' && won(comps.supercups[entry.key].winner)) trophy = { competition: superCupName(entry.key), packs: ['bronze'], fame: 0.5 };
   if (entry.comp === 'cont' && won(comps.continental[entry.key].winner)) trophy = { competition: CONTINENT_NAME[entry.key], packs: ['elite'] };
+  if (entry.comp === 'cont2' && won(comps.continental2[entry.key].winner)) trophy = { competition: CONTINENT2_NAME[entry.key], packs: ['gold'], fame: 1 };
+  if (entry.comp === 'csuper' && won(comps.contSuper[entry.key].winner)) trophy = { competition: CONT_SUPER_NAME[entry.key], packs: ['gold'], fame: 0.75 };
   if (entry.comp === 'cwc' && won(comps.cwc.winner)) trophy = { competition: 'Club World Cup', packs: ['elite', 'elite'] };
   if (!trophy) return;
   next.trophies.push({ season: next.season.year, competition: trophy.competition, position: 1, champion: next.club.name });
   next.inventory.packs.push(...trophy.packs);
-  for (const c of next.squad) addFame(c, 1.5);
+  for (const c of next.squad) addFame(c, trophy.fame ?? 1.5);
   next.season.userTrophies = [...(next.season.userTrophies || []), trophy.competition];
   pushInbox(next, 'title', `🏆 You won the ${trophy.competition}!`, `A night to remember for ${next.club.name}. Reward: ${trophy.packs.length} ${trophy.packs.join(' and ')} pack${trophy.packs.length > 1 ? 's' : ''} and a fame boost for the whole squad.`);
 }
@@ -984,7 +1004,7 @@ export function closeSeason(state, seed) {
   if (position === 1) for (const c of next.squad) addFame(c, 1);
   // Next season's continental places come from this season's final tables.
   const final = tablesFromSeason(state.season);
-  next.qualification = qualifiers(final.tables, final.points);
+  next.qualification = qualifiers(final.tables, final.points, seasonResults(state.season.comps));
   next.coins += prize;
   recordFinanceInto(next, state.season.year); // season finance history (updated again when the next season starts)
   next.inventory.packs.push(...packs);
@@ -999,7 +1019,7 @@ export function closeSeason(state, seed) {
   next.stats = next.stats || newStats(state.season.year);
   const titleTo = (clubId) => clubId && recordTitle(next.stats, coachKey(next.world, clubId, state.club.id), clubId === state.club.id ? (state.coaches.coach?.name || state.gmName || 'You') : (next.world.gms?.[clubId]?.name || 'Manager'), clubId);
   for (const lg of Object.values(entry.leagues)) titleTo(lg.table[0][0]);
-  for (const c of [...Object.values(entry.cups), ...Object.values(entry.continental), entry.cwc]) titleTo(c?.winner);
+  for (const c of [...Object.values(entry.cups), ...Object.values(entry.supercups || {}), ...Object.values(entry.continental), ...Object.values(entry.continental2 || {}), ...Object.values(entry.contSuper || {}), entry.cwc]) titleTo(c?.winner);
   // The four yearly awards, from this season's stats and trophies.
   const leftOf = (id) => {
     const own = state.squad.find((c) => c.id === id);
@@ -1058,7 +1078,10 @@ export function closeSeason(state, seed) {
     moves: end.moves.map((m) => ({ ...m, name: next.world.clubs[m.clubId].name, fromName: divisionName(m.from), toName: divisionName(m.to) })),
     news: off.news.slice(0, 30),
     cups: Object.fromEntries(Object.entries(state.season.comps.cups).map(([code, c]) => [code, c.winner ? next.world.clubs[c.winner].name : null])),
-    continental: Object.fromEntries(CONTINENTS.map((k) => [k, state.season.comps.continental[k].winner ? next.world.clubs[state.season.comps.continental[k].winner].name : null])),
+    continental: Object.fromEntries(CONTINENTS.map((k) => [k, state.season.comps.continental[k]?.winner ? next.world.clubs[state.season.comps.continental[k].winner].name : null])),
+    continental2: Object.fromEntries(Object.entries(state.season.comps.continental2 || {}).map(([k, c]) => [k, c.winner ? next.world.clubs[c.winner].name : null])),
+    supercups: Object.fromEntries(Object.entries(state.season.comps.supercups || {}).map(([code, c]) => [code, c.winner ? next.world.clubs[c.winner].name : null])),
+    contSuper: Object.fromEntries(Object.entries(state.season.comps.contSuper || {}).map(([k, c]) => [k, c.winner ? next.world.clubs[c.winner].name : null])),
     cwc: state.season.comps.cwc?.winner ? next.world.clubs[state.season.comps.cwc.winner].name : null,
     userTrophies: state.season.userTrophies || [],
   };
@@ -1216,10 +1239,7 @@ function rollSeasonRarity(rng) {
   return rng.weighted(TIERS, (r) => SEASON_WEIGHTS[TIERS.indexOf(r)]);
 }
 
-const inContinental = (state) => {
-  const q = state.qualification;
-  return !!q && [...(q.europe?.direct || []), ...(q.europe?.qualifying || []), ...(q.americas || []), ...(q.afap || [])].includes(state.club.id);
-};
+const inContinental = (state) => continentalClubs(state.qualification).has(state.club.id);
 
 function dealHand(state, rng) {
   const deck = SEASON_DECK.filter((t) => t !== 'continentalNights' || inContinental(state));
