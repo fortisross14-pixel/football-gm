@@ -7,7 +7,7 @@
 - **Off-season flow** (§6.5): six steps after the season closes, each revisitable: season review, season card, jersey, sponsor, TV, CEO meeting. The Transfer Market, cards and job offers stay open alongside.
 - **Jersey** (kit provider): base coins + a share of the shirt sales; renew or change maker, keep the line or order a new design; the season's shirt sales are revealed on signing. New Club → **Jersey** sub-tab.
 - **Sponsor negotiation** replaces Steady / Performance / Glory: the current sponsor's renewal (per win + a card) or one of two new brands (signing bonus + per win, no card).
-- **TV rights:** three offers a year, a fixed fee plus coins per game, per home game or per international game. League and cup result money is about 10% lower to make room.
+- **TV rights:** three offers a year, a fixed fee plus coins per game, per home game or per international game. League and cup result money is about 5% lower to make room.
 - Merchandise per match is halved (replica shirts are now the kit deal's).
 
 **Changes in v2.2 (Club tab)**
@@ -551,8 +551,8 @@ AI clubs play their identity with a coach that fits it. Pre-match scouting shows
 
 | Source | Amount |
 |---|---|
-| League win / draw / loss | 40 / 18 / 7 × division multiplier (45 / 20 / 8 before v2.3's TV deals, 60 / 25 / 10 before v1.9) |
-| Cup win / draw / loss | 58 / 18 / 7 × division multiplier (65 / 20 / 8 before v2.3) |
+| League win / draw / loss | 43 / 19 / 7.5 × division multiplier (45 / 20 / 8 before v2.3's TV deals, 60 / 25 / 10 before v1.9) |
+| Cup win / draw / loss | 62 / 19 / 7.5 × division multiplier (65 / 20 / 8 before v2.3) |
 | Continental win / draw / loss | 100 / 40 / 20 |
 | Club World Cup win / draw / loss | 150 / 60 / 30 |
 | Bonuses | Clean sheet +15, 3+ goals +15 (× multiplier) |
@@ -661,19 +661,19 @@ The Transfer Market, cards and job offers stay available throughout. A new job b
 | 🏬 National brand | 1.15× | 13% | 1.6 |
 | 🧵 Local maker | 0.8× | 15% | 2.5 |
 
-- Kit unit = 8 × division multiplier × merchandise line (0.5 … 2.5). Bases vary ±12% by offer.
-- Shirts sold = squad popularity × merchandise line × fans (60% local, 40% global) × success × 1,200 × reach × design × luck (0.9–1.1). Shop takings = shirts ÷ 100 coins (the maker's money, not the club's). **Club revenue = base + share × shop takings**, revealed on signing and paid over the 18 league matchdays.
+- Kit unit = 11 × division multiplier × merchandise line (0.5 … 2.5). Bases vary ±12% by offer.
+- Shirts sold = squad popularity × merchandise line × fans (60% local, 40% global) × success × 1,200 × reach × design × luck (0.9–1.1). Shop takings = shirts ÷ 90 coins (the maker's money, not the club's). **Club revenue = base + share × shop takings**, revealed on signing and paid over the 18 league matchdays.
 - **Design:** keep the line (5% fewer shirts for every season it has been worn, down to 0.8×) or order a new design (one of seven patterns; 0.9–1.45× in its first season, so it can flop; costs 0.6 kit units). A popular squad makes the global brand pay; a modest one does better with the local maker's base.
 
 **Sponsor.** Season value SV = Sponsorship base (3 / 6 / 11 / 17 / 24 / 32 at levels 0–5) × division multiplier × 0.8 × 22 games × fans × success. Offers vary ±15%.
 
 | Offer | Signing bonus (matchday 1) | Per win (any competition) | Card |
 |---|---|---|---|
-| 🤝 Renewal (your sponsor) | — | 0.07 SV | a player pack (Bronze; Silver in tier 1) or an infrastructure card (Common/Uncommon in tier 3, Uncommon/Rare tier 2, Rare/Epic tier 1) |
-| 💰 New: signing bonus | 0.55 SV | 0.04 SV | — |
-| 📈 New: win bonus | 0.15 SV | 0.075 SV | — |
+| 🤝 Renewal (your sponsor) | — | 0.085 SV | a player pack (Bronze; Silver in tier 1) or an infrastructure card (Common/Uncommon in tier 3, Uncommon/Rare tier 2, Rare/Epic tier 1) |
+| 💰 New: signing bonus | 0.6 SV | 0.045 SV | — |
+| 📈 New: win bonus | 0.15 SV | 0.085 SV | — |
 
-**TV rights.** T = division multiplier × (45 / 100 / 220 by tier 3 / 2 / 1) × global fans × success. Three channels (±20%), each a fixed fee over the league matchdays plus coins for every game of one kind, whatever the result:
+**TV rights.** T = division multiplier × (55 / 110 / 240 by tier 3 / 2 / 1) × global fans × success. Three channels (±25%), each a fixed fee over the league matchdays plus coins for every game of one kind, whatever the result:
 
 | Offer | Fee | Variable |
 |---|---|---|
@@ -1018,3 +1018,16 @@ The bot keeps about 1–1.5 club packs a season (average: 40 Bronze, 31 Silver, 
 Before the club-card merge, 16 careers × 8 seasons, v2.1 → v2.2 (season deal, pack wear, random GM card): average S1/S2/S3 finish 6.2 / 3.6 / 1.7 → 6.1 / 3.2 / 1.6, tier-1 club 16/16 (median season 7 → 5), giant 9/16 → 11/16 (median season 9), sacked 4 → 1 of 128; great 5.8 / 2.6 / 1.4 → 5.8 / 2.1 / 1.4, giant 15/16 → 14/16. Most of the gain is the free season card every summer (the old market event had to be bought).
 
 After merging club cards (12 × 6, `BOT=average`): dev with its stand-in summer event draw → v2.2 with no GM card → v2.2 with a random GM card: reputation after season 6 is 58 → 58 → 61, tier-1 club 9/12 → 7/12 → 9/12 (median season 5), top club 2/12 → 3/12 → 4/12. A GM card is worth about +3 reputation over 6 seasons on average. The strongest single card measured is an Epic Tactics Connoisseur for a bot that plays its coach's preset regardless of the squad (season-1 finish 6.3 → 5.5, reputation 69 → 71 at season 6 before the merge, with covered warnings worth a third of a strength); Coach Tamer does nothing for a bot that already plays its coach's style.
+
+### Off-season deals (v2.3)
+
+The kit, sponsor and TV deals replace the sponsor contract and half of the merchandise income (replica shirts); league and cup result money is about 5% lower to pay for TV. The career-sim bots: **average** (and poor / bad) never negotiate, so the kick-off defaults apply (keep the kit maker and the line, renew the sponsor, the first TV offer); **great** takes the best expected value for each deal (kit maker and design from the expected shirt sales; sponsor from the wins it expects from its squad's edge, counting the renewal card at half its shop value; TV from the games it expects, international ones only if qualified). `DEALS=default` makes the great bot take the defaults too.
+
+`BOT=… node scripts/career-sim.mjs 12 6`, same seeds, dev with the stadium and fans (before) → with the deals (after):
+
+| Bot | Income S1 | S1–S3 (sum) | S1–S6 (sum) | Deal lines S6 (sponsor + kit + TV + merchandise) |
+|---|---|---|---|---|
+| Average | 1,040 → 1,053 (+1%) | 5,063 → 5,178 (+2%) | 18,662 → 19,611 (+5%) | 1,114 (sponsor 365 + merchandise 749) → 1,395 |
+| Great | 1,174 → 1,189 (+1%) | 6,882 → 7,054 (+2.5%) | 21,861 → 23,739 (+9%) | 1,137 → 1,853 |
+
+Choices against defaults (great bot, same seeds): the deal lines earn 363 / 567 / 799 against 327 / 540 / 692 in seasons 2–4 (+11%) and +5.6% over seasons 2–6; most of it is the kit (a new design when the line is old, the global brand for a popular squad: kit revenue +38% in season 6) and the TV offer that fits the season. Late-season totals move with the careers (who gets promoted when), so they are noisy at 12 careers.

@@ -155,7 +155,7 @@ function tvOffers(next, rng) {
     const k = TV_KINDS[kind];
     const brand = pickOther(rng, TV_BRANDS, used);
     used.push(brand);
-    const n = noise(rng, 0.2);
+    const n = noise(rng, 0.25);
     return { id: kind, kind, brand, fee: Math.round(t * k.fee * n), per: Math.max(1, Math.round(t * k.per * n)) };
   });
 }

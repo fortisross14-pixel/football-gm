@@ -401,9 +401,9 @@ function wear(card) {
 // v1.9: league and cup rates cut by about a quarter for the longer season (18 league games plus
 // preliminary cup rounds), so a season pays roughly what it did with 14.
 const RESULT_COINS = {
-  // v2.3: league and cup about 10% lower (45/20/8 and 65/20/8 before): the TV deal pays per game.
-  league: { win: 40, draw: 18, loss: 7, scaled: true },
-  cup: { win: 58, draw: 18, loss: 7, scaled: true },
+  // v2.3: league and cup about 5% lower (45/20/8 and 65/20/8 before): the TV deal pays per game.
+  league: { win: 43, draw: 19, loss: 7.5, scaled: true },
+  cup: { win: 62, draw: 19, loss: 7.5, scaled: true },
   continental: { win: 100, draw: 40, loss: 20, scaled: false },
   cwc: { win: 150, draw: 60, loss: 30, scaled: false },
 };

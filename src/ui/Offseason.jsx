@@ -123,7 +123,7 @@ function Summary({ state }) {
         <ul className="champions">
           <FanRow label="Local fans" before={before.local} after={r.fans.after.local} />
           <FanRow label="Global fans" before={before.global} after={r.fans.after.global} />
-          <li><span>Mood</span><b>{r.fans.after.happiness} / 100</b></li>
+          <li><span>Happiness</span><b>{Math.round(r.fans.after.happiness)} / 100</b></li>
         </ul>
         <p className="hint">More fans sell more shirts and bring bigger sponsor and TV offers.</p>
       </section>

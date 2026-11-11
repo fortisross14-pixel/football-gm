@@ -990,7 +990,7 @@ test('jersey: shirt sales and revenue = base + share of sales, new design costs 
   const s = summerOf();
   const offer = dealOffers(s, 'kit')[1];
   const exp = kitSales(s, offer);
-  assert.equal(exp.sales, Math.round(exp.shirts / 100), 'shop takings ◎ 1 per 100 shirts');
+  assert.equal(exp.sales, Math.round(exp.shirts / 90), 'shop takings ◎ 1 per 90 shirts');
   assert.equal(exp.revenue, offer.base + Math.round(offer.pct * exp.sales));
   const big = dealOffers(s, 'kit').find((o) => o.tier === 'global');
   const small = dealOffers(s, 'kit').find((o) => o.tier === 'local');

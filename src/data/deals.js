@@ -12,9 +12,9 @@ export const SEASON_GAMES = 22;
 // A sponsor offer's terms, as shares of the season value (SV).
 //   renewal: per win + a card · bonus: big signing bonus, smaller per win · wins: small bonus, big per win
 export const SPONSOR_KINDS = {
-  renewal: { label: 'Renewal', icon: '🤝', bonus: 0, perWin: 0.07, text: 'Your current sponsor: coins for every win, plus a card for staying.' },
-  bonus: { label: 'Signing bonus', icon: '💰', bonus: 0.55, perWin: 0.04, text: 'A big signing bonus on matchday 1, a little for every win.' },
-  wins: { label: 'Win bonus', icon: '📈', bonus: 0.15, perWin: 0.075, text: 'A small signing bonus, more for every win.' },
+  renewal: { label: 'Renewal', icon: '🤝', bonus: 0, perWin: 0.085, text: 'Your current sponsor: coins for every win, plus a card for staying.' },
+  bonus: { label: 'Signing bonus', icon: '💰', bonus: 0.6, perWin: 0.045, text: 'A big signing bonus on matchday 1, a little for every win.' },
+  wins: { label: 'Win bonus', icon: '📈', bonus: 0.15, perWin: 0.085, text: 'A small signing bonus, more for every win.' },
 };
 export const SPONSOR_BRANDS = [
   'Harbour Bank', 'Northgate Insurance', 'Civic Water', 'Lindqvist Logistics', 'Volt Energy', 'Apex Motors',
@@ -37,10 +37,10 @@ export const KIT_BRANDS = {
   national: ['Kestrel', 'Northline', 'Sprintline', 'Fieldcraft'],
   local: ['Corner Stitch', 'Old Mill Sportswear', 'Harbour Kitworks', 'Terrace Tailors'],
 };
-export const KIT_UNIT = 8;
+export const KIT_UNIT = 11;
 // Shirts sold = demand × SHIRTS_PER_DEMAND × reach × design; shop takings = shirts × SHIRT_COINS.
 export const SHIRTS_PER_DEMAND = 1200;
-export const SHIRT_COINS = 1 / 100;
+export const SHIRT_COINS = 1 / 90;
 // Design: a new design sells 0.9–1.45× in its first season (a flop is possible) and costs a fee;
 // a kept line loses 5% a season it has been worn (down to 0.8×).
 export const NEW_DESIGN = { min: 0.9, max: 1.45, fee: 0.6 };
@@ -49,8 +49,8 @@ export const KIT_PATTERNS = ['plain', 'stripes', 'hoops', 'sash', 'halves', 'che
 export const PATTERN_LABEL = { plain: 'Plain', stripes: 'Stripes', hoops: 'Hoops', sash: 'Sash', halves: 'Halves', chevron: 'Chevron', pinstripe: 'Pinstripes' };
 
 // TV rights: T = division multiplier × TV_BASE[level] × fans × success, a season. Since v2.3
-// league and cup results pay about 10% less (state/club.js RESULT_COINS): TV pays per game instead.
-export const TV_BASE = { 1: 220, 2: 100, 3: 45 };
+// league and cup results pay about 5% less (state/club.js RESULT_COINS): TV pays per game instead.
+export const TV_BASE = { 1: 240, 2: 110, 3: 55 };
 export const TV_KINDS = {
   game: { label: 'Per game', icon: '📺', fee: 0.45, per: 0.55 / SEASON_GAMES, unit: 'a game', text: 'Every match you play, any result.' },
   home: { label: 'Per home game', icon: '🏟', fee: 0.35, per: 0.65 / 11, unit: 'a home game', text: 'Every home match, any competition.' },
