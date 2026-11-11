@@ -37,6 +37,9 @@ const SHOOTER_WEIGHT = { GK: 0, DEF: 0.4, MID: 1.4, FWD: 3 };
 export { DEFAULT_TACTICS };
 const APPROACH_MENTALITY = { cautious: 'defensive', balanced: 'balanced', attacking: 'attacking' };
 
+const GRADES = ['red', 'grey', 'green'];
+export const upgradeGrade = (grade, steps = 0) => GRADES[Math.min(2, GRADES.indexOf(grade) + steps)];
+
 // Playing your coach's way: a team-wide bonus, or a penalty when instructions clash.
 export function teamFit(input) {
   const tactics = normalizeTactics(input.tactics);
@@ -46,7 +49,8 @@ export function teamFit(input) {
   const byId = Object.fromEntries((input.players || []).map((c) => [c.id, c]));
   const A = teamAttrs(slots.map((sl, i) => ({ card: byId[input.lineup?.[i]], pos: sl.pos, x: sl.x })).filter((e) => e.card));
   const suit = suitability(tactics, A);
-  const grade = tacticsGrade(distance, suit);
+  // gradeUp (Analyst Report club card): one step better, red → grey → green.
+  const grade = upgradeGrade(tacticsGrade(distance, suit), input.gradeUp || 0);
   // Better coaches get more out of a good plan.
   const skill = { academy: 0.7, common: 0.8, uncommon: 0.9, rare: 1, epic: 1.1, legend: 1.2 }[input.coach?.rarity] ?? 0.8;
   const bonus = grade === 'green' ? GRADE_BONUS.green * skill : GRADE_BONUS[grade];

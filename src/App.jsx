@@ -7,6 +7,7 @@ import {
   buyPack, buyBoostPack, openOwnedPack, keepPending, mergePending, discardPending, closeSeason, buyMarketCard,
   startNextSeason, useOffseasonCard, seeMarket, POOL_BY_ID, nextUserGame, acceptOffer, discardCommons, lookForOffers, toggleCurse,
   setTicketPrice, signSponsor,
+  buyClubPack, openOwnedClubPack, pickClubCard,
 } from './state/club.js';
 import { Crest, BadgesContext } from './ui/Art.jsx';
 import { clubVars } from './ui/clubTheme.js';
@@ -17,6 +18,7 @@ import Match from './ui/Match.jsx';
 import Result from './ui/Result.jsx';
 import Competitions, { Competition } from './ui/Competitions.jsx';
 import PackOpening from './ui/PackOpening.jsx';
+import ClubPackOpening from './ui/ClubPackOpening.jsx';
 import Club from './ui/Club.jsx';
 import Career from './ui/Career.jsx';
 import Menu, { SettingsSheet } from './ui/Menu.jsx';
@@ -218,12 +220,17 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
             key={screen}
             state={state}
             initial={screen === 'shop' ? 'shop' : 'owned'}
-            collectionProps={{ onOpenPack: (i) => setState((s) => openOwnedPack(s, i, randomSeed())), onUseCard: useCard }}
+            collectionProps={{
+              onOpenPack: (i) => setState((s) => openOwnedPack(s, i, randomSeed())),
+              onOpenClubPack: (i) => setState((s) => openOwnedClubPack(s, i, randomSeed())),
+              onUseCard: useCard,
+            }}
             shopProps={{
               onBuyPack: (id) => setState((s) => buyPack(s, id, randomSeed())),
               onBuyBoostPack: (id) => { const r = buyBoostPack(state, id, randomSeed()); setState(r.state); return r.got; },
               onBuyOffer: (uid) => setState((s) => buyMarketCard(s, uid)),
               onSeeMarket: () => setState((s) => seeMarket(s)),
+              onBuyClubPack: (id) => setState((s) => buyClubPack(s, id, randomSeed())),
             }}
           />
         )}
@@ -279,7 +286,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
             <button key={t.id} type="button" className={screen === t.id || (t.id === 'cards' && screen === 'shop') || (t.id === 'league' && screen === 'comp') ? 'is-on' : ''} onClick={() => { if (t.id === 'league') setLeagueNav(null); backStack.current = []; resetSticky(); setScreen(t.id); }}>
               <span className="tabbar__icon" aria-hidden="true">{t.icon}</span>
               <span className="tabbar__label">{t.short ? <><span className="tabbar__short">{t.short}</span><span className="tabbar__full">{t.label}</span></> : t.label}</span>
-              {t.id === 'cards' && (state.inventory.packs.length > 0 || state.phase === 'offseason') && <i className="tabbar__dot" />}
+              {t.id === 'cards' && (state.inventory.packs.length > 0 || (state.inventory.clubPacks || []).length > 0 || state.phase === 'offseason') && <i className="tabbar__dot" />}
               {t.id === 'club' && state.phase === 'offseason' && state.sponsorOffers?.offers?.length > 0 && !state.sponsorOffers.signed && <i className="tabbar__dot" />}
             </button>
           ))}
@@ -293,6 +300,18 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
           onMerge={() => setState((s) => mergePending(s))}
           onDiscard={() => setState((s) => discardPending(s))}
           onDiscardCommons={() => setState((s) => discardCommons(s))}
+          reduceMotion={settings.reduceMotion}
+        />
+      )}
+
+      {state.pendingPick && !state.pendingOpen && screen !== 'match' && (
+        <ClubPackOpening
+          state={state}
+          onPick={(i) => {
+            const card = state.pendingPick.cards[i];
+            setState((s) => pickClubCard(s, i));
+            if (card) setToast({ text: 'Club card kept: play it from Cards → Club.', tone: 'good' });
+          }}
           reduceMotion={settings.reduceMotion}
         />
       )}

@@ -1,13 +1,16 @@
-// Management cards ("off-season cards" in older saves): bought in the Transfer Market,
-// which is open all year, and played from Cards → Items at any time, within the season's
-// card-play limit (data/facilities.js). Each card has a rarity (index 0–4 = common…legend)
-// that sets its strength.
+// Management cards ("off-season cards" in older saves), played from the Cards tab at any
+// time, within the season's card-play limit (data/facilities.js). Each card has a rarity
+// (index 0–4 = common…legend) that sets its strength.
 //
-// group:  'transfer' — squad moves
-//         'club'     — club areas (facilities) and club deals
-//         'event'    — season events, only 1 per season; mid-season they last until it ends
+// group:  'transfer' — squad moves, sold in the Transfer Market (open all year)
+//         'club'     — club cards, from club packs (data/clubPacks.js), never in the market:
+//                      kind 'area' raises one club area for good (infrastructure),
+//                      kind 'temp' is a temporary boost (lasts N games, or happens at once)
+//         'event'    — season events (the year-end season card draw); no longer in the market
 // target: what the player has to pick when using the card.
 // summerOnly: only playable in the off-season.
+// Temporary cards: effect = { kind, homeOnly } puts an entry in state.clubEffects that lasts
+// games[t] matches (home games only when homeOnly); no effect = it happens at once.
 import { AREAS, FACILITY_LABEL } from './facilities.js';
 
 export const TIERS = ['common', 'uncommon', 'rare', 'epic', 'legend'];
@@ -27,7 +30,7 @@ const signingLabel = (t) => SIGNING_TIERS[t].map((i) => TIER_LABEL[i]).join(' or
 // A club-area card: +1 level up to the rarity's cap (Common 2 … Epic 5), Legend +2 levels.
 function areaCard(facility, name, base, blurb) {
   return {
-    name, group: 'club', icon: AREAS[facility].icon, base, target: null, facility,
+    name, group: 'club', kind: 'area', icon: AREAS[facility].icon, base, target: null, facility,
     values: [2, 3, 4, 5, 5],
     text: (v, r, t) => `${FACILITY_LABEL[facility]} ${t === 4 ? '+2 levels (max 5)' : `+1 level, up to level ${v}`}. ${blurb}`,
   };
@@ -98,14 +101,61 @@ export const OFFSEASON_CARDS = {
   youthAcademy: areaCard('academy', 'Youth Academy', 220, 'More and better academy players each off-season.'),
   analyticsDept: areaCard('analytics', 'Analytics Dept.', 200, 'Better pack odds; more card plays at levels 3 and 5.'),
   sportsScience: {
-    name: 'Sports Science', group: 'club', icon: '🧪', base: 180, target: null,
+    name: 'Sports Science', group: 'club', kind: 'temp', icon: '🧪', base: 180, target: null,
     values: [8, 12, 16, 22, 30],
     text: (v) => `+${v} team shape until the season ends (all next season if played in the summer).`,
   },
   boostCrate: {
-    name: 'Boost Crate', group: 'club', icon: '📦', base: 150, target: null,
+    name: 'Boost Crate', group: 'club', kind: 'temp', icon: '📦', base: 150, target: null,
     values: [3, 4, 5, 6, 8],
     text: (v) => `${v} random in-game boosts.`,
+  },
+
+  // Temporary club cards: they last a few games, or pay off at once. Stronger with rarity.
+  highSeason: {
+    name: 'High Season', group: 'club', kind: 'temp', icon: '🎟', base: 200, target: null,
+    values: [1.5, 1.75, 2, 2, 2.5], games: [3, 3, 3, 4, 5], effect: { kind: 'gate', homeOnly: true },
+    text: (v, r, t) => `Home gate ×${v} for the next ${[3, 3, 3, 4, 5][t]} home games.`,
+  },
+  viralMerch: {
+    name: 'Viral Merchandise', group: 'club', kind: 'temp', icon: '📈', base: 200, target: null,
+    values: [20, 30, 40, 50, 60], games: [5, 5, 5, 5, 5], effect: { kind: 'merch' },
+    text: (v) => `+${v}% merchandise income for the next 5 matches.`,
+  },
+  ticketPromo: {
+    name: 'Ticket Promo', group: 'club', kind: 'temp', icon: '🎫', base: 160, target: null,
+    values: [15, 20, 25, 35, 50], fans: [1, 1, 2, 2, 3], games: [3, 3, 3, 3, 3], effect: { kind: 'promo', homeOnly: true },
+    text: (v, r, t) => `Home gate +${v}% and fans +${[1, 1, 2, 2, 3][t]} after each of the next 3 home games.`,
+  },
+  sponsorNight: {
+    name: 'Sponsor Night', group: 'club', kind: 'temp', icon: '🥂', base: 150, target: null,
+    values: [150, 250, 400, 650, 1000],
+    text: (v) => `A one-off sponsor payment: ◎ ${v} (×1.5 in a tier-2 league, ×2 in tier 1).`,
+  },
+  teamBuilding: {
+    name: 'Team Building', group: 'club', kind: 'temp', icon: '🏕', base: 150, target: null,
+    values: [10, 15, 20, 25, 30],
+    text: (v) => `+${v} cohesion now.`,
+  },
+  recoveryCamp: {
+    name: 'Recovery Camp', group: 'club', kind: 'temp', icon: '🧊', base: 150, target: null,
+    values: [6, 8, 10, 12, 15], games: [3, 3, 3, 4, 5], effect: { kind: 'shape' },
+    text: (v, r, t) => `+${v} team shape for the next ${[3, 3, 3, 4, 5][t]} matches.`,
+  },
+  analystReport: {
+    name: 'Analyst Report', group: 'club', kind: 'temp', icon: '📑', base: 200, target: null,
+    values: [1, 1, 1, 1, 1], games: [2, 3, 3, 4, 5], effect: { kind: 'grade' },
+    text: (v, r, t) => `Your tactics grade one step better (red → grey, grey → green) for the next ${[2, 3, 3, 4, 5][t]} matches.`,
+  },
+  pressCharm: {
+    name: 'Press Charm', group: 'club', kind: 'temp', icon: '🎙', base: 150, target: null,
+    values: [3, 4, 6, 8, 10],
+    text: (v) => `Owners' confidence +${v} now.`,
+  },
+  localHero: {
+    name: 'Local Hero', group: 'club', kind: 'temp', icon: '🦸', base: 150, target: null,
+    values: [3, 4, 6, 8, 10],
+    text: (v) => `Fans' confidence +${v} now.`,
   },
 
   // ------------------------------------------------------------ Season events
@@ -168,6 +218,13 @@ export const OFFSEASON_CARDS = {
 };
 
 export const OFFSEASON_IDS = Object.keys(OFFSEASON_CARDS);
+// Club cards: infrastructure (one per area) and temporary ones.
+export const CLUB_CARD_IDS = OFFSEASON_IDS.filter((id) => OFFSEASON_CARDS[id].group === 'club');
+export const AREA_CARD_IDS = CLUB_CARD_IDS.filter((id) => OFFSEASON_CARDS[id].kind === 'area');
+export const TEMP_CARD_IDS = CLUB_CARD_IDS.filter((id) => OFFSEASON_CARDS[id].kind === 'temp');
+export const isClubCard = (type) => OFFSEASON_CARDS[type]?.group === 'club';
+// How many games a temporary card lasts at a rarity (null: it happens at once).
+export const cardGames = (type, rarity) => OFFSEASON_CARDS[type].games?.[tierIndex(rarity)] ?? null;
 
 export function cardValue(type, rarity) {
   return OFFSEASON_CARDS[type].values[tierIndex(rarity)];
@@ -191,3 +248,14 @@ export function cardPrice(type, rarity, level = null) {
 export const RENAMED_CARDS = { shirtSponsor: 'findSponsor' };
 
 export const GROUP_LABEL = { transfer: 'Transfer', club: 'Club', event: 'Season event' };
+// The label on top of a card: club cards say whether they last.
+export const cardLabel = (type) => {
+  const def = OFFSEASON_CARDS[type];
+  if (def.group === 'club') return def.kind === 'area' ? 'Infrastructure' : 'Temporary';
+  return GROUP_LABEL[def.group];
+};
+
+// A temporary card's text without its game count (the active-effects list shows games left).
+export const effectText = (type, rarity) => cardText(type, rarity)
+  .replace(/ after each of the next \d+ home games\./, ' after each home game.')
+  .replace(/ for the next \d+ (home games|matches)\./, '.');

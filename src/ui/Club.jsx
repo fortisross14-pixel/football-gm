@@ -139,7 +139,7 @@ function Infrastructure({ state, onMarket }) {
       <section className="panel">
         <h2 className="section-title">Building works</h2>
         <CardPlays state={state} />
-        <p className="hint">Each area is raised by its own Club card from the Transfer Market. Playing one starts building works: 2 + the new level league matchdays (summer works are ready for matchday 1). One project per area at a time. Card rarity sets the highest level: Common up to 2, Uncommon 3, Rare 4, Epic 5, Legend +2 levels.</p>
+        <p className="hint">Each area is raised by its own infrastructure card, from club packs (Shop → Club). Playing one starts building works: 2 + the new level league matchdays (summer works are ready for matchday 1). One project per area at a time. Card rarity sets the highest level: Common up to 2, Uncommon 3, Rare 4, Epic 5, Legend +2 levels.</p>
         {works.length === 0 ? <p className="hint">No works under way.</p> : (
           <ul className="works">
             {works.map((p) => (
@@ -150,7 +150,7 @@ function Infrastructure({ state, onMarket }) {
             ))}
           </ul>
         )}
-        {onMarket && <button type="button" className="btn btn--ghost btn--small" onClick={onMarket}>Transfer Market ›</button>}
+        {onMarket && <button type="button" className="btn btn--ghost btn--small" onClick={onMarket}>Club packs ›</button>}
       </section>
 
       {AREA_GROUPS.map((g) => (

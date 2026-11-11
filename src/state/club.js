@@ -7,7 +7,8 @@ import { aiOffseason, userAcademyIntake, ACADEMY_COUNT, ACADEMY_MAX_TIER, namedC
 import { clubStart, START_REPUTATION, START_CONFIDENCE, SACK_LINE, WARNING_LINE, security, matchConfidence, seasonConfidence, carryConfidence, boardObjective, judgeObjective, reputationChanges, weighReputation, applyReputation, jobOffers, CLUB_START, requiredReputation } from '../engine/career.js';
 import { DIVISIONS, DIVISION_BY_ID } from '../data/world/structure.js';
 import { BOOST_IDS, BOOSTS, BOOST_PACKS, openBoostPack, drawBoost } from '../data/boosts.js';
-import { OFFSEASON_CARDS, OFFSEASON_IDS, MARKET_WEIGHTS, TIERS, tierIndex, cardValue, cardPrice, SIGNING_TIERS, RENAMED_CARDS } from '../data/offseason.js';
+import { OFFSEASON_CARDS, OFFSEASON_IDS, MARKET_WEIGHTS, TIERS, tierIndex, cardValue, cardPrice, SIGNING_TIERS, RENAMED_CARDS, cardGames, cardText, effectText, isClubCard } from '../data/offseason.js';
+import { CLUB_PACKS, drawClubCards } from '../data/clubPacks.js';
 import {
   STADIUM_INCOME, HOSPITALITY_INCOME, STORE_INCOME, MERCH_MULT, COHESION_GAIN, COHESION_MAX_BONUS,
   GYM_DRAIN, SPA_SHAPE, ANALYTICS_ODDS, FACILITY_LABEL, fullFacilities, cardPlayLimit,
@@ -140,7 +141,8 @@ export function newClubState(seed = 12345, { clubId = USER_CLUB.id, gmName = 'Yo
     lineup,
     bench,
     coaches,
-    inventory: { boosts: { ...START_INVENTORY }, packs: ['bronze'], offseason: [] },
+    inventory: { boosts: { ...START_INVENTORY }, packs: ['bronze'], offseason: [], club: [], clubPacks: [] },
+    clubEffects: [], // temporary club cards in play: { id, type, name, icon, text, gamesLeft, kind, value, homeOnly }
     facilities: fullFacilities({ stadium: 1, merch: 0, training: 1, academy: 0 }),
     cohesion: 50,
     lastLineup: [...lineup],
@@ -273,7 +275,7 @@ export const loadOf = (state, id) => state.loads?.[id] ?? 0.5;
 export function teamShape(state) {
   let over = 0;
   for (const c of state.squad) over += Math.max(0, loadOf(state, c.id) - LOAD_FREE) * (c.pos === 'GK' ? 0.3 : 1);
-  return Math.round(clamp(100 - over * LOAD_COST + (state.perks?.shape || 0) + SPA_SHAPE[lvl(state, 'spa')], 30, 100));
+  return Math.round(clamp(100 - over * LOAD_COST + (state.perks?.shape || 0) + SPA_SHAPE[lvl(state, 'spa')] + effectSum(state, 'shape'), 30, 100));
 }
 export const shapeLabel = (v) => SHAPE_LABELS.find(([min]) => v >= min)[1];
 // Shape in the match: starting stamina, and a small penalty when Tired or Exhausted.
@@ -324,6 +326,7 @@ export function buildUserTeam(state, loadout, isHome) {
     mods: seasonMods(state),
     tactics: state.tactics,
     startStamina: shapeStamina(teamShape(state)),
+    gradeUp: effectSum(state, 'grade') > 0 ? 1 : 0, // Analyst Report: tactics grade one step better
     eventName: state.activeEvent ? OFFSEASON_CARDS[state.activeEvent.type].name : null,
   };
 }
@@ -382,13 +385,20 @@ export function businessIncome(state) {
   const f = (k) => lvl(state, k);
   let merch = squadPopularity(state) * MERCH_MULT[f('merch')] * 0.3;
   if (state.activeEvent?.type === 'marketingTour') merch *= cardValue('marketingTour', state.activeEvent.rarity) / 100;
-  const ticket = ticketOf(state);
+  const ticket = ticketOf(state); // v2.2 ticket prices: gate and hospitality
+  const gate = Math.round(STADIUM_INCOME[f('stadium')] * m * ticket.gate);
   const items = [
-    { area: 'stadium', label: `Home gate (stadium L${f('stadium')})`, coins: Math.round(STADIUM_INCOME[f('stadium')] * m * ticket.gate), homeOnly: true },
+    { area: 'stadium', label: `Home gate (stadium L${f('stadium')})`, coins: gate, homeOnly: true },
     { area: 'hospitality', label: `Hospitality (L${f('hospitality')})`, coins: Math.round(HOSPITALITY_INCOME[f('hospitality')] * m * ticket.hospitality), homeOnly: true },
     { area: 'store', label: `Club store (L${f('store')})`, coins: Math.round(STORE_INCOME[f('store')] * m) },
     { area: 'merch', label: `Merchandise (L${f('merch')})`, coins: Math.round(merch) },
   ];
+  // Temporary club cards: extra gate (High Season, Ticket Promo) and merchandise (Viral Merchandise).
+  for (const e of state.clubEffects || []) {
+    if (e.kind === 'gate') items.push({ area: null, label: `Home gate · ${e.name} ×${e.value}`, coins: Math.round(gate * (e.value - 1)), homeOnly: true });
+    if (e.kind === 'promo') items.push({ area: null, label: `Home gate · ${e.name} +${e.value}%`, coins: Math.round((gate * e.value) / 100), homeOnly: true });
+    if (e.kind === 'merch') items.push({ area: null, label: `Merchandise · ${e.name} +${e.value}%`, coins: Math.round((merch * e.value) / 100) });
+  }
   // v1.9: 18 league games a season (14 before): each match pays a little less.
   for (const it of items) it.coins = Math.round(it.coins * MATCH_PACE);
   // v2.2: the sponsor contract signed in the summer (sized by the Sponsorship area, already per match).
@@ -596,6 +606,7 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
         w ? 'The city is yours this week. The fans will remember this one.' : d ? 'Honours even. Nobody is happy, nobody is sad.' : 'A painful afternoon. The fans expect a reaction next time.');
     }
   }
+  tickClubEffects(next, team.isHome);
   for (const c of [...retired, ...retiredCoaches]) pushInbox(next, 'squad', `${c.name} retires`, `${c.name} has played his last match and joins your Hall of Fame.`);
   return { state: next, retired: [...retired, ...retiredCoaches], boostReward };
 }
@@ -637,7 +648,7 @@ function replaceInSquad(state, oldId, card) {
 
 export function buyPack(state, packId, seed) {
   const pack = PACKS[packId];
-  if (state.coins < pack.price || state.pendingOpen) return state;
+  if (state.coins < pack.price || state.pendingOpen || state.pendingPick) return state;
   const next = structuredClone(state);
   next.coins -= pack.price;
   track(next, 'spent', 'Packs', pack.price);
@@ -645,7 +656,7 @@ export function buyPack(state, packId, seed) {
 }
 
 export function openOwnedPack(state, index, seed) {
-  if (state.pendingOpen) return state;
+  if (state.pendingOpen || state.pendingPick) return state;
   const next = structuredClone(state);
   const [packId] = next.inventory.packs.splice(index, 1);
   return startOpening(next, packId, seed);
@@ -673,6 +684,68 @@ export function buyBoostPack(state, packId, seed) {
   const got = openBoostPack(makeRng(seed), packId);
   for (const id of got) next.inventory.boosts[id] = (next.inventory.boosts[id] || 0) + 1;
   return { state: next, got };
+}
+
+// ---------------------------------------------------------------------------
+// Club packs: club cards (infrastructure and temporary). Bronze shows 1 card, Silver and Gold
+// show 3 and you keep 1. The choice waits in state.pendingPick until you pick.
+
+export function buyClubPack(state, packId, seed) {
+  const pack = CLUB_PACKS[packId];
+  if (!pack || state.coins < pack.price || state.pendingOpen || state.pendingPick) return state;
+  const next = structuredClone(state);
+  next.coins -= pack.price;
+  track(next, 'spent', 'Club packs', pack.price);
+  return startClubOpening(next, packId, seed);
+}
+
+export function openOwnedClubPack(state, index, seed) {
+  if (state.pendingOpen || state.pendingPick || !state.inventory.clubPacks?.[index]) return state;
+  const next = structuredClone(state);
+  const [packId] = next.inventory.clubPacks.splice(index, 1);
+  return startClubOpening(next, packId, seed);
+}
+
+function startClubOpening(next, packId, seed) {
+  const cards = drawClubCards(makeRng(seed), packId, (type, rarity) => canRaise(next, type, rarity));
+  next.pendingPick = { packId, source: CLUB_PACKS[packId].name, cards: cards.map((c) => ({ uid: uid(next), ...c })) };
+  return next;
+}
+
+// Keep one card of the pack: it goes to Cards → Club.
+export function pickClubCard(state, index) {
+  const card = state.pendingPick?.cards[index];
+  if (!card) return state;
+  const next = structuredClone(state);
+  next.inventory.club = [...(next.inventory.club || []), { uid: card.uid, type: card.type, rarity: card.rarity }];
+  next.pendingPick = null;
+  return next;
+}
+
+// Temporary club cards in play (state.clubEffects).
+export const clubEffects = (state) => state.clubEffects || [];
+function effectSum(state, kind) {
+  return (state.clubEffects || []).filter((e) => e.kind === kind).reduce((sum, e) => sum + e.value, 0);
+}
+
+// After every match: each effect loses a game (home-only effects only after home games).
+// Ticket Promo also lifts the fans after each home game.
+function tickClubEffects(next, isHome) {
+  if (!next.clubEffects?.length) return;
+  const left = [];
+  for (const e of next.clubEffects) {
+    if (e.homeOnly && !isHome) { left.push(e); continue; }
+    if (e.kind === 'promo' && e.fans && next.gm?.confidence) next.gm.confidence = { ...next.gm.confidence, fans: clamp((next.gm.confidence.fans ?? 55) + e.fans, 0, 100) };
+    const after = { ...e, gamesLeft: e.gamesLeft - 1 };
+    if (after.gamesLeft > 0) left.push(after);
+  }
+  next.clubEffects = left;
+}
+
+// Raises a club area: since v2.2 it starts building works (state/business.js), which finish
+// after 2 + the new level league matchdays (summer works by matchday 1). Returns the message.
+function raiseArea(next, area, levels) {
+  return queueConstruction(next, area, levels).message;
 }
 
 // ---------------------------------------------------------------------------
@@ -956,9 +1029,13 @@ export function closeSeason(state, seed) {
   const rngYouth = makeRng(seed + 31);
   const cards = intake.map((c) => (c.fallbackTier !== undefined ? youthPlayer(next, rngYouth, rngYouth.pick(['DEF', 'MID', 'FWD']), c.fallbackTier) : c));
   if (cards.length) next.pendingOpen = { source: 'Academy intake', cards, index: 0 };
-  // One free off-season card as a season reward.
+  // One free management card as a season reward: a transfer card or a club card.
   const rng = makeRng(seed);
-  next.inventory.offseason.push(randomOffseasonCard(next, rng));
+  if (rng.next() < 0.5) next.inventory.offseason.push(randomOffseasonCard(next, rng, 'transfer'));
+  else {
+    const [card] = drawClubCards(rng, 'clubBronze', (type, rarity) => canRaise(next, type, rarity));
+    next.inventory.club = [...(next.inventory.club || []), { uid: uid(next), ...card }];
+  }
   next.activeEvent = null;
   next.perks = { shape: 0 };
   next.cardPlays = 0; // the summer opens next season's card plays
@@ -986,20 +1063,22 @@ const canRaise = (state, type, rarity) => {
   return level < 5 && (t === 4 || level < def.values[t]);
 };
 
-function randomOffseasonCard(state, rng, group = null) {
-  const types = OFFSEASON_IDS.filter((id) => (!group || OFFSEASON_CARDS[id].group === group) && !(OFFSEASON_CARDS[id].summerOnly && state.phase !== 'offseason'));
+function randomOffseasonCard(state, rng, group = 'transfer') {
+  const types = OFFSEASON_IDS.filter((id) => OFFSEASON_CARDS[id].group === group && !(OFFSEASON_CARDS[id].summerOnly && state.phase !== 'offseason'));
   let card = { uid: uid(state), type: rng.pick(types), rarity: rollRarity(rng) };
   for (let i = 0; i < 6 && !canRaise(state, card.type, card.rarity); i += 1) card = { ...card, type: rng.pick(types) };
   if (!canRaise(state, card.type, card.rarity)) card.type = 'boostCrate';
   return card;
 }
 
-// The Transfer Market is open all year: 9 offers each summer, and 6 fresh ones at the
+// The Transfer Market is open all year and sells transfer cards only (club cards come in club
+// packs, season events from the year-end draw): 5 offers each summer, and 3 fresh ones at the
 // start of the season and every MARKET_EVERY league matchdays.
 export const MARKET_EVERY = 5; // 18 matchdays → refreshes after MD 5, 10, 15 (three a season, as with 14 and 4)
+export const MARKET_SIZE = { summer: 5, season: 3 };
 const MARKET_GROUPS = {
-  summer: ['transfer', 'transfer', 'transfer', 'club', 'club', 'club', 'club', 'event', 'event'],
-  season: ['transfer', 'transfer', 'club', 'club', 'club', 'event'],
+  summer: Array(MARKET_SIZE.summer).fill('transfer'),
+  season: Array(MARKET_SIZE.season).fill('transfer'),
 };
 function makeMarket(state, rng, kind) {
   const offers = MARKET_GROUPS[kind].map((g) => randomOffseasonCard(state, rng, g));
@@ -1040,12 +1119,12 @@ export function buyMarketCard(state, offerUid) {
   o.sold = true;
   next.coins -= o.price;
   track(next, 'spent', 'Transfer Market', o.price);
-  next.inventory.offseason.push({ uid: o.uid, type: o.type, rarity: o.rarity });
+  next.inventory[isClubCard(o.type) ? 'club' : 'offseason'].push({ uid: o.uid, type: o.type, rarity: o.rarity });
   return next;
 }
 
 export function startNextSeason(state, seed) {
-  if (state.phase !== 'offseason' || state.pendingOpen) return state;
+  if (state.phase !== 'offseason' || state.pendingOpen || state.pendingPick) return state;
   if (state.gm?.sacked) return state; // a sacked GM must take a new job first
   const next = structuredClone(state);
   recordFinanceInto(next, state.season.year); // the summer's money belongs to the season just ended
@@ -1080,13 +1159,15 @@ export function carryOptions(state) {
   }
   state.inventory.packs.forEach((p, i) => opts.push({ key: `pack:${i}`, kind: 'pack', label: PACKS[p].name, rarity: null }));
   for (const item of state.inventory.offseason) opts.push({ key: `off:${item.uid}`, kind: 'offseason', label: OFFSEASON_CARDS[item.type].name, rarity: item.rarity });
+  (state.inventory.clubPacks || []).forEach((p, i) => opts.push({ key: `cpack:${i}`, kind: 'pack', label: CLUB_PACKS[p].name, rarity: null }));
+  for (const item of state.inventory.club || []) opts.push({ key: `club:${item.uid}`, kind: 'club', label: OFFSEASON_CARDS[item.type].name, rarity: item.rarity });
   for (const [b, n] of Object.entries(state.inventory.boosts)) if (n > 0) opts.push({ key: `boost:${b}`, kind: 'boost', label: `${BOOSTS[b].name} boost`, rarity: null });
   return opts;
 }
 
 export function acceptOffer(state, clubId, carryKeys = [], seed = 1) {
   const offer = state.gm?.offers.find((o) => o.clubId === clubId);
-  if (!offer || state.phase !== 'offseason' || state.pendingOpen || carryKeys.length > 2) return state;
+  if (!offer || state.phase !== 'offseason' || state.pendingOpen || state.pendingPick || carryKeys.length > 2) return state;
   const next = structuredClone(state);
   const rng = makeRng(seed);
   const oldId = next.club.id;
@@ -1135,9 +1216,11 @@ export function acceptOffer(state, clubId, carryKeys = [], seed = 1) {
   }
 
   // 4. Inventory: only what you carry.
-  const inventory = { boosts: {}, packs: [], offseason: [] };
+  const inventory = { boosts: {}, packs: [], offseason: [], club: [], clubPacks: [] };
   for (const [kind, ref] of carried) {
     if (kind === 'pack') inventory.packs.push(next.inventory.packs[Number(ref)]);
+    if (kind === 'cpack') inventory.clubPacks.push(next.inventory.clubPacks[Number(ref)]);
+    if (kind === 'club') inventory.club.push(next.inventory.club.find((i) => i.uid === ref));
     if (kind === 'offseason') inventory.offseason.push(next.inventory.offseason.find((i) => i.uid === ref));
     if (kind === 'boost') inventory.boosts[ref] = 1;
   }
@@ -1155,7 +1238,8 @@ export function acceptOffer(state, clubId, carryKeys = [], seed = 1) {
   next.construction = []; // building works belong to the old club
   next.activeEvent = null;
   next.perks = { shape: 0 };
-  next.market = makeMarket(next, rng, 'summer'); // the new club's market, priced for its areas
+  next.clubEffects = []; // temporary club cards stay with the old club
+  next.market = makeMarket(next, rng, 'summer');
   next.record = { w: 0, d: 0, l: 0, gf: 0, ga: 0 };
   next.seasonStats = {};
   for (const c of squad) if (POOL_BY_ID[c.id] && !next.album.includes(c.id)) next.album.push(c.id);
@@ -1234,12 +1318,13 @@ export function canUseOffseason(state, item) {
   if (!def) return { ok: false, reason: 'Unknown card.' };
   if (state.phase === 'seasonEnd') return { ok: false, reason: 'Collect the season rewards on Home first.' };
   if (def.summerOnly && state.phase !== 'offseason') return { ok: false, reason: 'Summer only: it prepares the start of a season.' };
-  if (state.pendingOpen) return { ok: false, reason: 'Finish deciding on your new cards first.' };
+  if (state.pendingOpen || state.pendingPick) return { ok: false, reason: 'Finish deciding on your new cards first.' };
   if (!cardPlaysLeft(state)) {
     const { used, limit } = cardPlays(state);
     return { ok: false, reason: `No card plays left (${used} / ${limit}). They reset when the season ends.` };
   }
   if (def.group === 'event' && state.activeEvent) return { ok: false, reason: 'One season event per season, and one is already active.' };
+  if (def.effect && (state.clubEffects || []).some((e) => e.type === item.type)) return { ok: false, reason: `${def.name} is already running. Play it when it ends.` };
   if (def.facility) {
     const level = lvl(state, def.facility);
     const t = tierIndex(item.rarity);
@@ -1254,9 +1339,15 @@ export function canUseOffseason(state, item) {
   return { ok: true };
 }
 
+// Management cards live in two places: transfer (and old event) cards in inventory.offseason,
+// club cards in inventory.club. Both are played the same way.
+export const findCard = (state, itemUid) => state.inventory.offseason.find((i) => i.uid === itemUid) || (state.inventory.club || []).find((i) => i.uid === itemUid) || null;
 const removeItem = (next, itemUid) => {
   next.inventory.offseason = next.inventory.offseason.filter((i) => i.uid !== itemUid);
+  next.inventory.club = (next.inventory.club || []).filter((i) => i.uid !== itemUid);
 };
+
+const TIER_PAY = { 1: 2, 2: 1.5, 3: 1 }; // Sponsor Night by league tier
 
 // target: { playerId, coachRole, position, trait, formation, passive }
 // Returns { state, message, success }. A card that works uses one of the season's card plays.
@@ -1267,7 +1358,7 @@ export function useOffseasonCard(state, itemUid, target = {}, seed = 1) {
 }
 
 function playCard(state, itemUid, target, seed) {
-  const item = state.inventory.offseason.find((i) => i.uid === itemUid);
+  const item = findCard(state, itemUid);
   if (!item) return { state, message: 'Card not found.' };
   const check = canUseOffseason(state, item);
   if (!check.ok) return { state, message: check.reason };
@@ -1288,8 +1379,16 @@ function playCard(state, itemUid, target, seed) {
     return { state: next, message: `${def.name} is active ${when}.`, success: true };
   }
   if (def.facility) {
-    const r = queueConstruction(next, def.facility, t === 4 ? 2 : 1); // v2.2: building works, not instant
-    return r.success ? { state: next, message: r.message, success: true } : { state, message: r.message };
+    return { state: next, message: raiseArea(next, def.facility, t === 4 ? 2 : 1), success: true };
+  }
+  // Temporary club cards that last a few games: one entry in state.clubEffects.
+  if (def.effect) {
+    const games = cardGames(item.type, item.rarity);
+    next.clubEffects = [...(next.clubEffects || []), {
+      id: item.uid, type: item.type, name: def.name, icon: def.icon, rarity: item.rarity, text: effectText(item.type, item.rarity),
+      gamesLeft: games, games, kind: def.effect.kind, value: v, homeOnly: !!def.effect.homeOnly, ...(def.fans ? { fans: def.fans[t] } : {}),
+    }];
+    return { state: next, message: `${def.name}: ${cardText(item.type, item.rarity)}`, success: true };
   }
 
   switch (item.type) {
@@ -1331,6 +1430,22 @@ function playCard(state, itemUid, target, seed) {
     case 'sportsScience': {
       next.perks = { ...(next.perks || {}), shape: (next.perks?.shape || 0) + v };
       return { state: next, message: `Sports Science: +${next.perks.shape} team shape ${when}.`, success: true };
+    }
+    case 'sponsorNight': {
+      const coins = Math.round(v * (TIER_PAY[next.club.level] || 1));
+      next.coins += coins;
+      track(next, 'income', 'Sponsor', coins);
+      return { state: next, message: `Sponsor Night: +◎ ${coins}.`, success: true };
+    }
+    case 'teamBuilding': {
+      next.cohesion = clamp((next.cohesion || 0) + v, 0, 100);
+      return { state: next, message: `Team Building: cohesion ${next.cohesion}.`, success: true };
+    }
+    case 'pressCharm':
+    case 'localHero': {
+      const key = item.type === 'pressCharm' ? 'board' : 'fans';
+      if (next.gm) next.gm.confidence = { ...START_CONFIDENCE, ...next.gm.confidence, [key]: clamp((next.gm.confidence?.[key] ?? START_CONFIDENCE[key]) + v, 0, 100) };
+      return { state: next, message: `${def.name}: ${key === 'board' ? 'owners' : 'fans'} +${v}.`, success: true };
     }
     case 'boostCrate': {
       const got = [];
@@ -1418,6 +1533,17 @@ export function migrateClubState(state) {
   next.facilities = fullFacilities(state.facilities);
   if (typeof next.cardPlays !== 'number') next.cardPlays = 0;
   migrateBusinessInto(next); // v2.2: building works, ticket prices, sponsor contract, finance history
+  if (!Array.isArray(next.clubEffects)) next.clubEffects = [];
+  // Club cards became their own family (inventory.club, from club packs). Event cards stay in
+  // inventory.offseason, for the season-card draw to pick up.
+  if (state.inventory && (!state.inventory.club || !state.inventory.clubPacks || state.inventory.offseason?.some((i) => isClubCard(RENAMED_CARDS[i.type] || i.type)))) {
+    const inv = { ...state.inventory, offseason: [...(state.inventory.offseason || [])], club: [...(state.inventory.club || [])], clubPacks: [...(state.inventory.clubPacks || [])] };
+    const moving = inv.offseason.filter((i) => isClubCard(RENAMED_CARDS[i.type] || i.type));
+    inv.offseason = inv.offseason.filter((i) => !moving.includes(i));
+    inv.club.push(...moving.map((i) => ({ ...i, type: RENAMED_CARDS[i.type] || i.type })));
+    next.inventory = inv;
+    state = next;
+  }
   if (state.inventory?.offseason?.some((i) => RENAMED_CARDS[i.type] || !OFFSEASON_CARDS[i.type])) {
     next.inventory = {
       ...state.inventory,
@@ -1427,6 +1553,11 @@ export function migrateClubState(state) {
   if (next.market?.offers) {
     next.market = { ...next.market, offers: next.market.offers.filter((o) => OFFSEASON_CARDS[RENAMED_CARDS[o.type] || o.type]).map((o) => ({ ...o, type: RENAMED_CARDS[o.type] || o.type })) };
     if (next.market.round == null) next.market.round = Math.floor((next.season?.matchday || 0) / MARKET_EVERY);
+    // The market sells transfer cards only now: an older market is restocked.
+    if (next.market.offers.some((o) => OFFSEASON_CARDS[o.type].group !== 'transfer') && (next.phase === 'season' || next.phase === 'offseason')) {
+      const restocked = makeMarket(next, makeRng((next.season?.year || 1) * 37 + (next.season?.matchday || 0)), next.phase === 'season' ? 'season' : 'summer');
+      next.market = { ...restocked, round: next.market.round, fresh: next.market.fresh };
+    }
   }
   if (!next.market && (next.phase === 'season' || next.phase === 'offseason')) {
     next.market = makeMarket(next, makeRng((next.season?.year || 1) * 31 + (next.season?.matchday || 0)), next.phase === 'season' ? 'season' : 'summer');
