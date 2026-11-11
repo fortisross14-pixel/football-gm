@@ -82,6 +82,16 @@ const fs = require('fs');
   await step('competitions', async () => {});
   await step('comp-cup', () => page.click('.comp-card--cup'));
   await step('comp-cup-history', () => page.click('.comp-screen .segmented__opts button:nth-child(3)'));
+  // v2.3: super cup, second continental trophy and the international chips (when the save has them).
+  const openCard = (sel) => async () => {
+    await page.click('.tabbar button:nth-child(5)');
+    if (await page.locator(sel).count()) await page.click(sel);
+  };
+  await step('comp-super', openCard('.comp-card--super'));
+  await step('comp-cont2', openCard('.comp-card--cont2'));
+  await step('comp-intl-k2', openCard('.chip-btn:has-text("European Trophy")'));
+  await step('comp-intl-ks', openCard('.chip-btn:has-text("Europe Super Cup")'));
+  await step('comp-cwc', openCard('.chip-btn:has-text("Club World Cup")'));
   await step('comp-league', () => page.click('.tabbar button:nth-child(5)').then(() => page.click('.comp-card--league')));
   await step('league-history', () => page.click('.league__controls >> text=History'));
   await step('team', () => page.click('.tabbar button:nth-child(5)').then(() => page.click('.comp-card--league')).then(() => page.click('.table .xlink >> nth=0')));
