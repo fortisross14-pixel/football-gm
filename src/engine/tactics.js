@@ -108,7 +108,9 @@ export function drainMult(t) {
 }
 
 // Plain-language advice from the five numbers, one line per setting that matters.
-export function styleAdvice(t, A) {
+// cover: how many red items a Tactics Connoisseur GM card turns neutral (tone 'covered').
+export const COVERED_NOTE = 'covered by your Tactics Connoisseur card';
+export function styleAdvice(t, A, { cover = 0 } = {}) {
   const out = [];
   const n = (v) => Math.round(v);
   const good = (text) => out.push({ tone: 'good', text });
@@ -141,14 +143,20 @@ export function styleAdvice(t, A) {
   }
   const breakOk = A.phy >= at(-2);
   if (t.counter) (breakOk ? good : bad)(`Counter-attacks with Physical ${n(A.phy)}${breakOk ? ': quick enough to break.' : ': too slow to break.'}`);
+  let left = cover;
+  for (const a of out) if (left > 0 && a.tone === 'bad') { a.tone = 'covered'; a.note = COVERED_NOTE; left -= 1; }
   return out;
 }
 
 // 0–100: how well this squad suits these instructions (share of advice that is good).
-export function suitability(t, A) {
-  const adv = styleAdvice(t, A);
+// Covered items (Tactics Connoisseur) are grey: they count a third of a strength, not as a warning
+// (tuned with scripts/career-sim.mjs so the card helps without replacing good tactics).
+export const COVERED_CREDIT = 1 / 3;
+export function suitability(t, A, opts = {}) {
+  const adv = styleAdvice(t, A, opts);
   if (!adv.length) return 60;
-  return Math.round((adv.filter((a) => a.tone === 'good').length / adv.length) * 100);
+  const score = adv.reduce((n, a) => n + (a.tone === 'good' ? 1 : a.tone === 'covered' ? COVERED_CREDIT : 0), 0);
+  return Math.round((score / adv.length) * 100);
 }
 
 // One verdict for the instructions: do they suit the coach AND the squad?

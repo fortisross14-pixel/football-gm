@@ -7,6 +7,7 @@ import {
 import {
   PHILOSOPHIES, PHILOSOPHY_IDS, coachStyle, clubIdentity, styleDistance, tacticsDistance, fitLabel, fitBonus, nearestPhilosophy,
 } from '../data/philosophies.js';
+import { adviceCover, coachDistanceCut } from '../engine/gmTraits.js';
 
 // Squad numbers for the current starting 7.
 export function userAttrs(state) {
@@ -21,11 +22,13 @@ export default function Tactics({ state, setState }) {
   const A = userAttrs(state);
   const coach = state.coaches.coach;
   const cStyle = coachStyle(coach);
-  const cDist = styleDistance(t, cStyle);
+  const cut = coachDistanceCut(state.gm?.trait); // Coach Tamer GM card
+  const cDist = Math.max(0, styleDistance(t, cStyle) - cut);
   const identity = clubIdentity(state.world.clubs[state.club.id] || state.club);
   const iDist = styleDistance(t, identity);
-  const advice = styleAdvice(t, A);
-  const suit = suitability(t, A);
+  const cover = { cover: adviceCover(state.gm?.trait) }; // Tactics Connoisseur GM card
+  const advice = styleAdvice(t, A, cover);
+  const suit = suitability(t, A, cover);
   const custom = state.customStyles || [];
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState('');
@@ -61,7 +64,7 @@ export default function Tactics({ state, setState }) {
           <div className={`fit-tile ${cDist <= 2 ? 'is-good' : cDist > 3.5 ? 'is-bad' : ''}`}>
             <span>Coach · {coach.name}</span>
             <b>{PHILOSOPHIES[cStyle].name}</b>
-            <small>{fitLabel(cDist)} · team {pct(fitBonus(cDist, coach.rarity))}</small>
+            <small>{fitLabel(cDist)} · team {pct(fitBonus(cDist, coach.rarity))}{cut ? ` · Coach Tamer −${cut}` : ''}</small>
           </div>
           <div className={`fit-tile ${iDist <= 2 ? 'is-good' : iDist > 3.5 ? 'is-bad' : ''}`}>
             <span>Owners want</span>
@@ -71,7 +74,7 @@ export default function Tactics({ state, setState }) {
           <div className={`fit-tile ${suit >= 70 ? 'is-good' : suit < 40 ? 'is-bad' : ''}`}>
             <span>Squad suits it</span>
             <b>{suit}%</b>
-            <small>{advice.filter((a) => a.tone === 'bad').length} warning{advice.filter((a) => a.tone === 'bad').length === 1 ? '' : 's'}</small>
+            <small>{advice.filter((a) => a.tone === 'bad').length} warning{advice.filter((a) => a.tone === 'bad').length === 1 ? '' : 's'}{advice.some((a) => a.tone === 'covered') ? ` · ${advice.filter((a) => a.tone === 'covered').length} covered` : ''}</small>
           </div>
         </div>
       </section>
@@ -155,7 +158,11 @@ export default function Tactics({ state, setState }) {
         <h3 className="sub-title">What your squad says</h3>
         {advice.length ? (
           <ul className="advice">
-            {advice.map((a) => <li key={a.text} className={`advice__item is-${a.tone}`}>{a.tone === 'good' ? '✓' : '⚠'} {a.text}</li>)}
+            {advice.map((a) => (
+              <li key={a.text} className={`advice__item is-${a.tone}`}>
+                {a.tone === 'good' ? '✓' : a.tone === 'covered' ? '○' : '⚠'} {a.text}{a.note && <> <em>({a.note})</em></>}
+              </li>
+            ))}
           </ul>
         ) : <p className="hint">Balanced settings: nothing here leans on a particular strength.</p>}
         <p className="hint">Rival styles counter each other: pressing hurts short build-up, long balls skip the press, counter-attacks punish high lines, patient passing breaks deep blocks. Check the rival's style before kick-off.</p>

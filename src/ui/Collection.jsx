@@ -4,18 +4,37 @@ import { Segmented } from './Home.jsx';
 import Sheet from './Sheet.jsx';
 import { RARITIES, POSITIONS, TRAITS, FORMATIONS, overall } from '../engine/cards.js';
 import { BOOST_IDS } from '../data/boosts.js';
-import { OFFSEASON_CARDS, TIERS, cardValue } from '../data/offseason.js';
+import { OFFSEASON_CARDS, TIERS, cardValue, cardText } from '../data/offseason.js';
+import { FACILITY_LABEL } from '../data/facilities.js';
 import { COACH_PASSIVES } from '../data/coachPassives.js';
 import { PLAYER_POOL, COACH_POOL } from '../data/pool.js';
-import { canUseOffseason, cardPlays, SQUAD_SIZE } from '../state/club.js';
+import { canUseOffseason, cardPlays, clubEffects, SQUAD_SIZE } from '../state/club.js';
 import { PlayerLink, ProfileButton } from './nav.jsx';
+import SeasonDeal from './SeasonDeal.jsx';
 
-export default function Collection({ state, onOpenPack, onUseCard }) {
-  const [tab, setTab] = useState('squad');
+// Cards → Owned: Players (squad, coaches, player packs, transfer cards), Club (club packs,
+// club cards, active effects, match boosts), Season (the season card) and the Album.
+export default function Collection({ state, onOpenPack, onOpenClubPack, onUseCard, onPickSeason, onRedrawSeason, initialSection }) {
+  const [tab, setTab] = useState(initialSection || (state.seasonDeal ? 'season' : 'players'));
   const [viewing, setViewing] = useState(null);
   const [using, setUsing] = useState(null);
   const inv = state.inventory;
-  const invCount = inv.packs.length + inv.offseason.length;
+  const transfer = inv.offseason.filter((i) => OFFSEASON_CARDS[i.type]?.group === 'transfer');
+  const events = inv.offseason.filter((i) => OFFSEASON_CARDS[i.type]?.group === 'event');
+  const club = inv.club || [];
+  const clubPacks = inv.clubPacks || [];
+  const busy = !!state.pendingOpen || !!state.pendingPick;
+  const footer = (item) => {
+    const check = canUseOffseason(state, item);
+    if (check.ok) return OFFSEASON_CARDS[item.type].facility ? 'Build ›' : 'Play ›';
+    return OFFSEASON_CARDS[item.type].summerOnly && state.phase !== 'offseason' ? 'Summer only' : 'Locked';
+  };
+  const cardGrid = (items) => (
+    <div className="ocard-grid">
+      {items.map((item) => <OffseasonCard key={item.uid} item={item} onClick={() => setUsing(item)} footer={footer(item)} />)}
+    </div>
+  );
+  const count = (n) => (n ? ` · ${n}` : '');
 
   return (
     <div className="screen">
@@ -24,14 +43,15 @@ export default function Collection({ state, onOpenPack, onUseCard }) {
         label="Cards"
         value={tab}
         options={[
-          { id: 'squad', label: 'Squad' },
-          { id: 'inventory', label: `Items${invCount ? ` (${invCount})` : ''}` },
+          { id: 'players', label: `Players${count(inv.packs.length + transfer.length)}` },
+          { id: 'club', label: `Club${count(clubPacks.length + club.length)}` },
+          { id: 'season', label: state.seasonDeal ? 'Season · pick' : `Season${count(events.length + (state.seasonCard ? 1 : 0))}` },
           { id: 'album', label: 'Album' },
         ]}
         onChange={setTab}
       />
 
-      {tab === 'squad' && (
+      {tab === 'players' && (
         <>
           <h3 className="sub-title">Players · {state.squad.length}/{SQUAD_SIZE}</h3>
           <div className="card-grid">
@@ -44,16 +64,12 @@ export default function Collection({ state, onOpenPack, onUseCard }) {
             <CoachCard coach={state.coaches.coach} role="coach" />
             <CoachCard coach={state.coaches.assistant} role="assistant" />
           </div>
-        </>
-      )}
 
-      {tab === 'inventory' && (
-        <>
-          <h3 className="sub-title">Unopened packs</h3>
+          <h3 className="sub-title">Unopened player packs</h3>
           {inv.packs.length === 0 ? <p className="hint">None. Packs come from the shop and from season rewards.</p> : (
             <div className="pack-strip">
               {inv.packs.map((id, i) => (
-                <button key={`${id}-${i}`} type="button" className="pack-btn" disabled={!!state.pendingOpen} onClick={() => onOpenPack(i)}>
+                <button key={`${id}-${i}`} type="button" className="pack-btn" disabled={busy} onClick={() => onOpenPack(i)}>
                   <PackArt packId={id} small />
                   <span>Open</span>
                 </button>
@@ -61,29 +77,63 @@ export default function Collection({ state, onOpenPack, onUseCard }) {
             </div>
           )}
 
-          <h3 className="sub-title">Management cards</h3>
+          <h3 className="sub-title">Transfer cards</h3>
           <CardPlays state={state} />
-          <p className="hint">Tap a card to play it, any time of the year. One season event per season: played mid-season it lasts until the season ends.</p>
-          {state.activeEvent && (
-            <p className="hint hint--accent">Season event active: {OFFSEASON_CARDS[state.activeEvent.type].name} ({RARITIES[state.activeEvent.rarity].label}).</p>
+          {transfer.length === 0 ? <p className="hint">None yet. Buy them in Shop → Player → Transfer Market, open all year.</p> : (
+            <>
+              <p className="hint">Tap a card to play it, any time of the year.</p>
+              {cardGrid(transfer)}
+            </>
           )}
-          {inv.offseason.length === 0 ? <p className="hint">None yet. Buy them in Shop → Market, open all year.</p> : (
-            <div className="ocard-grid">
-              {inv.offseason.map((item) => {
-                const check = canUseOffseason(state, item);
-                return (
-                  <OffseasonCard key={item.uid} item={item} onClick={() => setUsing(item)} footer={check.ok ? 'Use ›' : OFFSEASON_CARDS[item.type].summerOnly && state.phase !== 'offseason' ? 'Summer only' : 'Locked'} />
-                );
-              })}
+        </>
+      )}
+
+      {tab === 'club' && (
+        <>
+          <h3 className="sub-title">Unopened club packs</h3>
+          {clubPacks.length === 0 ? <p className="hint">None. Club packs are in Shop → Club.</p> : (
+            <div className="pack-strip">
+              {clubPacks.map((id, i) => (
+                <button key={`${id}-${i}`} type="button" className="pack-btn" disabled={busy} onClick={() => onOpenClubPack(i)}>
+                  <PackArt packId={id} small />
+                  <span>Open</span>
+                </button>
+              ))}
             </div>
           )}
 
-          <h3 className="sub-title">Boosts</h3>
-          <div className="boost-grid">
-            {BOOST_IDS.filter((id) => inv.boosts[id] > 0).map((id) => <BoostCard key={id} id={id} count={inv.boosts[id]} />)}
-          </div>
+          <ActiveEffects state={state} />
+
+          <h3 className="sub-title">Club cards</h3>
+          <CardPlays state={state} />
+          {club.length === 0 ? <p className="hint">None yet. Club packs in Shop → Club bring infrastructure and temporary club cards.</p> : (
+            <>
+              {club.some((i) => OFFSEASON_CARDS[i.type].kind === 'area') && (
+                <>
+                  <p className="hint"><b>Infrastructure</b> · raises one club area for good.</p>
+                  {cardGrid(club.filter((i) => OFFSEASON_CARDS[i.type].kind === 'area'))}
+                </>
+              )}
+              {club.some((i) => OFFSEASON_CARDS[i.type].kind !== 'area') && (
+                <>
+                  <p className="hint"><b>Temporary</b> · lasts a few games, or pays off at once.</p>
+                  {cardGrid(club.filter((i) => OFFSEASON_CARDS[i.type].kind !== 'area'))}
+                </>
+              )}
+            </>
+          )}
+
+          <h3 className="sub-title">Match boosts</h3>
+          {BOOST_IDS.some((id) => inv.boosts[id] > 0) ? (
+            <div className="boost-grid">
+              {BOOST_IDS.filter((id) => inv.boosts[id] > 0).map((id) => <BoostCard key={id} id={id} count={inv.boosts[id]} rarity />)}
+            </div>
+          ) : <p className="hint">None. Boost packs are in Shop → Club.</p>}
         </>
       )}
+
+      {tab === 'season' && state.seasonDeal && <SeasonDeal state={state} onPick={onPickSeason} onRedraw={onRedrawSeason} />}
+      {tab === 'season' && !state.seasonDeal && <SeasonCards state={state} events={events} cardGrid={cardGrid} />}
 
       {tab === 'album' && <Album state={state} />}
 
@@ -104,6 +154,57 @@ export default function Collection({ state, onOpenPack, onUseCard }) {
         />
       )}
     </div>
+  );
+}
+
+// Temporary club cards in play, with the games they have left.
+export function ActiveEffects({ state }) {
+  const effects = clubEffects(state);
+  if (!effects.length) return null;
+  return (
+    <>
+      <h3 className="sub-title">Active effects</h3>
+      <ul className="effects">
+        {effects.map((e) => (
+          <li key={e.id} className={`r-${e.rarity || 'common'}`}>
+            <span className="effects__icon" aria-hidden="true">{e.icon}</span>
+            <span className="effects__body"><b>{e.name}</b><span>{e.text}</span></span>
+            <span className="effects__left">{e.gamesLeft}<small>{e.homeOnly ? (e.gamesLeft === 1 ? 'home game' : 'home games') : (e.gamesLeft === 1 ? 'match' : 'matches')}</small></span>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+// The season card (drawn at the end of each season) and season events from older saves.
+function SeasonCards({ state, events, cardGrid }) {
+  const sc = state.seasonCard;
+  const ev = state.activeEvent;
+  return (
+    <>
+      <h3 className="sub-title">This season's card</h3>
+      {sc ? (
+        <div className="panel season-card">
+          <b>{sc.icon ? `${sc.icon} ` : ''}{sc.name || OFFSEASON_CARDS[sc.type]?.name || 'Season card'}</b>
+          <span>{sc.text || (OFFSEASON_CARDS[sc.type] && sc.rarity ? cardText(sc.type, sc.rarity) : '')}</span>
+        </div>
+      ) : ev ? (
+        <div className="panel season-card">
+          <b>{OFFSEASON_CARDS[ev.type].icon} {OFFSEASON_CARDS[ev.type].name} · {RARITIES[ev.rarity].label}</b>
+          <span>{cardText(ev.type, ev.rarity)}</span>
+        </div>
+      ) : (
+        <p className="hint">At the end of each season you draw a season card. It shows here.</p>
+      )}
+      {events.length > 0 && (
+        <>
+          <h3 className="sub-title">Season events</h3>
+          <p className="hint">One season event per season: played mid-season it lasts until the season ends.</p>
+          {cardGrid(events)}
+        </>
+      )}
+    </>
   );
 }
 
@@ -260,7 +361,7 @@ function UseCardSheet({ state, item, onClose, onUse }) {
           disabled={!ready}
           onClick={() => onUse({ playerId, position, trait, formation, passive, coachRole })}
         >
-          {OFFSEASON_CARDS[item.type].scope || item.type === 'veteranSigning' ? 'Sign someone' : 'Use card'}
+          {OFFSEASON_CARDS[item.type].scope || item.type === 'veteranSigning' ? 'Sign someone' : def.facility ? `Build: ${FACILITY_LABEL[def.facility]} +${item.rarity === 'legend' ? 2 : 1}` : 'Play card'}
         </button>
       </div>
     </Sheet>

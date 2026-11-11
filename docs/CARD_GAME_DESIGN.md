@@ -3,6 +3,11 @@
 > Replaces the old management-sim design (`GAME_DESIGN_DOCUMENT.md`), which is kept for reference only.
 > Language: English. Platform: web (React + Vite), mobile-first.
 
+**Changes in v2.2 (GM cards, season cards, card lifespans)**
+- **GM creation** (§7.6): name, **country of origin** and a **GM style** (Financial, Tactical, Physical, Cohesion, Personal). You're dealt one **GM card** of that style at random (Common to Epic), permanent for the career (§7.7). Shown in Career, on your manager page and in the main-menu Managers ranking. Older careers show "No card".
+- **Season cards** (§4.7): at the end of every season you're dealt **3 season cards** and pick 1; it is next season's active event. Redraw the 3 for 200, then 400, then 800 coins each summer. Season events are no longer sold in the Transfer Market; event cards already in an old save's inventory show up in the deal as free picks.
+- **Card lifespans** (§4.8): academy graduates start with their full career; **pack players arrive with 50–90% of their matches left** (shown on the card when the pack opens); signings keep what they had at their old club.
+
 **Changes in v1.9 (club management)**
 - **Ten club areas** (§4.5) in two groups: Business (stadium, hospitality, club store, merchandise, sponsorship) and Sports (training fields, gym, spa & recovery, youth academy, analytics). Each has its own Club card; steps are a bit smaller than the old four facilities.
 - **Cards any time** (§4.6): the Transfer Market is open all year (9 offers each summer, 6 fresh ones every 5 league matchdays) and management cards are played from Cards → Items whenever you like, within **8 card plays per season** (+1 at Analytics level 3 and 5).
@@ -171,8 +176,9 @@ Clubs qualify through **last season's** league results. For season 1, the seeded
 | **Coaches** | Coach packs | Head coach + assistant, retire like players | **2** |
 | **In-game boosts** | Shop | Used during a match, then gone | Unlimited |
 | **Management: Transfer** | Transfer Market (all year), season reward | Played any time, then gone (§4.6) | Card plays per season |
-| **Management: Club** | Transfer Market (all year), season reward | Raises one club area at your current club, then gone (§4.5) | Card plays per season |
-| **Management: Season events** | Transfer Market (all year), season reward | Lasts the season (from the summer: all of it; mid-season: until it ends) (§4.7) | 1 active per season, counts as a play |
+| **Club cards: infrastructure** | Club packs (§4.6b), season reward | Raises one club area at your current club, then gone (§4.5) | Card plays per season |
+| **Club cards: temporary** | Club packs (§4.6b), season reward | Lasts a few games (or pays off at once), then gone | Card plays per season; one of each running at a time |
+| **Management: Season events** | Year-end season card draw (older saves: still in inventory) | Lasts the season (from the summer: all of it; mid-season: until it ends) (§4.7) | 1 active per season, counts as a play |
 
 **Pack opening:** for each player or coach card you choose **Keep** or **Discard**. Keeping one when your slots are full means releasing an owned card. Discarded or released cards give quick-sell coins.
 
@@ -248,13 +254,13 @@ Boosts are never bought one by one. They come in sealed packs (**Boost Pack** 3 
 
 ### 4.5 Club areas (facilities)
 
-Ten areas, levels 0–5. They **belong to the club**, not to you: if you leave, the levels stay behind. Each area is raised by **its own Club card** from the Transfer Market (§4.6), and the card's **rarity sets the highest level it can build**:
+Ten areas, levels 0–5. They **belong to the club**, not to you: if you leave, the levels stay behind. Each area is raised by **its own infrastructure card** from club packs (§4.6b), and the card's **rarity sets the highest level it can build**:
 
 | Rarity | Common | Uncommon | Rare | Epic | Legend |
 |---|---|---|---|---|---|
 | Builds | +1, up to level 2 | +1, up to level 3 | +1, up to level 4 | +1, up to level 5 | +2 levels |
 
-Card prices also grow with the area's current level (×0.8 / 1 / 1.25 / 1.55 / 1.9 from level 0 up), so the last levels are expensive. All numbers live in `src/data/facilities.js`. Coin amounts are × the division multiplier (0.9 / 1.4 / 1.75 for levels 3 / 2 / 1).
+Club packs only deal an infrastructure card at a rarity that can still raise that area (v2.2; before, the market priced them by the area's level). All numbers live in `src/data/facilities.js`. Coin amounts are × the division multiplier (0.9 / 1.4 / 1.75 for levels 3 / 2 / 1).
 
 | Group | Area · card | Effect at levels 0 / 1 / 2 / 3 / 4 / 5 |
 |---|---|---|
@@ -277,18 +283,18 @@ Clubs start with levels that match their size (`clubStart`): a small level-3 clu
 
 ### 4.6 Management cards and the Transfer Market
 
-The **Transfer Market is open all year**. Each summer it has 9 fresh offers (3 transfer, 4 club, 2 events, always at least one signing); during the season it has 6 (2 transfer, 3 club, 1 event), replaced at the start of the season and every **5 league matchdays** (Home shows a line when there are new offers). Every card has a **rarity** that sets how strong it is, and **lower rarities appear more often** (Common 45%, Uncommon 28%, Rare 17%, Epic 8%, Legend 2%). Club cards are only offered at a rarity that can still raise that area. You also get 1 random card as a season reward.
+The **Transfer Market is open all year** and, since v2.2, sells **transfer cards only** (club cards come in club packs, §4.6b; season events from the year-end season card draw). Each summer it has 5 fresh offers (always at least one signing); during the season it has 3, replaced at the start of the season and every **5 league matchdays** (Home shows a line when there are new offers). Every card has a **rarity** that sets how strong it is, and **lower rarities appear more often** (Common 45%, Uncommon 28%, Rare 17%, Epic 8%, Legend 2%). You also get 1 random card as a season reward: a transfer card or a club card (a Bronze club pack draw), half and half.
 
-**Playing cards.** Cards are played from Cards → Items **at any time** (not during a match, not while a pack is open, not between the last match and collecting the season rewards).
+**Playing cards.** Cards are played from the Cards tab (Players → transfer cards, Club → club cards, Season → season events) **at any time** (not during a match, not while a pack is open, not between the last match and collecting the season rewards).
 - **Card plays per season: 8** (+1 at Analytics level 3, +1 at level 5). Every card played counts, whatever its group. Shown as "Card plays this season: 3 / 8" in Items, the Market and Club management.
 - The count **resets when the season ends**: summer plays count towards the season that follows.
 - **Season events:** 1 per season. Played in the summer they last all season; played mid-season they apply for the rest of that season. They end when the season ends.
 - **Summer only:** Pre-season Camp (it boosts the first matchdays). Everything else, signings included, works mid-season too: a mid-season signing is the winter window.
 
-There are **33 card types** in three groups:
-- **Transfer:** squad moves.
-- **Club:** one card per club area (§4.5), plus Sports Science and Boost Crate.
-- **Season event:** one per season.
+There are **42 card types** in three groups:
+- **Transfer:** squad moves (Transfer Market).
+- **Club:** one infrastructure card per club area (§4.5), plus Sports Science, Boost Crate and the temporary club cards (§4.6b). Club packs only.
+- **Season event:** one per season (the year-end season card draw).
 
 Effects at Common and Legend (Uncommon, Rare and Epic sit in between):
 
@@ -331,9 +337,71 @@ Effects at Common and Legend (Uncommon, Rare and Epic sit in between):
 
 Any card you gain from an off-season card (signings, Youth Intake, Golden Generation) goes through the same Keep / Merge / Discard screen as a pack.
 
-### 4.7 Season events
+### 4.6b Club cards and club packs (v2.2)
 
-The season events are the "Season event" rows in the table above. One can be active at a time. Played in the summer it lasts the whole next season; played mid-season it lasts until that season ends. Pre-season Camp is summer only.
+Club cards are their own family, bought in **Shop → Club** as club packs and kept in **Cards → Club** until you play them (each play counts towards the season's card plays).
+
+| Pack | Price | Shows | You keep | Odds % per card (C / U / R / E / L) | Infrastructure share |
+|---|---|---|---|---|---|
+| Bronze Club Pack | 200 | 1 | 1 | 55 / 33 / 10 / 2 / 0 | 60% |
+| Silver Club Pack | 600 | 3 | 1 | 25 / 42 / 24 / 8 / 1 | 60% |
+| Gold Club Pack | 1,800 | 3 (Rare+) | 1 | 0 / 0 / 60 / 31 / 9 | 75% |
+
+The 3 cards of a pack are all different. An infrastructure card is only dealt at a rarity that can still raise its area; when none can, the slot is a temporary card. Opening: sealed pack → 3 cards face down → flip → tap one → Keep. Data: `src/data/clubPacks.js`, cards in `src/data/offseason.js` (group `club`, `kind: 'area' | 'temp'`).
+
+**Temporary club cards** (Common → Legend). Lasting ones go into `state.clubEffects` (`{ id, type, name, icon, text, gamesLeft, kind, value, homeOnly }`), shown under Cards → Club → Active effects and in the Club tab, and count down after each match (home-only ones after home games only). One of each type can run at a time.
+
+| Card | Effect | Common → Legend |
+|---|---|---|
+| 🎟 **High Season** | Home gate × value for the next N home games | ×1.5 / 1.75 / 2 / 2 / 2.5 for 3 / 3 / 3 / 4 / 5 home games |
+| 📈 **Viral Merchandise** | Merchandise income + value for 5 matches | +20 / 30 / 40 / 50 / 60% |
+| 🎫 **Ticket Promo** | Home gate + value and fans + f after each of the next 3 home games | +15 / 20 / 25 / 35 / 50%, fans +1 / 1 / 2 / 2 / 3 |
+| 🥂 **Sponsor Night** | One-off coins (×1.5 in tier 2, ×2 in tier 1) | 150 / 250 / 400 / 650 / 1,000 |
+| 🏕 **Team Building** | Cohesion now | +10 / 15 / 20 / 25 / 30 |
+| 🧊 **Recovery Camp** | Team shape for N matches | +6 / 8 / 10 / 12 / 15 for 3 / 3 / 3 / 4 / 5 |
+| 📑 **Analyst Report** | Tactics grade one step better (red → grey, grey → green) for N matches | 2 / 3 / 3 / 4 / 5 matches |
+| 🎙 **Press Charm** | Owners' confidence now | +3 / 4 / 6 / 8 / 10 |
+| 🦸 **Local Hero** | Fans' confidence now | +3 / 4 / 6 / 8 / 10 |
+| 🧪 **Sports Science** | Team shape until the season ends | +8 → +30 |
+| 📦 **Boost Crate** | Random in-game boosts | 3 → 8 |
+
+Analyst Report is read by the match engine: `buildUserTeam` sets `gradeUp`, and `teamFit` lifts the grade (and so the team-wide bonus) one step. Temporary effects stay with the club when you move (they're cleared on a new job).
+
+**Older saves (v4):** club-group cards in `inventory.offseason` move to `inventory.club`; season event cards stay in `inventory.offseason` (group `event`) and can still be played from Cards → Season; a market holding club or event offers is restocked with transfer cards.
+
+### 4.7 Season cards (v2.2)
+
+At the end of every season, when the summer opens (after the season rewards are collected), you're **dealt 3 season cards** and **pick 1**. It is the active event for the whole next season (`state.seasonCard`, played through the same `activeEvent` effects as the old event cards). Rarity sets its strength (Common 42%, Uncommon 30%, Rare 18%, Epic 8%, Legend 2%), and the 3 are always different.
+
+- **Redraw** the 3 for coins: ◎ 200, then 400, then 800 (per summer, three at most).
+- Not picked by kick-off? The first dealt card is played.
+- Picked from Home (off-season block) or Cards → Season; during the season Cards → Season shows the card in play. It moves with you if you change clubs.
+- **Old saves:** an event card bought in the market before v2.2 shows up in the deal as a free extra option ("Yours from the market"). Mid-season (no deal open) it can still be played from Items as before.
+- Continental Nights is only dealt to a club that qualified for a continental cup.
+
+**The deck** (values Common → Legend):
+
+| Card | Effect |
+|---|---|
+| 🏰 Fortress Season | +4 / 6 / 8 / 10 / 13% all stats at home |
+| 🔥 Indomitable Spirit | when losing from 60': +8 / 10 / 12 / 15 / 20% all stats |
+| ✈ Marketing Tour | merchandise income ×1.25 / 1.4 / 1.6 / 1.8 / 2.2 |
+| 🔭 Scouting Network | pack odds: 3 / 5 / 8 / 12 / 18 points moved from Common |
+| 🧩 Tactical Continuity | cohesion never below 30 / 40 / 50 / 60 / 80 |
+| ⛺ Pre-season Camp | +4 / 5 / 6 / 7 / 9% all stats in the first 3 / 3 / 4 / 5 / 6 matchdays |
+| 🫀 Fitness Program | stamina drains 10 / 15 / 20 / 25 / 35% slower |
+| 🐺 Underdog Mentality | +5 / 7 / 9 / 12 / 16% against higher-rated teams |
+| 🎯 Shooting Drills | +5 / 7 / 10 / 13 / 18% finishing |
+| 🏆 Cup Run | +6 / 8 / 10 / 13 / 17% in domestic cup matches, cup prize money ×1.5 |
+| 🌙 Continental Nights | +6 / 8 / 10 / 13 / 17% in continental and Club World Cup matches |
+| 🧪 Sports Science | +8 / 12 / 16 / 22 / 30 team shape all season |
+| ✨ Golden Generation | on pick: 2 academy players (Uncommon, Uncommon, Rare, Epic, Legend) |
+| 🏷 **Bargain Hunter** (new) | packs 10 / 15 / 20 / 25 / 30% cheaper all season |
+| 📡 **High Visibility** (new) | at season end: +1 job offer, from clubs asking up to 4 / 6 / 8 / 10 / 14 more reputation |
+| 🤑 **Sponsor's Favourite** (new) | sponsor bonus ◎ 6 / 9 / 12 / 16 / 22 a match (× division multiplier) |
+| 🏟 **Packed House** (new) | +25 / 35 / 50 / 65 / 90% home gate income |
+
+The new cards exist only in the deck (group `season`, `src/data/seasonCards.js`), never in the market.
 
 ### 4.8 Club squads, history pools and the academy
 
@@ -368,6 +436,11 @@ The pools hold 1,930 cards across 304 clubs, mostly Uncommon and Rare club figur
 4. **Squad caps:** each AI club keeps at most its starting maximum + 1 named cards. The weakest named card is released to the free market.
 
 The League tab's "Last season" view lists the biggest signings and academy graduates.
+
+**Card lifespans (v2.2):**
+- **Academy graduates start fresh:** a club legend coming through the academy (intake, Youth Intake, Golden Generation) has his full pool career (`matchesLeft`), whatever an earlier spell left. Generic academy cards (rarity `academy`, the retirement replacements) never retire.
+- **Pack players** have been playing somewhere: each arrives with a random **50–90%** of his career left. The pack opening shows "matches · %" on the card and "Career: X of Y matches left" before Keep.
+- **Signings** (World / National Signing) keep the matches they had at their old club (or what the world book says for a free agent). Veteran Signing still sets its own short career.
 
 ---
 
@@ -482,6 +555,8 @@ Measured (career simulator): about 1,000 coins in the first season, 2,000–4,50
 
 Odds are per card. The guarantee upgrades one card if none of the three meets it.
 
+**Club packs** (Shop → Club): Bronze 200 (1 card), Silver 600 (keep 1 of 3), Gold 1,800 (keep 1 of 3, Rare+). See §4.6b.
+
 **Free packs** as rewards:
 
 | Achievement | Reward |
@@ -554,9 +629,31 @@ Offers rarely arrive on their own (about 1 in 3 good seasons). In the off-season
 
 ### 7.6 Starting a career
 
+- **New career** (three steps): your name, your **country of origin** (any nation in `src/data/nations.js`, shown with its flag) and a **GM style**; then your **GM card** is dealt face down and flipped (§7.7); then pick one of three job offers.
 - A rookie GM starts with reputation **10** and picks from **3 offers from L3 clubs**, each one of the two weakest clubs in its league, with one club legend and journeymen for the rest. Season 1 is a fight to stay off the bottom.
 - That club's squad is your starting squad, and you also get a free **Starter Pack** (3 players, 1 guaranteed Rare).
 - **Stretch goal:** a "Sandbox" mode where you start at any club.
+
+### 7.7 The GM card (v2.2)
+
+One permanent card for the whole career (`state.gm.trait = { id, rarity }`), dealt at random from the style you pick: a random card of that style, at a random rarity (Common 45%, Uncommon 30%, Rare 18%, Epic 7%). Effects are modest by design. Code: `src/engine/gmTraits.js` (pure helpers that plug into the existing formulas).
+
+| Style | Card | Common / Uncommon / Rare / Epic |
+|---|---|---|
+| Financial | 💰 **Money Man** | +5 / 6 / 8 / 10% on all club revenue (a "Money Man bonus" line on every match's income, and season prize money) |
+| Financial | 🤝 **Dealmaker** | packs (player, coach, boost) and Transfer Market cards 10 / 12 / 14 / 15% cheaper |
+| Tactical | 🧠 **Tactics Connoisseur** | 1 / 1 / 2 / 2 red tactics warnings turn grey ("covered by your Tactics Connoisseur card"): they count a third of a strength in the squad-suitability score, so the tactics grade improves |
+| Tactical | 👁 **Game Reader** | skills you fire are 10 / 15 / 20% stronger; Epic: +1 skill per match (3 instead of 2) instead |
+| Physical | 🏃 **Fitness Freak** | +6 / 8 / 10 / 12 team shape |
+| Physical | 🛡 **Iron Squad** | stamina drains 5 / 7 / 9 / 12% slower |
+| Cohesion | 📣 **Dressing-room Leader** | +2 / 3 / 3 / 4 cohesion per match |
+| Cohesion | 🔗 **Continuity** | lineup changes cost 30 / 40 / 50 / 60% less cohesion |
+| Personal | 🥂 **CEO's Friend** | owners' confidence gains ×1.2 / 1.25 / 1.3 / 1.4, losses ×0.8 / 0.75 / 0.7 / 0.6 |
+| Personal | 🧣 **Fan Favourite** | the same for the fans |
+| Personal | 🦁 **Coach Tamer** | coach-fit distance −1 / −1 / −2 / −2 (a clash can become a loose fit, a red grade grey) |
+| Personal | 📺 **Media Darling** | reputation gains +10 / 12 / 15 / 20%, and +1 job offer whenever clubs call |
+
+Careers from before v2.2 have no card: Career says so, and everything plays as before.
 
 ---
 
@@ -784,3 +881,25 @@ Measured (`BOT=… node scripts/career-sim.mjs 16 8`):
 | Great | 5.8 | 2.6 | 1.4 | season 5 (16/16) | season 9 (15/16) | 0 of 128 seasons |
 | Average | 6.2 | 3.6 | 1.7 | season 7 (16/16) | season 9 (9/16) | 4 of 128 |
 | Poor | 9.4 | 6.9 | 7.8 | season 7 (6/16) | 2/16 | 36 of 128 |
+
+### Club cards and club packs (v2.2)
+
+Club-area cards left the Transfer Market for club packs (§4.6b), and the market sells transfer cards only. The career-sim bot buys up to 3 club packs each summer and 2 mid-season from spare money (Gold when it has 1,800 + twice the reserve, else Silver, Bronze in summer; poor bots Bronze only). It keeps the best card of 3 (great: value for the club, infrastructure first; average: highest rarity, infrastructure preferred; poor: the first card) and plays it straight away. Season events now come from the year-end season card draw, so the bot gets a stand-in free random event each summer (`SEASON_DRAW=0` turns it off).
+
+`BOT=… node scripts/career-sim.mjs 12 6`, same seeds, before → after:
+
+| Bot | Income S1–S6 (sum) | Income S6 | Area levels S3 / S6 (of 50) | Tier-2 club (median) | Tier-1 club | Sacked |
+|---|---|---|---|---|---|---|
+| Average | 14,793 → 14,782 | 4,059 → 4,400 | 6.9 / 10.5 → 4.0 / 9.1 | season 4 → 4 | 9/12 s5 → 9/12 s5 | 3 → 2 |
+| Great | 20,644 → 20,851 | 6,038 → 6,360 | 7.4 / 15.9 → 5.4 / 13.7 | season 4 → 4 | 12/12 s5 → 12/12 s5 | 0 → 0 |
+| Poor | 9,767 → 9,076 | 3,095 → 2,274 | 3.2 / 9.7 → 6.3 / 7.7 | 3/12 s7 → 1/12 s7 | 2/12 → 0/12 | 22 → 17 |
+
+The bot keeps about 1–1.5 club packs a season (average: 40 Bronze, 31 Silver, 6 Gold over 12 × 6 seasons; 60% of kept cards infrastructure). Poor bots (Bronze only, few careers reaching a higher tier) are noisy at 12 careers.
+
+### GM cards and season cards (v2.2)
+
+`node scripts/career-sim.mjs` gives each bot career a GM style and a random GM card (`TRAIT=none` for none, `TRAIT=<id> TRAIT_RARITY=<rarity>` to force one); the great bot scores the season deal and redraws a weak hand when it has spare coins, the others take the first card (the auto-pick at kick-off).
+
+Before the club-card merge, 16 careers × 8 seasons, v2.1 → v2.2 (season deal, pack wear, random GM card): average S1/S2/S3 finish 6.2 / 3.6 / 1.7 → 6.1 / 3.2 / 1.6, tier-1 club 16/16 (median season 7 → 5), giant 9/16 → 11/16 (median season 9), sacked 4 → 1 of 128; great 5.8 / 2.6 / 1.4 → 5.8 / 2.1 / 1.4, giant 15/16 → 14/16. Most of the gain is the free season card every summer (the old market event had to be bought).
+
+After merging club cards (12 × 6, `BOT=average`): dev with its stand-in summer event draw → v2.2 with no GM card → v2.2 with a random GM card: reputation after season 6 is 58 → 58 → 61, tier-1 club 9/12 → 7/12 → 9/12 (median season 5), top club 2/12 → 3/12 → 4/12. A GM card is worth about +3 reputation over 6 seasons on average. The strongest single card measured is an Epic Tactics Connoisseur for a bot that plays its coach's preset regardless of the squad (season-1 finish 6.3 → 5.5, reputation 69 → 71 at season 6 before the merge, with covered warnings worth a third of a strength); Coach Tamer does nothing for a bot that already plays its coach's style.

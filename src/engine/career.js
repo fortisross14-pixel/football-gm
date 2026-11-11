@@ -136,7 +136,9 @@ export function requiredReputation(world, clubId) {
 // Up to 3 offers. A sacked GM gets exactly 3: from clubs below the old one, and
 // always from a level lower when sacked by a top-flight club.
 // passive: offers that arrive on their own at season end (rare); otherwise you went looking.
-export function jobOffers(world, { reputation, currentClubId, sacked = false, good = true, seed, passive = false }) {
+// extra: more offers (Media Darling GM card, High Visibility season card); reach: clubs that
+// would ask for this much more reputation are in reach too (High Visibility).
+export function jobOffers(world, { reputation, currentClubId, sacked = false, good = true, seed, passive = false, extra = 0, reach = 0 }) {
   const rng = makeRng(seed);
   const current = requiredReputation(world, currentClubId);
   const all = Object.keys(world.clubs).filter((id) => id !== currentClubId).map((id) => ({ id, req: requiredReputation(world, id) }));
@@ -155,10 +157,11 @@ export function jobOffers(world, { reputation, currentClubId, sacked = false, go
     // Clubs a step up from where you are now (offers to go sideways or down are rarely worth showing).
     // No skipping a tier: from a tier-3 club the best you can get is a tier-2 club.
     const myLevel = DIVISION_BY_ID[world.clubs[currentClubId].divisionId].level;
-    pool = all.filter((c) => c.req <= reputation + stretch && c.req >= Math.min(current, reputation - 25)
+    pool = all.filter((c) => c.req <= reputation + stretch + reach && c.req >= Math.min(current, reputation - 25)
       && DIVISION_BY_ID[world.clubs[c.id].divisionId].level >= myLevel - 1);
     count = passive ? (good && rng.next() < 0.35 ? 1 : 0) : good ? rng.int(2, 3) : rng.int(1, 2);
   }
+  count += extra;
   if (!pool.length) pool = all.filter((c) => c.req <= Math.max(reputation, 30) && DIVISION_BY_ID[world.clubs[c.id].divisionId].level >= DIVISION_BY_ID[world.clubs[currentClubId].divisionId].level - 1);
   // Prefer the biggest clubs that would have you.
   const picked = [];

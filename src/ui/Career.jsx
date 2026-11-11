@@ -8,6 +8,8 @@ import { Segmented } from './Home.jsx';
 import { MyCareer } from './History.jsx';
 import { opinions, ownerLine, fanLine, unreadCount } from '../state/chronicle.js';
 import Sheet from './Sheet.jsx';
+import { GmCard, GmFlag } from './GmCard.jsx';
+import { nationOf } from '../data/nations.js';
 
 const VERDICT = { met: 'Objective met', exceeded: 'Objective exceeded', missed: 'Objective missed' };
 
@@ -45,6 +47,16 @@ export default function Career({ state, onAccept, onBack, onLook, onRead }) {
       {tab === 'inbox' && <Inbox state={state} onRead={onRead} />}
 
       {tab === 'overview' && (<>
+      <section className="panel">
+        <h2 className="section-title">Your GM card</h2>
+        <div className="gm-panel">
+          <GmCard trait={gm.trait} small />
+          <p className="hint">
+            {state.gmName || 'You'}{gm.nation ? <> · <GmFlag nation={gm.nation} />{nationOf(gm.nation)?.name}</> : null}.{' '}
+            {gm.trait ? 'Dealt when your career began: it stays with you at every club.' : 'This career started before GM cards existed, so it has none. New careers are dealt one.'}
+          </p>
+        </div>
+      </section>
       <section className="opinions">
         <div className="opinion">
           <span className="opinion__who">Owners · {op.owners.value}</span>

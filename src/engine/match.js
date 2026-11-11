@@ -37,16 +37,21 @@ const SHOOTER_WEIGHT = { GK: 0, DEF: 0.4, MID: 1.4, FWD: 3 };
 export { DEFAULT_TACTICS };
 const APPROACH_MENTALITY = { cautious: 'defensive', balanced: 'balanced', attacking: 'attacking' };
 
+const GRADES = ['red', 'grey', 'green'];
+export const upgradeGrade = (grade, steps = 0) => GRADES[Math.min(2, GRADES.indexOf(grade) + steps)];
+
 // Playing your coach's way: a team-wide bonus, or a penalty when instructions clash.
+// input.gm (user side only): { cover, coachCut } from the GM card (engine/gmTraits.js).
 export function teamFit(input) {
   const tactics = normalizeTactics(input.tactics);
   const style = coachStyle(input.coach);
-  const distance = styleDistance(tactics, style);
+  const distance = Math.max(0, styleDistance(tactics, style) - (input.gm?.coachCut || 0));
   const slots = FORMATIONS[input.formation] || [];
   const byId = Object.fromEntries((input.players || []).map((c) => [c.id, c]));
   const A = teamAttrs(slots.map((sl, i) => ({ card: byId[input.lineup?.[i]], pos: sl.pos, x: sl.x })).filter((e) => e.card));
-  const suit = suitability(tactics, A);
-  const grade = tacticsGrade(distance, suit);
+  const suit = suitability(tactics, A, { cover: input.gm?.cover || 0 });
+  // gradeUp (Analyst Report club card): one step better, red → grey → green.
+  const grade = upgradeGrade(tacticsGrade(distance, suit), input.gradeUp || 0);
   // Better coaches get more out of a good plan.
   const skill = { academy: 0.7, common: 0.8, uncommon: 0.9, rare: 1, epic: 1.1, legend: 1.2 }[input.coach?.rarity] ?? 0.8;
   const bonus = grade === 'green' ? GRADE_BONUS.green * skill : GRADE_BONUS[grade];
@@ -131,7 +136,8 @@ function buildTeam(input, isHome, context) {
     boostSlots: BASE_BOOST_SLOTS + Math.floor(tactician),
     loadout: [...(input.loadout || [])],
     boostsUsed: [],
-    skillsLeft: MAX_SKILLS,
+    skillsLeft: MAX_SKILLS + (input.gm?.extraSkills || 0),
+    skillPower: input.gm?.skillPower || 0, // Game Reader: skills you fire are stronger
     skillsUsed: [], // { cardId, skillId, segment }
     effects: [],
     superSubPending: false,
@@ -270,7 +276,7 @@ export function canUseSkill(state, side, cardId) {
   const entry = teamSkills(team).find((e) => e.cardId === cardId);
   if (!entry) return { ok: false, reason: 'Not available.' };
   if (team.skillsUsed.some((u) => u.cardId === cardId)) return { ok: false, reason: 'Already used this match.' };
-  if (team.skillsLeft <= 0) return { ok: false, reason: `Only ${MAX_SKILLS} skills per match.` };
+  if (team.skillsLeft <= 0) return { ok: false, reason: `Only ${team.skillsUsed.length} skills per match.` };
   const [own, opp] = side === 0 ? state.score : [state.score[1], state.score[0]];
   const seg = state.segment;
   const when = entry.skill.when;
@@ -290,7 +296,9 @@ export function activateSkill(state, side, cardId) {
   const { skill, name } = check.entry;
   team.skillsLeft -= 1;
   team.skillsUsed.push({ cardId, skillId: skill.id, segment: seg });
-  for (const e of SKILLS[skill.id].effects(skill.tier, { cardId })) {
+  const power = 1 + (team.skillPower || 0);
+  for (const raw of SKILLS[skill.id].effects(skill.tier, { cardId })) {
+    const e = power > 1 && typeof raw.value === 'number' && raw.value > 0 ? { ...raw, value: raw.value * power } : raw;
     if (e.type === 'stamina') {
       for (const { p } of onPitch(team)) p.stamina = Math.min(100, p.stamina + e.value);
       continue;

@@ -66,6 +66,8 @@ export function managerEntry(state, { id, slot, prev = null, now = Date.now() })
     slot,
     status: 'active',
     gmName: state.gmName || 'GM',
+    nation: state.gm?.nation ?? null,
+    gmTrait: state.gm?.trait ?? null, // the GM card ({ id, rarity }); null for careers from before GM cards
     created: prev?.created ?? now,
     updated: now,
     retiredAt: null,

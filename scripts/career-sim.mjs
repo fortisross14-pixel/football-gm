@@ -5,14 +5,17 @@ import {
   newClubState, starterOffers, nextUserGame, buildUserTeam, matchRewards, applyMatch, buyPack, pendingCard,
   duplicateOf, canMerge, keepPending, mergePending, discardPending, closeSeason, buyMarketCard, useOffseasonCard,
   startNextSeason, acceptOffer, carryOptions, seasonSummary, userStrength, canUseOffseason, POOL_BY_ID, isCoach, lookForOffers,
-  cardPlaysLeft, seeMarket,
+  cardPlaysLeft, seeMarket, buyClubPack, pickClubCard, seasonDealOptions, pickSeasonCard, redrawSeasonCards, redrawCost,
 } from '../src/state/club.js';
+import { CLUB_PACKS } from '../src/data/clubPacks.js';
+import { GM_STYLE_IDS, drawGmTrait } from '../src/engine/gmTraits.js';
 import { AREA_IDS } from '../src/data/facilities.js';
 import { aiTeamFor, clubById, standings } from '../src/engine/season.js';
 import { simulateMatch } from '../src/engine/match.js';
 import { overall, autoArrange, FORMATIONS, slotFit } from '../src/engine/cards.js';
 import { PACKS } from '../src/engine/packs.js';
-import { OFFSEASON_CARDS } from '../src/data/offseason.js';
+import { OFFSEASON_CARDS, OFFSEASON_IDS, TIERS, MARKET_WEIGHTS } from '../src/data/offseason.js';
+import { makeRng } from '../src/engine/rng.js';
 import { DIVISION_BY_ID, TOP_CLUBS } from '../src/data/world/structure.js';
 import { CONTINENTS } from '../src/engine/competitions.js';
 import { requiredReputation } from '../src/engine/career.js';
@@ -122,18 +125,32 @@ function shop(state, seed, stats) {
   return s;
 }
 
-// Management cards: the market is open all year and every card played uses one of the
-// season's card plays. Buy what helps (signings, then club areas, then one event) while
-// there are plays left, then play everything usable.
-const MARKET_ORDER = [
-  'worldSigning', 'nationalSigning', 'veteranSigning', 'stadiumEvolution', 'trainingGround', 'findSponsor', 'hospitality',
-  'merchExpansion', 'clubStore', 'spaRecovery', 'gymUpgrade', 'youthAcademy', 'analyticsDept', 'personalTrainer', 'careerExtension',
-];
+// Management cards: the market (transfer cards only) is open all year, club cards come in
+// club packs, and every card played uses one of the season's card plays. Buy what helps
+// (signings first), then a club pack or two from spare money, and play everything usable.
+const MARKET_ORDER = ['worldSigning', 'nationalSigning', 'veteranSigning', 'personalTrainer', 'careerExtension'];
+const AREA_ORDER = ['stadium', 'training', 'sponsor', 'hospitality', 'merch', 'store', 'spa', 'gym', 'academy', 'analytics'];
+const tier = (r) => ['common', 'uncommon', 'rare', 'epic', 'legend'].indexOf(r);
+
+// Which of the pack's cards to keep. great: the best value for the club; average: the highest
+// rarity, infrastructure first; poor: the first one.
+function pickIndex(state, cards) {
+  if (BOT === 'poor' || BOT === 'bad') return 0;
+  const score = (c) => {
+    const def = OFFSEASON_CARDS[c.type];
+    const playable = canUseOffseason({ ...state, pendingPick: null, cardPlays: 0 }, c).ok;
+    if (BOT !== 'great') return tier(c.rarity) * 10 + (def.facility && playable ? 15 : 0);
+    if (def.facility) return playable ? 60 + (c.rarity === 'legend' ? 30 : 0) - AREA_ORDER.indexOf(def.facility) * 2 + tier(c.rarity) : 0;
+    return 15 + tier(c.rarity) * 8 + (['highSeason', 'sponsorNight', 'analystReport'].includes(c.type) ? 6 : 0);
+  };
+  return cards.map((c, i) => [score(c), i]).sort((a, b) => b[0] - a[0])[0][1];
+}
+
 function manage(state, seed, { summer }) {
   let s = decide(state);
   if (BOT === 'bad' || !s.market) return s;
   if (BOT === 'poor' && !summer) return s;
-  const order = BOT === 'poor' ? MARKET_ORDER.slice(0, 5) : MARKET_ORDER;
+  const order = BOT === 'poor' ? MARKET_ORDER.slice(0, 3) : MARKET_ORDER;
   const offers = [...s.market.offers].filter((o) => !o.sold).sort((a, b) => {
     const ia = order.indexOf(a.type); const ib = order.indexOf(b.type);
     return (ia < 0 ? 50 : ia) - (ib < 0 ? 50 : ib);
@@ -148,19 +165,52 @@ function manage(state, seed, { summer }) {
     const r = useOffseasonCard(s, item.uid, target, seed++);
     s = decide(r.state);
   };
-  // Cards already owned (season rewards) first, then buy and play straight away.
-  for (const item of [...s.inventory.offseason]) play(item);
+  // Cards already owned (season rewards, earlier picks) first, then buy and play straight away.
+  for (const item of [...s.inventory.offseason, ...(s.inventory.club || [])]) play(item);
   for (const o of offers) {
     if (!cardPlaysLeft(s)) break;
-    const def = OFFSEASON_CARDS[o.type];
-    if (def.group === 'event' ? s.activeEvent : !order.includes(o.type)) continue;
+    if (!order.includes(o.type)) continue;
     if (s.coins - o.price < reserve || !canUseOffseason(s, o).ok) continue;
     s = buyMarketCard(s, o.uid);
     play(o);
   }
+  // Club packs from what's left: Gold when rich, Silver otherwise (poor bots: Bronze).
+  for (let i = 0; i < (summer ? 3 : 2) && cardPlaysLeft(s) > 1; i += 1) {
+    let pack = s.coins >= CLUB_PACKS.clubGold.price + reserve * 2 ? 'clubGold' : s.coins >= CLUB_PACKS.clubSilver.price + reserve ? 'clubSilver'
+      : summer && s.coins >= CLUB_PACKS.clubBronze.price + reserve ? 'clubBronze' : null;
+    if (BOT === 'poor') pack = s.coins >= CLUB_PACKS.clubBronze.price + reserve ? 'clubBronze' : null;
+    if (!pack) break;
+    s = buyClubPack(s, pack, seed++);
+    if (!s.pendingPick) break;
+    stats.clubPacks[pack] = (stats.clubPacks[pack] || 0) + 1;
+    const idx = pickIndex(s, s.pendingPick.cards);
+    const kept = s.pendingPick.cards[idx];
+    stats.clubPicks[OFFSEASON_CARDS[kept.type].kind] = (stats.clubPicks[OFFSEASON_CARDS[kept.type].kind] || 0) + 1;
+    s = pickClubCard(s, idx);
+    play(s.inventory.club.find((c) => c.uid === kept.uid));
+  }
   return seeMarket(s);
 }
-const offseason = (state, seed) => manage(state, seed, { summer: true });
+const offseason = (state, seed) => seasonDeal(manage(state, seed, { summer: true }), seed + 5);
+
+// The season deal: average and below take the first card; great scores the hand for its club
+// and redraws once when the hand is weak and money is spare.
+const SEASON_SCORE = {
+  fortressSeason: 9, underdogMentality: 4, preseasonCamp: 5, shootingDrills: 8, indomitableSpirit: 5, scoutingNetwork: 5,
+  tacticalContinuity: 4, fitnessProgram: 4, cupRun: 5, continentalNights: 6, sportsScience: 6, goldenGeneration: 7,
+  marketingTour: 3, bargainHunter: 5, highVisibility: 6, sponsorsFavourite: 3, packedHouse: 4,
+};
+const RARITY_SCORE = { common: 1, uncommon: 1.3, rare: 1.7, epic: 2.2, legend: 3 };
+function seasonDeal(state, seed) {
+  let s = state;
+  if (!s.seasonDeal || BOT !== 'great') return s;
+  const score = (o) => (SEASON_SCORE[o.type] || 3) * RARITY_SCORE[o.rarity];
+  const best = () => [...seasonDealOptions(s)].sort((a, b) => score(b) - score(a))[0];
+  if (score(best()) < 9 && redrawCost(s) !== null && s.coins > redrawCost(s) + 1500) { s = redrawSeasonCards(s, seed); stats.redraws += 1; }
+  const pick = best();
+  if (pick.type === 'goldenGeneration' && s.pendingOpen) return s;
+  return decide(pickSeasonCard(s, pick.key, seed + 1));
+}
 
 function chooseOffer(state) {
   const looks = process.env.NO_LOOK !== '1' && (BOT !== 'poor' || state.season.year % 2 === 0);
@@ -205,9 +255,10 @@ function playNext(state, seed, stats) {
 // Run careers
 
 const stats = {
-  packs: {}, pulls: {}, goals: 0, matches: 0, byComp: {},
+  packs: {}, pulls: {}, goals: 0, matches: 0, byComp: {}, clubPacks: {}, clubPicks: {},
   upsets: { underdog: { n: 0, w: 0, d: 0 }, favourite: { n: 0, w: 0, d: 0 } },
-  bySeason: Array.from({ length: SEASONS }, () => ({ level: [], pos: [], coinsIn: [], strengthGap: [], rep: [], areas: [], plays: [], retired: 0, trophies: 0, continental: 0, cats: {}, verdicts: {} })),
+  bySeason: Array.from({ length: SEASONS }, () => ({ level: [], pos: [], coinsIn: [], strengthGap: [], rep: [], areas: [], plays: [], retired: 0, trophies: 0, continental: 0, cats: {}, spent: {}, verdicts: {} })),
+  redraws: 0, traits: {},
   firstD2: [], firstD1: [], firstContinental: [], topClub: [], sacked: 0, moves: 0,
   worldNamed: [], contWinners: {}, cardSeasons: [],
 };
@@ -215,7 +266,11 @@ const stats = {
 const t0 = Date.now();
 for (let c = 0; c < CAREERS; c += 1) {
   const offer = starterOffers(1000 + c)[c % 3];
-  let s = bestLineup(newClubState(5000 + c * 17, { clubId: offer.clubId, gmName: 'Bot' }));
+  // A random GM style and card (TRAIT=none: no GM card, as in careers from before v2.2).
+  const style = GM_STYLE_IDS[(c * 7 + 3) % GM_STYLE_IDS.length];
+  const trait = process.env.TRAIT === 'none' ? null : process.env.TRAIT ? { id: process.env.TRAIT, rarity: process.env.TRAIT_RARITY || 'rare' } : drawGmTrait(style, 777 + c * 13);
+  if (trait) stats.traits[`${trait.id}/${trait.rarity}`] = (stats.traits[`${trait.id}/${trait.rarity}`] || 0) + 1;
+  let s = bestLineup(newClubState(5000 + c * 17, { clubId: offer.clubId, gmName: 'Bot', style, trait }));
   let seed = 10000 * (c + 1);
   const firstSeen = new Map();
   const reached = { d2: null, d1: null, cont: null, top: null };
@@ -240,6 +295,7 @@ for (let c = 0; c < CAREERS; c += 1) {
     row.pos.push(sum.position);
     row.coinsIn.push(Object.values(s.finance?.income || {}).reduce((a, b) => a + b, 0));
     for (const [k, v] of Object.entries(s.finance?.income || {})) row.cats[k] = (row.cats[k] || 0) + v / CAREERS;
+    for (const [k, v] of Object.entries(s.finance?.spent || {})) row.spent[k] = (row.spent[k] || 0) + v / CAREERS;
     const div = s.world.divisions[s.club.divisionId].filter((id) => id !== s.club.id).map((id) => s.world.clubs[id].strength);
     row.strengthGap.push(userStrength(s) - div.reduce((a, b) => a + b, 0) / div.length);
     row.trophies += (s.season.userTrophies || []).length;
@@ -295,10 +351,13 @@ console.log(`Card plays used per season (summer + season): ${stats.bySeason.map(
 for (const i of [0, Math.floor(SEASONS / 2), SEASONS - 1]) {
   const cats = stats.bySeason[i].cats;
   console.log(`Income season ${i + 1}: ${Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${Math.round(v)}`).join(' · ')}`);
+  console.log(`  spent: ${Object.entries(stats.bySeason[i].spent).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${Math.round(v)}`).join(' · ')}`);
 }
+console.log(`Club packs bought: ${JSON.stringify(stats.clubPacks)} · kept: ${JSON.stringify(stats.clubPicks)}`);
 console.log(`Board verdicts: ${['exceeded', 'met', 'missed'].map((v) => `${v} ${stats.bySeason.reduce((a, r) => a + (r.verdicts[v] || 0), 0)}`).join(' · ')}`);
 console.log(`\nReached a level-2 club: ${reachedPct(stats.firstD2)} · level-1 club: ${reachedPct(stats.firstD1)} · continental: ${reachedPct(stats.firstContinental)} · top club: ${reachedPct(stats.topClub)}`);
-console.log(`Moves: ${stats.moves} · sackings: ${stats.sacked}`);
+console.log(`Moves: ${stats.moves} · sackings: ${stats.sacked} · season-deal redraws: ${stats.redraws}`);
+console.log(`GM cards: ${Object.entries(stats.traits).map(([k, n]) => `${k}${n > 1 ? ` ×${n}` : ''}`).join(', ') || 'none'}`);
 const total = Object.values(stats.pulls).reduce((a, b) => a + b, 0);
 console.log(`Packs bought: ${JSON.stringify(stats.packs)} · pulls: ${['common', 'uncommon', 'rare', 'epic', 'legend'].map((r) => `${r} ${((100 * (stats.pulls[r] || 0)) / Math.max(1, total)).toFixed(0)}%`).join(' ')}`);
 console.log(`Matches: ${stats.matches} (${JSON.stringify(stats.byComp)}) · goals/match ${f1(stats.goals / stats.matches)}`);
