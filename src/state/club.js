@@ -7,7 +7,7 @@ import { aiOffseason, userAcademyIntake, ACADEMY_COUNT, ACADEMY_MAX_TIER, namedC
 import { clubStart, START_REPUTATION, START_CONFIDENCE, SACK_LINE, WARNING_LINE, security, matchConfidence, seasonConfidence, carryConfidence, boardObjective, judgeObjective, reputationChanges, weighReputation, applyReputation, jobOffers, CLUB_START, requiredReputation } from '../engine/career.js';
 import { DIVISIONS, DIVISION_BY_ID } from '../data/world/structure.js';
 import { BOOST_IDS, BOOSTS, BOOST_PACKS, openBoostPack, drawBoost } from '../data/boosts.js';
-import { OFFSEASON_CARDS, OFFSEASON_IDS, MARKET_WEIGHTS, TIERS, tierIndex, cardValue, cardPrice, SIGNING_TIERS, RENAMED_CARDS, cardGames, cardText, effectText, isClubCard } from '../data/offseason.js';
+import { AREA_CARD_IDS, OFFSEASON_CARDS, OFFSEASON_IDS, MARKET_WEIGHTS, TIERS, tierIndex, cardValue, cardPrice, SIGNING_TIERS, RENAMED_CARDS, cardGames, cardText, effectText, isClubCard } from '../data/offseason.js';
 import { CLUB_PACKS, drawClubCards } from '../data/clubPacks.js';
 import {
   HOSPITALITY_INCOME, PART_IDS, STORE_INCOME, MERCH_MULT, COHESION_GAIN, COHESION_MAX_BONUS,
@@ -17,12 +17,12 @@ import { makeGenericCard, FILLER_RATING, squadStrength } from '../engine/aiTeam.
 import { makeRng } from '../engine/rng.js';
 import { archiveSeason, foldRecords, compactEntry } from '../engine/history.js';
 import { ensureGms, updateGms } from '../engine/gms.js';
-import { pushInbox, moodNews, newContract, ceoWelcome } from './chronicle.js';
+import { pushInbox, moodNews, newContract, ceoWelcome, historySentence } from './chronicle.js';
 import { seasonYear } from '../engine/years.js';
 import {
-  queueConstruction, constructionOf, advanceConstructionInto, ticketOf, ticketMoodInto, activeSponsor, offerSponsorsInto, settleSponsorInto,
-  sponsorSeasonBonusInto, recordFinanceInto, migrateBusinessInto,
+  queueConstruction, constructionOf, advanceConstructionInto, ticketOf, ticketMoodInto, recordFinanceInto, migrateBusinessInto,
 } from './business.js';
+import { makeDealOffersInto, settleDealsInto, initialDealsInto, dealMatchItems } from './deals.js';
 import { newStadium, stadiumOf, matchdayOf, homeStatBonus, partLevel, weakestPart, ensureStadiumInto, capacityOf, starsOf } from './stadium.js';
 import { initialFans, ensureFansInto, fanMatchInto, fanSeasonInto, recordCrowdInto, boostFansInto, addHappinessInto, fansOf } from './fans.js';
 import { decideAwards } from '../engine/awards.js';
@@ -44,9 +44,9 @@ import {
   CONTINENT_NAME, CONTINENT2_NAME, CONT_SUPER_NAME, CONTINENTS, cupName, superCupName,
 } from '../engine/competitions.js';
 
-// v5: six confederations, super cups and second continental trophies (v4: 10-club divisions,
-// 44 leagues, 12-card squads). Older saves can't be continued.
-export const SAVE_VERSION = 5;
+// v6: 47 leagues (A-League and Oceania Other, v2.4). v5: six confederations, super cups and second
+// continental trophies (v4: 10-club divisions, 44 leagues, 12-card squads). Older saves can't be continued.
+export const SAVE_VERSION = 6;
 // The user's squad: 7 starters and 5 reserves. Starting squads use this shape.
 export const SQUAD_SIZE = 12;
 const SQUAD_SHAPE = ['GK', 'GK', 'DEF', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'MID', 'FWD', 'FWD'];
@@ -60,12 +60,18 @@ export const START_DIVISION = 'esp-3';
 export { FACILITY_LABEL };
 export { stadiumOf, matchdayOf, capacityOf, starsOf, fansOf };
 export {
-  startConstruction, constructionOf, constructionList, constructionProgress, setTicketPrice, ticketOf, signSponsor, sponsorOffers, sponsorTerms, activeSponsor,
+  startConstruction, constructionOf, constructionList, constructionProgress, setTicketPrice, ticketOf,
 } from './business.js';
+export {
+  signKit, signSponsorDeal, signTv, dealOffers, dealSigned, dealsOpen, dealsPending, offseasonStatus, kitSales, designFee, keepFactor, newDesignExpected,
+  expectedGames, sponsorEV, tvEV, successOf, isInternational,
+} from './deals.js';
 // An area's level, 0 when an older save doesn't have it yet.
 const lvl = (state, key) => Math.max(0, Math.min(5, state.facilities?.[key] || 0));
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+// The fan base in a season snapshot: just the counts.
+const fanCount = (state) => { const f = fansOf(state); return { local: f.local, global: f.global, happiness: f.happiness }; };
 const mult = (state) => LEVEL_MULTIPLIER[DIVISION_BY_ID[state.club.divisionId]?.level] || 1;
 const uid = (state) => {
   state.nextUid = (state.nextUid || 1) + 1;
@@ -195,6 +201,8 @@ export function newClubState(seed = 12345, { clubId = USER_CLUB.id, gmName = 'Yo
   state.season = newSeason(state, 1, seed);
   state.market = makeMarket(state, makeRng(seed + 77), 'season');
   setObjective(state);
+  initialDealsInto(state, seed + 91); // the club's kit, sponsor and TV deals for season 1
+  state.fansStart = fanCount(state);
   const ceo = ceoWelcome(state, state.world.clubs[state.club.id], state.gm.objective, seasonYear(1));
   pushInbox(state, 'board', ceo.title, ceo.body);
   return state;
@@ -398,8 +406,9 @@ function wear(card) {
 // v1.9: league and cup rates cut by about a quarter for the longer season (18 league games plus
 // preliminary cup rounds), so a season pays roughly what it did with 14.
 const RESULT_COINS = {
-  league: { win: 45, draw: 20, loss: 8, scaled: true },
-  cup: { win: 65, draw: 20, loss: 8, scaled: true },
+  // v2.3: league and cup about 5% lower (45/20/8 and 65/20/8 before): the TV deal pays per game.
+  league: { win: 43, draw: 19, loss: 7.5, scaled: true },
+  cup: { win: 62, draw: 19, loss: 7.5, scaled: true },
   continental: { win: 100, draw: 40, loss: 20, scaled: false },
   cwc: { win: 150, draw: 60, loss: 30, scaled: false },
   // v2.3: super cups pay like a cup game; the second continental trophy under half of the first.
@@ -422,6 +431,8 @@ const QUALIFYING_PRIZE = { continental: 150, continental2: 75 };
 
 // Business income per match, scaled for the longer v1.9 season.
 const MATCH_PACE = 0.8;
+// Merchandise per match: popularity × the merchandise line × this (0.3 before the v2.3 kit deal).
+export const MERCH_SHARE = 0.15;
 
 // Income from the business areas (data/facilities.js), per match at today's levels.
 // homeOnly items are paid at home games only. Labels match the season finance categories.
@@ -429,7 +440,8 @@ const MATCH_PACE = 0.8;
 export function businessIncome(state, ctx = {}) {
   const m = mult(state);
   const f = (k) => lvl(state, k);
-  let merch = squadPopularity(state) * MERCH_MULT[f('merch')] * 0.3;
+  // v2.3: replica shirts are the kit deal's (state/deals.js); the rest of the range stays here.
+  let merch = squadPopularity(state) * MERCH_MULT[f('merch')] * MERCH_SHARE;
   if (state.activeEvent?.type === 'marketingTour') merch *= cardValue('marketingTour', state.activeEvent.rarity) / 100;
   const ticket = ticketOf(state); // ticket prices: price per fan, demand, hospitality
   // v2.3: the gate is the crowd x the price per fan (state/stadium.js).
@@ -449,9 +461,6 @@ export function businessIncome(state, ctx = {}) {
   }
   // v1.9: 18 league games a season (14 before): each match pays a little less.
   for (const it of items) it.coins = Math.round(it.coins * MATCH_PACE);
-  // v2.2: the sponsor contract signed in the summer (sized by the Sponsorship area, already per match).
-  const sp = activeSponsor(state);
-  items.push({ area: 'sponsor', label: `Sponsor · ${sp.brand}`, coins: sp.perMatch, perWin: sp.perWin, perTrophy: sp.perTrophy, deal: sp.type });
   if (state.perks?.shirtSponsor) items.push({ area: null, label: 'Shirt sponsor', coins: state.perks.shirtSponsor }); // older saves
   return items;
 }
@@ -472,21 +481,20 @@ export function matchRewards(state, match, userSide, game = { competition: 'leag
   if (own >= 3) items.push({ label: '3+ goals', coins: Math.round(15 * m) });
   const derbyGame = isDerby(state.club.id, match.teams[1 - userSide].id);
   for (const it of businessIncome(state, { derby: derbyGame, competition: game.competition })) if (it.coins > 0 && (!it.homeOnly || match.teams[userSide].isHome)) items.push({ label: it.label, coins: it.coins });
-  const sponsor = activeSponsor(state);
-  if (winner === userSide && sponsor.perWin) items.push({ label: `Sponsor win bonus · ${sponsor.brand}`, coins: sponsor.perWin });
+  // v2.3 deals: sponsor per win and signing bonus, kit and TV instalments, TV per game.
+  items.push(...dealMatchItems(state, { won: winner === userSide, isHome: !!match.teams[userSide].isHome && !game.neutral, competition: game.competition || 'league' }));
   // Super cups are a single match: it is the final.
   const final = game.label?.endsWith('Final') || game.competition === 'supercup' || game.competition === 'contsuper';
   if (game.competition === 'cup' && state.activeEvent?.type === 'cupRun') items[0].coins = Math.round(items[0].coins * 1.5);
   if (winner === userSide && final) {
     const prize = TROPHY_PRIZE[game.competition];
     if (prize) items.push({ label: 'Trophy prize', coins: Math.round(prize.coins * (prize.scaled ? m : 1) * (game.competition === 'cup' && state.activeEvent?.type === 'cupRun' ? 1.5 : 1)) });
-    if (prize && sponsor.perTrophy) items.push({ label: `Sponsor trophy bonus · ${sponsor.brand}`, coins: sponsor.perTrophy });
   } else if (final && FINALIST_PRIZE[game.competition]) items.push({ label: 'Finalist prize', coins: FINALIST_PRIZE[game.competition] });
   if (game.label?.endsWith('Qualifying') && winner === userSide && QUALIFYING_PRIZE[game.competition]) items.push({ label: 'Qualified for the group stage', coins: QUALIFYING_PRIZE[game.competition] });
   // Derby day: double revenue from the game itself (trophy prizes aside).
   const oppId = match.teams[1 - userSide].id;
   if (isDerby(state.club.id, oppId)) {
-    const base = items.filter((i) => !/prize|Qualified|bonus/i.test(i.label)).reduce((s, i) => s + i.coins, 0);
+    const base = items.filter((i) => !i.deal && !/prize|Qualified|bonus/i.test(i.label)).reduce((s, i) => s + i.coins, 0);
     items.push({ label: `Derby day · ${derbyName(state.club.id, oppId)}`, coins: base });
   }
   items.push(...bonusIncome(state, items, match.teams[userSide].isHome));
@@ -516,7 +524,7 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
   const winner = match.result.winner;
 
   next.coins += rewards.total;
-  for (const item of rewards.items) track(next, 'income', INCOME_CATEGORY(item.label), item.coins);
+  for (const item of rewards.items) track(next, 'income', item.cat || INCOME_CATEGORY(item.label), item.coins);
   if (winner === userSide) next.record.w += 1;
   else if (winner === null) next.record.d += 1;
   else next.record.l += 1;
@@ -1001,9 +1009,7 @@ export function closeSeason(state, seed) {
   const final = tablesFromSeason(state.season);
   next.qualification = qualifiers(final.tables, final.points, seasonResults(state.season.comps));
   next.coins += prize;
-  sponsorSeasonBonusInto(next, state, { position, promoted }); // Glory contract: promotion or title
   recordFinanceInto(next, state.season.year); // season finance history (updated again when the next season starts)
-  offerSponsorsInto(next, seed + 53); // three sponsor offers for next season
   next.inventory.packs.push(...packs);
   const champion = next.world.clubs[table[0].id];
   next.trophies.push({ season: next.season.year, competition: state.club.division, position, champion: champion.name });
@@ -1139,6 +1145,10 @@ export function closeSeason(state, seed) {
     const [card] = drawClubCards(rng, 'clubBronze', (type, rarity) => canRaise(next, type, rarity));
     next.inventory.club = [...(next.inventory.club || []), { uid: uid(next), ...card }];
   }
+  // The off-season flow (Home → Off-season): the season review, then next season's deals.
+  next.seasonReview = seasonReviewOf(state, next, { position, awards });
+  next.offseasonSeen = [];
+  makeDealOffersInto(next, seed + 53, { clubCard: (r, rarity) => renewalCard(next, r, rarity) });
   next.activeEvent = null;
   next.seasonCard = null;
   dealSeasonCards(next, seed + 59);
@@ -1147,6 +1157,72 @@ export function closeSeason(state, seed) {
   next.phase = 'offseason';
   next.market = makeMarket(next, rng, 'summer');
   return next;
+}
+
+// The sponsor renewal's infrastructure card: an area card that can still raise an area at that rarity.
+function renewalCard(state, rng, rarity) {
+  const types = AREA_CARD_IDS.filter((t) => canRaise(state, t, rarity));
+  return types.length ? { type: rng.pick(types), rarity } : null;
+}
+
+// The season review (step 1 of the off-season flow), written when the season closes:
+// titles, record, best player, money and the fan base before and after.
+function seasonReviewOf(state, next, { position, awards }) {
+  const sumOf = (o) => Object.values(o || {}).reduce((a, b) => a + b, 0);
+  const ours = (a) => a && state.squad.some((c) => c.id === a.id);
+  const leaders = seasonLeaders(state.seasonStats || {});
+  const best = ours(awards?.best) ? { name: awards.best.name, why: 'Best Player of the season' }
+    : leaders.rating ? { name: leaders.rating.name, why: `Your best performer · rating ${leaders.rating.value}` }
+      : leaders.goals ? { name: leaders.goals.name, why: `${leaders.goals.value} goals` } : null;
+  const titles = [...(position === 1 ? [state.club.division] : []), ...(state.season.userTrophies || [])];
+  const income = next.finance?.income || {};
+  return {
+    year: state.season.year, club: state.club.name, division: state.club.division, position,
+    promoted: next.lastSeason?.userMove?.type === 'promoted', relegated: next.lastSeason?.userMove?.type === 'relegated',
+    record: { ...state.record }, titles, best, leaders,
+    awards: ['best', 'scorer', 'gk', 'young'].filter((k) => ours(awards?.[k])).map((k) => ({ k, name: awards[k].name })),
+    revenue: sumOf(income), lastRevenue: state.lastFinance ? sumOf(state.lastFinance.income) : null,
+    income: Object.entries(income).sort((a, b) => b[1] - a[1]).slice(0, 5),
+    fans: { before: state.fansStart || null, after: fanCount(next) },
+    kit: state.kit ? { brand: state.kit.brand, shirts: state.kit.shirts, revenue: state.kit.revenue } : null,
+  };
+}
+
+// Off-season flow: which steps the user has opened this summer (Home shows the progress).
+export function markOffseasonStep(state, id) {
+  if (state.phase !== 'offseason' || (state.offseasonSeen || []).includes(id)) return state;
+  return { ...state, offseasonSeen: [...(state.offseasonSeen || []), id] };
+}
+
+// The CEO meeting (last step): how the owners judge last season and what they want next.
+export function ceoMeeting(state) {
+  const review = state.gm?.review;
+  const board = Math.round(state.gm?.confidence?.board ?? 60);
+  const objective = boardObjective(state.world, state.club.divisionId, state.club.id, userStrength(state));
+  const ord = (n) => `${n}${['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 < 14) ? 0 : n % 10] || 'th'}`;
+  const mood = board >= 80 ? 'delighted' : board >= 65 ? 'very happy' : board >= 50 ? 'satisfied' : board >= 35 ? 'concerned' : 'unhappy';
+  const lines = [];
+  if (state.gm?.newJob) lines.push(`Welcome to ${state.club.name}. Last season is not on you: we start from today.`);
+  else if (review) {
+    const asked = review.objective?.text?.toLowerCase() || 'finish the season';
+    const when = `In ${seasonYear(review.season)}`;
+    if (review.verdict === 'exceeded') lines.push(`${when} we asked you to ${asked} and you finished ${ord(review.position)}. That's beyond what we hoped for.`);
+    else if (review.verdict === 'met') lines.push(`${when} we asked you to ${asked}: ${ord(review.position)} is what we wanted. Job done.`);
+    else lines.push(`${when} we asked you to ${asked}. ${ord(review.position)} isn't good enough, and the board noticed.`);
+    const sr = state.seasonReview;
+    if (sr?.titles?.length) lines.push(`The ${sr.titles.join(' and the ')}: that's what this club is about.`);
+    if (sr?.promoted) lines.push('Promotion changes everything for us: bigger crowds, bigger sponsors.');
+    if (sr?.relegated) lines.push('Relegation hurts the club, on the pitch and in the accounts.');
+  }
+  const nextYear = seasonYear((state.season?.year ?? 0) + 1);
+  const club = state.world.clubs[state.club.id];
+  // The club's story (real-life and in-game titles, from engine/titles.js) up to the new season.
+  if (club) lines.push(historySentence(state.archive || [], club, nextYear));
+  const expect = [`For ${nextYear} we expect you to ${objective.text.toLowerCase()} in ${state.club.division}.`];
+  const contract = state.gm?.contract;
+  if (contract && contract.until === (state.season?.year ?? 0) + 1) expect.push(`Your contract ends after ${nextYear}: a good season and we talk about an extension.`);
+  if (board < 40) expect.push('Another season like the last one and we will be looking for someone else.');
+  return { board, mood, lines, objective, expect, verdict: review?.verdict || null };
 }
 
 // Media Darling: reputation gains count for more (losses unchanged).
@@ -1343,8 +1419,9 @@ export function startNextSeason(state, seed) {
   const next = structuredClone(state);
   recordFinanceInto(next, state.season.year); // the summer's money belongs to the season just ended
   advanceConstructionInto(next, { all: true }); // summer building works are ready for matchday 1
-  settleSponsorInto(next); // no contract chosen → the steady offer
+  settleDealsInto(next); // kit, sponsor and TV not signed → keep the kit, renew the sponsor, first TV offer
   next.seasonDeal = null;
+  next.offseasonSeen = [];
   if (next.seasonCard) next.activeEvent = eventOf(next.seasonCard);
   next.season = newSeason(next, state.season.year + 1, seed);
   next.lastFinance = next.finance || null;
@@ -1359,6 +1436,7 @@ export function startNextSeason(state, seed) {
   next.market = makeMarket(next, makeRng(seed + 77), 'season');
   next.record = { w: 0, d: 0, l: 0, gf: 0, ga: 0 };
   next.seasonStats = {};
+  next.fansStart = fanCount(next); // the season review compares the fan base with this
   return next;
 }
 
@@ -1459,6 +1537,9 @@ export function acceptOffer(state, clubId, carryKeys = [], seed = 1) {
   next.perks = { shape: 0 };
   next.clubEffects = []; // temporary club cards stay with the old club
   next.market = makeMarket(next, rng, 'summer');
+  // The deals belong to the club: the new one's current kit and sponsor, and fresh offers.
+  initialDealsInto(next, seed + 91);
+  makeDealOffersInto(next, seed + 53, { clubCard: (r, rarity) => renewalCard(next, r, rarity) });
   next.record = { w: 0, d: 0, l: 0, gf: 0, ga: 0 };
   next.seasonStats = {};
   for (const c of squad) if (POOL_BY_ID[c.id] && !next.album.includes(c.id)) next.album.push(c.id);

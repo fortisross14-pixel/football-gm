@@ -1,11 +1,14 @@
-// History pools for the v2.3 confederation clubs: North America Other (Costa Rica, Honduras,
-// Guatemala, Canada), the new Oceania league and two East Asian clubs that replaced
-// Melbourne City and Sydney FC in East Asia Other.
+// History pools for the v2.3/v2.4 confederation clubs: North America Other (Costa Rica, Honduras,
+// Guatemala, Canada, Panama, Jamaica), the A-League, Oceania Other and two East Asian clubs that
+// replaced Melbourne City and Sydney FC in East Asia Other.
 // x = retired player (card shows him at his peak), n = active player. See data/cardgen.js.
+// f = an invented player (fictional: true) for clubs whose real squads we don't know well
+// (Panama, Jamaica and the Pacific island clubs): plausible names, tier-3 ratings.
 import { card, pools } from '../cardgen.js';
 
 const x = (name, pos, ovr, nation, trait = null, id = null) => card(name, pos, ovr, nation, trait, { id });
 const n = (name, pos, ovr, nation, trait = null, id = null) => card(name, pos, ovr, nation, trait, { now: true, id });
+const f = (name, pos, ovr, nation, trait = null, id = null) => card(name, pos, ovr, nation, trait, { fictional: true, id });
 
 export const { SQUADS, PLAYERS } = pools({
   // ---- North America Other ----
@@ -16,9 +19,6 @@ export const { SQUADS, PLAYERS } = pools({
   alajuelense: [
     x('Wílmer López', 'MID', 68, 'CRC', 'playmaker'), x('Bryan Ruiz', 'MID', 70, 'CRC', 'clutch'), x('Mauricio Montero', 'DEF', 66, 'CRC', 'leader'),
     x('Óscar Ramírez', 'MID', 66, 'CRC'), x('Patrick Pemberton', 'GK', 64, 'CRC'),
-  ],
-  herediano: [
-    x('Yendrick Ruiz', 'FWD', 64, 'CRC', 'poacher'), n('Keysher Fuller', 'DEF', 66, 'CRC'), n('Leonel Moreira', 'GK', 64, 'CRC', 'shotStopper'),
   ],
   'olimpia-hon': [
     x('Wilson Palacios', 'MID', 68, 'HON', 'engine'), x('Maynor Figueroa', 'DEF', 68, 'HON', 'wall'), x('Noel Valladares', 'GK', 66, 'HON', 'shotStopper'),
@@ -35,19 +35,22 @@ export const { SQUADS, PLAYERS } = pools({
     n('Ryan Gauld', 'MID', 70, 'SCO', 'playmaker'), n('Brian White', 'FWD', 68, 'USA', 'poacher'), n('Yohei Takaoka', 'GK', 66, 'JPN'),
     n('Alphonso Davies', 'DEF', 74, 'CAN', 'engine'),
   ],
-  'toronto-fc': [
-    x('Sebastian Giovinco', 'FWD', 74, 'ITA', 'clutch'), x('Michael Bradley', 'MID', 70, 'USA', 'leader'), x('Jozy Altidore', 'FWD', 68, 'USA'),
-    n('Jonathan Osorio', 'MID', 66, 'CAN'), n('Federico Bernardeschi', 'MID', 72, 'ITA'),
+
+  tauro: [
+    f('Rolando Cedeño', 'FWD', 65, 'PAN', 'poacher'), f('Aníbal Quintero', 'MID', 64, 'PAN', 'playmaker'), f('Edwin Batista', 'DEF', 63, 'PAN'),
+    f('Jaime Ortega', 'GK', 63, 'PAN'),
   ],
-  'cf-montreal': [
-    x('Ignacio Piatti', 'MID', 70, 'ARG', 'playmaker'), x('Patrice Bernier', 'MID', 64, 'CAN', 'leader'), x('Evan Bush', 'GK', 64, 'USA'),
-    n('Samuel Piette', 'MID', 64, 'CAN', 'engine'),
+  'plaza-amador': [
+    f('Luis Ábrego', 'FWD', 64, 'PAN'), f('Ricardo Bósquez', 'MID', 63, 'PAN', 'engine'), f('Omar Villarreal', 'DEF', 63, 'PAN', 'leader'),
   ],
-  'forge-fc': [
-    n('Kyle Bekker', 'MID', 64, 'CAN', 'playmaker'), n('Triston Henry', 'GK', 62, 'CAN'), n('Terran Campbell', 'FWD', 62, 'CAN'),
+  cavalier: [
+    f('Shamar Whyte', 'FWD', 64, 'JAM', 'poacher'), f('Kemoy Grant', 'MID', 63, 'JAM'), f('Dane Barrett', 'DEF', 63, 'JAM', 'wall'),
+  ],
+  'harbour-view': [
+    x('Ricardo Gardner', 'DEF', 66, 'JAM', 'engine'), f('Tevin Brissett', 'FWD', 63, 'JAM'), f('Jermaine Lawes', 'MID', 62, 'JAM'),
   ],
 
-  // ---- Oceania ----
+  // ---- Oceania: Auckland City (Oceania Other), then the A-League ----
   'auckland-city': [
     x('Ivan Vicelich', 'DEF', 66, 'NZL', 'leader'), n('Emiliano Tade', 'FWD', 64, 'ARG', 'poacher'), n('Ryan De Vries', 'FWD', 62, 'NZL'),
     n('Ángel Berlanga', 'MID', 62, 'ESP'), n('Conor Tracey', 'GK', 62, 'NZL'),
@@ -78,6 +81,41 @@ export const { SQUADS, PLAYERS } = pools({
   'central-coast': [
     x('Mile Jedinak', 'MID', 66, 'AUS', 'leader'), n('Mathew Ryan', 'GK', 72, 'AUS', 'shotStopper'), x('John Hutchinson', 'MID', 64, 'MLT'),
     x('Matt Simon', 'FWD', 62, 'AUS'), x('Danny Vukovic', 'GK', 64, 'AUS'),
+  ],
+
+  'macarthur-fc': [
+    x('Adam Federici', 'GK', 66, 'AUS', 'shotStopper'), x('Tommy Oar', 'MID', 64, 'AUS'), x('Craig Noone', 'MID', 64, 'ENG'),
+    x('Matt Derbyshire', 'FWD', 64, 'ENG', 'poacher'), n('Al Hassan Toure', 'FWD', 64, 'AUS'),
+  ],
+
+  // ---- Oceania Other (New Zealand and the Pacific islands) ----
+  'christchurch-united': [
+    f('Callum Hartley', 'MID', 63, 'NZL', 'playmaker'), f('Josh Tarawhiti', 'FWD', 63, 'NZL'), f('Sam Brightwell', 'DEF', 62, 'NZL'),
+  ],
+  'ba-fc': [
+    f('Sakiusa Vatuvei', 'FWD', 64, 'FIJ', 'poacher'), f('Ilisoni Raikadroka', 'MID', 63, 'FIJ'), f('Josefa Naivalu', 'GK', 62, 'FIJ'),
+  ],
+  'rewa-fc': [
+    f('Tevita Ravuama', 'DEF', 63, 'FIJ', 'leader'), f('Malakai Tuidraki', 'FWD', 63, 'FIJ'), f('Ravinesh Kumar', 'MID', 62, 'FIJ'),
+  ],
+  'hekari-united': [
+    f('Nigel Kauwa', 'FWD', 63, 'PNG'), f('Joseph Waninga', 'MID', 62, 'PNG'), f('Gideon Tamate', 'DEF', 62, 'PNG'),
+    f('Peter Ovia', 'GK', 62, 'PNG'),
+  ],
+  'as-pirae': [
+    f('Teva Manutahi', 'FWD', 64, 'TAH', 'clutch'), f('Heimana Tetuanui', 'MID', 63, 'TAH'), f('Raimana Faatau', 'DEF', 62, 'TAH'),
+  ],
+  'as-venus': [
+    f('Hiro Tehaamoana', 'MID', 63, 'TAH', 'engine'), f('Manu Rotui', 'FWD', 62, 'TAH'), f('Vaitea Mahinui', 'GK', 62, 'TAH'),
+  ],
+  'hienghene-sport': [
+    f('Jérémy Wahnyamalla', 'FWD', 64, 'NCL', 'poacher'), f('Kévin Waheo', 'MID', 63, 'NCL'), f('Pierre Ixeco', 'DEF', 62, 'NCL', 'wall'),
+  ],
+  'solomon-warriors': [
+    f('Jonah Ramo', 'FWD', 63, 'SOL'), f('Clement Sau', 'MID', 62, 'SOL'), f('Moses Kakai', 'DEF', 62, 'SOL'),
+  ],
+  'galaxy-fc': [
+    f('Lionel Malas', 'FWD', 63, 'VAN'), f('Tony Tari', 'MID', 62, 'VAN'), f('Eric Natuman', 'DEF', 62, 'VAN'),
   ],
 
   // ---- East Asia Other ----

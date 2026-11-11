@@ -21,6 +21,7 @@ const fs = require('fs');
     localStorage.setItem('football-cards-settings', JSON.stringify({ speed: 'instant', autoplay: false, reduceMotion: true, tips: false }));
   }, save);
   const page = await ctx.newPage();
+  page.setDefaultTimeout(8000);
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
@@ -32,6 +33,33 @@ const fs = require('fs');
   await page.click('.slot__main');
   await page.waitForTimeout(400);
   await step('home', async () => {});
+  // A save at season end: the six off-season steps, then the next season starts.
+  if (await page.locator('.season-end .btn--primary').count()) {
+    await step('summer-1-review', () => page.click('.season-end .btn--primary'));
+    for (let i = 0; i < 12 && await page.locator('.opening').count(); i += 1) {
+      if (await page.locator('.opening .link-btn:has-text("Skip")').count()) await page.click('.opening .link-btn:has-text("Skip")', { force: true });
+      await page.waitForTimeout(150);
+      const discard = page.locator('.opening button:has-text("Discard")');
+      if (await discard.count()) await discard.first().click({ force: true });
+      await page.waitForTimeout(150);
+    }
+    await step('summer-2-card', () => page.click('.summer-nav .btn--primary'));
+    await step('summer-2-card-picked', () => page.click('.season-deal__card .ocard >> nth=0').catch(() => {}));
+    await step('summer-3-jersey', () => page.click('.summer-nav .btn--primary'));
+    await step('summer-3-jersey-new', () => page.click('.kit-pick .segmented button:nth-child(2)').then(() => page.click('.deals .deal >> nth=1')));
+    await step('summer-3-jersey-signed', () => page.click('.screen--summer > .btn--primary'));
+    await step('summer-4-sponsor', () => page.click('.summer-nav .btn--primary'));
+    await step('summer-4-sponsor-signed', () => page.click('.deals .deal >> nth=0'));
+    await step('summer-5-tv', () => page.click('.summer-nav .btn--primary'));
+    await step('summer-5-tv-signed', () => page.click('.deals .deal >> nth=1'));
+    await step('summer-6-ceo', () => page.click('.summer-nav .btn--primary'));
+    await step('summer-review-again', () => page.click('.stepper__step >> nth=0'));
+    await step('home-offseason', () => page.click('.summer-head .link-btn'));
+    await step('summer-from-home', () => page.click('.summer-plan .btn--primary'));
+    await step('summer-ceo-start', () => page.click('.stepper__step >> nth=5').then(() => page.click('.screen--summer > .btn--primary')));
+    await step('club-jersey-season2', () => page.click('.tabbar button:nth-child(3)').then(() => page.click('.screen--club > .segmented button:has-text("Jersey")')));
+    await page.click('.tabbar button:nth-child(1)');
+  }
   await step('squad', () => page.click('.tabbar button:nth-child(2)'));
   await step('tactics', () => page.click('.screen--squad-wrap .segmented__opts button:nth-child(2)'));
   await step('tactics-catenaccio', () => page.click('text=Catenaccio'));
@@ -67,8 +95,9 @@ const fs = require('fs');
   await step('club-fans', () => page.click('.screen--club > .segmented button:nth-child(3)'));
   await step('club-finance', () => page.click('.screen--club > .segmented button:nth-child(4)'));
   await step('club-finance-high', () => page.click('.screen--club .panel .segmented button:has-text("High")'));
-  await step('club-effects', () => page.click('.screen--club > .segmented button:nth-child(5)'));
-  await step('club-trophies', () => page.click('.screen--club > .segmented button:nth-child(6)'));
+  await step('club-jersey', () => page.click('.screen--club > .segmented button:has-text("Jersey")'));
+  await step('club-effects', () => page.click('.screen--club > .segmented button:has-text("Effects")'));
+  await step('club-trophies', () => page.click('.screen--club > .segmented button:has-text("Trophies")'));
   // Building works from a club-area card, when the save has one.
   await step('club-build-card', async () => {
     await page.click('.tabbar button:nth-child(4)');

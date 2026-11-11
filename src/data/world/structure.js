@@ -1,4 +1,4 @@
-// The world: 46 divisions of 10 clubs. Club lists live in the region files.
+// The world: 47 divisions of 10 clubs. Club lists live in the region files.
 //
 // level sets AI strength and the reward multiplier (L1 ×3, L2 ×2, L3 ×1).
 // continent is the confederation (europe, southamerica, northamerica, africa, asia, oceania):
@@ -34,7 +34,7 @@ const LEAGUE_NAMES = {
   'bel-1': 'Pro League', 'sui-1': 'Swiss Super League', 'den-1': 'Danish Superliga',
   'mex-1': 'Liga MX', 'mex-2': 'Liga de Expansión MX', 'chi-1': 'Primera División de Chile', 'usa-1': 'MLS', 'col-1': 'Liga Colombiana', 'sam-1': 'Copa Andina League',
   'jpn-1': 'J1 League', 'jpn-2': 'J2 League', 'asi-1': 'Asian Super League', 'apc-1': 'Pacific Rim League', 'sau-1': 'Saudi Pro League',
-  'nao-1': 'Liga Norte', 'oce-1': 'Oceania Premier League',
+  'nao-1': 'Liga Norte', 'aus-1': 'A-League', 'oce-1': 'Oceania Premier League',
   'nga-1': 'Nigeria Premier League', 'egy-1': 'Egyptian Premier League', 'afr-1': 'Pan-African League',
 };
 
@@ -58,7 +58,7 @@ export const DIVISIONS = [
   ...single('eur', 'Europe Other', 3, 'europe'),
   ...major('mex', 'Mexico', 'northamerica'),
   ...single('usa', 'USA', 3, 'northamerica'),
-  // Costa Rica, Honduras, Guatemala and Canada (v2.3).
+  // Costa Rica, Honduras, Guatemala, Canada (v2.3), Panama and Jamaica (v2.4).
   ...single('nao', 'North America Other', 3, 'northamerica'),
   ...single('col', 'Colombia', 3, 'southamerica'),
   ...single('chi', 'Chile', 3, 'southamerica'),
@@ -72,8 +72,10 @@ export const DIVISIONS = [
   ...single('nga', 'Nigeria', 3, 'africa'),
   ...single('egy', 'Egypt', 3, 'africa'),
   ...single('afr', 'Africa Other', 3, 'africa'),
-  // Australia and New Zealand (v2.3).
-  ...single('oce', 'Oceania', 3, 'oceania'),
+  // Australia's A-League (with Wellington Phoenix and Auckland FC) and the rest of Oceania:
+  // New Zealand, Fiji, Papua New Guinea, Tahiti, New Caledonia, Solomon Islands, Vanuatu (v2.4).
+  ...single('aus', 'Australia', 3, 'oceania'),
+  ...single('oce', 'Oceania Other', 3, 'oceania'),
 ];
 
 // Every division has this many clubs (a double round-robin of DIVISION_SIZE − 1 rounds each way).

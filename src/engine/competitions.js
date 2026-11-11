@@ -99,9 +99,9 @@ export const FORMATS = {
     k: { groups: 2, direct: [['JPN', 2], ['SAU', 2], ['ASI', 2], ['APC', 2]], qualifying: [] },
     k2: { groups: 2, direct: [['JPN', 2], ['SAU', 2], ['ASI', 2], ['APC', 2]], qualifying: [] },
   },
-  // One league: its top three and the cup winner (next-placed if already in).
+  // Two leagues (v2.4): the A-League's and Oceania Other's champions and runners-up; one group → final.
   oceania: {
-    k: { groups: 1, direct: [['OCE', 3]], qualifying: [], cupWinner: true },
+    k: { groups: 1, direct: [['AUS', 2], ['OCE', 2]], qualifying: [] },
     k2: null,
   },
 };

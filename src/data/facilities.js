@@ -3,6 +3,8 @@
 // Sports areas make the team better. Numbers here are the single source for the engine
 // (state/club.js) and the Club management screen.
 
+import { SPONSOR_BASE, SEASON_GAMES } from './deals.js';
+
 export const MAX_LEVEL = 5;
 
 // Per-match income tables are multiplied by the division multiplier (data/demo.js).
@@ -10,7 +12,6 @@ export const STADIUM_INCOME = [30, 45, 54, 64, 74, 85]; // per home game (pre-v2
 export const HOSPITALITY_INCOME = [0, 10, 18, 27, 36, 46]; // per home game
 export const STORE_INCOME = [0, 4, 7, 10, 14, 18]; // every match
 export const MERCH_MULT = [0.5, 0.9, 1.3, 1.7, 2.1, 2.5]; // × squad popularity × 0.3, every match
-export const SPONSOR_INCOME = [0, 6, 11, 17, 24, 32]; // every match
 export const SPONSOR_NAMES = ['No sponsor', 'Local business', 'Regional brand', 'National brand', 'Major brand', 'Global partner'];
 export const MERCH_LINES = ['Replica kits', 'Kits and scarves', 'Lifestyle range', 'Lifestyle and kids', 'Online store', 'Global brand'];
 
@@ -59,8 +60,8 @@ export function areaEffect(id, level, { m = 1, academy = null } = {}) {
     case 'stadium': return 'Six parts and a star rating: see the stadium card';
     case 'hospitality': return level ? `Restaurant and boxes ◎ ${c(HOSPITALITY_INCOME[level])} a home game` : 'No restaurant yet';
     case 'store': return level ? `Store sales ◎ ${c(STORE_INCOME[level])} a match` : 'No club store yet';
-    case 'merch': return `${MERCH_LINES[level]}: popularity × ${MERCH_MULT[level]} × 0.3 a match`;
-    case 'sponsor': return `${level ? SPONSOR_NAMES[level] : 'Local shop'} deals: steady ◎ ${c(STEADY_INCOME[level])} a match`;
+    case 'merch': return `${MERCH_LINES[level]}: popularity × ${MERCH_MULT[level]} × 0.15 a match, and it sells more shirts`;
+    case 'sponsor': return `${level ? SPONSOR_NAMES[level] : 'Local shop'} deals: sponsor offers about ◎ ${Math.round(SPONSOR_BASE[level] * m * 0.8 * SEASON_GAMES)} a season`;
     case 'training': return `Cohesion +${COHESION_GAIN[level]} a match, worth up to +${Math.round(COHESION_MAX_BONUS[level] * 100)}% stats`;
     case 'gym': return level ? `Stamina drains ${GYM_DRAIN[level]}% slower` : 'No gym yet';
     case 'spa': return level ? `+${SPA_SHAPE[level]} team shape` : 'No spa yet';
@@ -90,21 +91,7 @@ export const TICKET_PRICES = {
 };
 export const TICKET_IDS = Object.keys(TICKET_PRICES);
 
-// Sponsor contracts, offered every summer (one of each kind). Amounts are live: they grow
-// with the Sponsorship area level and the division multiplier. STEADY_INCOME is the base
-// per match (the old SPONSOR_INCOME, plus a small deal at level 0).
-export const STEADY_INCOME = [3, 6, 11, 17, 24, 32];
-export const SPONSOR_DEALS = {
-  steady: { label: 'Steady', icon: '🤝', perMatch: 1, perWin: 0, perTrophy: 0, text: 'Fixed coins every match.' },
-  performance: { label: 'Performance', icon: '📈', perMatch: 0, perWin: 2.2, perTrophy: 0, text: 'Coins for every win, nothing for draws or defeats.' },
-  glory: { label: 'Glory', icon: '🏆', perMatch: 0.4, perWin: 0, perTrophy: 14, text: 'A little every match, a big bonus for each trophy and for promotion.' },
-};
-export const SPONSOR_DEAL_IDS = Object.keys(SPONSOR_DEALS);
-export const SPONSOR_BRANDS = {
-  steady: ['Harbour Bank', 'Northgate Insurance', 'Civic Water', 'Lindqvist Logistics'],
-  performance: ['Volt Energy', 'Sprintline Sports', 'Apex Motors', 'Kickstart Telecom'],
-  glory: ['Crown Airways', 'Goldleaf Holdings', 'Summit Group', 'Laurel Watches'],
-};
+// Sponsor offers (v2.3) are sized from SPONSOR_BASE in data/deals.js (the Sponsorship area level).
 
 // ---------------------------------------------------------------------------
 // The stadium (v2.3): six parts with levels 0–5 (state.stadium.parts) and a star rating.

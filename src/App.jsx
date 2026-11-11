@@ -6,7 +6,7 @@ import {
   newClubState, buildUserTeam, matchRewards, applyMatch,
   buyPack, buyBoostPack, openOwnedPack, keepPending, mergePending, discardPending, closeSeason, buyMarketCard,
   startNextSeason, useOffseasonCard, seeMarket, POOL_BY_ID, nextUserGame, acceptOffer, discardCommons, lookForOffers, toggleCurse,
-  setTicketPrice, signSponsor,
+  setTicketPrice, signKit, signSponsorDeal, signTv, markOffseasonStep, dealsPending,
   pickSeasonCard, redrawSeasonCards,
   buyClubPack, openOwnedClubPack, pickClubCard,
 } from './state/club.js';
@@ -21,6 +21,7 @@ import Competitions, { Competition } from './ui/Competitions.jsx';
 import PackOpening from './ui/PackOpening.jsx';
 import ClubPackOpening from './ui/ClubPackOpening.jsx';
 import Club from './ui/Club.jsx';
+import OffseasonFlow from './ui/Offseason.jsx';
 import Career from './ui/Career.jsx';
 import Menu, { SettingsSheet } from './ui/Menu.jsx';
 import NewCareer from './ui/NewCareer.jsx';
@@ -42,7 +43,8 @@ const TIPS = {
   cards: 'Owned: your players, items and the album. Shop: player packs, boost packs and, after the season, the Transfer Market.',
   league: 'Every league in the world plays each matchday. Tap any club to see its page, and open History for champions, top scorers, MVPs and Golden Gloves by season.',
   world: 'The wider world: manager rankings, the strongest clubs, all-time records and the Hall of Fame.',
-  club: 'Your club: what the owners want, the ten areas and their building works, money in and out, the sponsor and ticket prices, and the trophy cabinet.',
+  club: 'Your club: what the owners want, the ten areas and their building works, money in and out, the kit, sponsor and TV deals, ticket prices and the trophy cabinet.',
+  summer: 'The off-season, step by step: last season, your season card, then next season\'s jersey, sponsor and TV deals, and a meeting with the CEO. Signing a deal is final.',
   career: 'Your reputation decides which clubs will hire you. Keep the owners and fans happy: if job security ends a season under 30, or you miss the objective twice, you are sacked.',
   opening: 'New card! Keep it (pick who it replaces), merge a duplicate for +1★, or discard it for coins.',
 };
@@ -153,6 +155,9 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
     return () => clearTimeout(t);
   }, [toast]);
 
+  // The off-season flow only exists in the summer (e.g. after kick-off, back to Home).
+  useEffect(() => { if (screen === 'summer' && state.phase !== 'offseason') setScreen('home'); }, [screen, state.phase]);
+
   const fixture = nextUserGame(state);
   const opponent = fixture ? clubById(state.world, fixture.opponentId) : null;
 
@@ -178,6 +183,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
     setScreen('result');
   };
 
+  const deal = (r) => { setState(r.state); setToast({ text: r.message, tone: r.success ? 'good' : 'bad' }); };
   const pickSeason = (key) => setState((s) => pickSeasonCard(s, key, randomSeed()));
   const redrawSeason = () => setState((s) => redrawSeasonCards(s, randomSeed()));
   const useCard = (itemUid, target) => {
@@ -187,7 +193,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
     setToast({ text: r.message, tone: r.success === false ? 'bad' : 'good' });
   };
 
-  const isTab = TABS.some((t) => t.id === screen) || ['club', 'career', 'team', 'player', 'manager', 'shop', 'comp'].includes(screen);
+  const isTab = TABS.some((t) => t.id === screen) || ['club', 'career', 'team', 'player', 'manager', 'shop', 'comp', 'summer'].includes(screen);
 
   return (
     <NavContext.Provider value={nav}>
@@ -212,10 +218,22 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
           <Home
             state={state}
             onPlay={() => setScreen('prematch')}
-            onCloseSeason={() => setState((s) => closeSeason(s, randomSeed()))}
+            onCloseSeason={() => { setState((s) => closeSeason(s, randomSeed())); setScreen('summer'); }}
             onStartSeason={() => setState((s) => startNextSeason(s, randomSeed()))}
+            goTo={setScreen}
+          />
+        )}
+        {screen === 'summer' && state.phase === 'offseason' && (
+          <OffseasonFlow
+            state={state}
+            onSeen={(id) => setState((s) => markOffseasonStep(s, id))}
+            onSignKit={(id, design) => deal(signKit(state, id, design))}
+            onSignSponsor={(id) => deal(signSponsorDeal(state, id))}
+            onSignTv={(id) => deal(signTv(state, id))}
             onPickSeason={pickSeason}
             onRedrawSeason={redrawSeason}
+            onStart={() => { setState((s) => startNextSeason(s, randomSeed())); setScreen('home'); }}
+            onBack={() => setScreen('home')}
             goTo={setScreen}
           />
         )}
@@ -252,11 +270,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
             state={state}
             onMarket={() => setScreen('shop')}
             onTicket={(id) => setState((s) => setTicketPrice(s, id))}
-            onSignSponsor={(type) => {
-              const r = signSponsor(state, type);
-              setState(r.state);
-              setToast({ text: r.message, tone: r.success ? 'good' : 'bad' });
-            }}
+            onSummer={() => setScreen('summer')}
           />
         )}
         {screen === 'career' && (
@@ -290,11 +304,11 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
       {isTab && (
         <nav className="tabbar" aria-label="Main">
           {TABS.map((t) => (
-            <button key={t.id} type="button" className={screen === t.id || (t.id === 'cards' && screen === 'shop') || (t.id === 'league' && screen === 'comp') ? 'is-on' : ''} onClick={() => { if (t.id === 'league') setLeagueNav(null); backStack.current = []; resetSticky(); setScreen(t.id); }}>
+            <button key={t.id} type="button" className={screen === t.id || (t.id === 'home' && screen === 'summer') || (t.id === 'cards' && screen === 'shop') || (t.id === 'league' && screen === 'comp') ? 'is-on' : ''} onClick={() => { if (t.id === 'league') setLeagueNav(null); backStack.current = []; resetSticky(); setScreen(t.id); }}>
               <span className="tabbar__icon" aria-hidden="true">{t.icon}</span>
               <span className="tabbar__label">{t.short ? <><span className="tabbar__short">{t.short}</span><span className="tabbar__full">{t.label}</span></> : t.label}</span>
               {t.id === 'cards' && (state.inventory.packs.length > 0 || (state.inventory.clubPacks || []).length > 0 || state.phase === 'offseason') && <i className="tabbar__dot" />}
-              {t.id === 'club' && state.phase === 'offseason' && state.sponsorOffers?.offers?.length > 0 && !state.sponsorOffers.signed && <i className="tabbar__dot" />}
+              {t.id === 'home' && dealsPending(state).length > 0 && <i className="tabbar__dot" />}
             </button>
           ))}
         </nav>

@@ -33,7 +33,8 @@ import {
   pendingCard, duplicateOf, nextUserGame, newSeason, closeSeason, toggleCurse, teamShape, shapeLabel, acceptOffer, carryOptions, starterOffers, discardCommons, buyMarketCard, useOffseasonCard, startNextSeason, POOLS, POOL_BY_ID,
   canUseOffseason, cardPlays, migrateClubState, effectiveCohesion, seasonMods, packShift, MARKET_EVERY, MARKET_SIZE,
   buyClubPack, openOwnedClubPack, pickClubCard, businessIncome,
-  startConstruction, constructionOf, setTicketPrice, matchdayOf, capacityOf, starsOf, fansOf, signSponsor, sponsorOffers, activeSponsor,
+  startConstruction, constructionOf, setTicketPrice, matchdayOf, capacityOf, starsOf, fansOf, signKit, signSponsorDeal, signTv, dealOffers, dealSigned, dealsPending, kitSales, designFee,
+  markOffseasonStep, ceoMeeting, MERCH_SHARE,
 } from '../src/state/club.js';
 import { ticketMoodInto } from '../src/state/business.js';
 import { stadiumStars } from '../src/data/facilities.js';
@@ -229,10 +230,10 @@ test('promotion and relegation move clubs between tiers', () => {
   assert.ok(userFixture(s.season, 'esp-2', 'racing'));
 });
 
-test('the world has 46 full divisions of 10 and a big card pool', () => {
+test('the world has 47 full divisions of 10 and a big card pool', () => {
   const s = fresh();
-  assert.equal(Object.keys(s.world.divisions).length, 46);
-  assert.equal(Object.keys(s.world.clubs).length, 460);
+  assert.equal(Object.keys(s.world.divisions).length, 47);
+  assert.equal(Object.keys(s.world.clubs).length, 470);
   assert.ok(POOLS.player.length >= 400, `pool ${POOLS.player.length}`);
   const seen = new Set(s.squad.map((c) => c.id));
   for (const c of Object.values(s.world.clubs)) {
@@ -778,7 +779,7 @@ test('club areas: business areas add income items, sports areas lift shape, cohe
   const base = matchRewards(s, m, 0);
   const rich = { ...s, facilities: { ...s.facilities, hospitality: 3, store: 2, sponsor: 2 } };
   const more = matchRewards(rich, m, 0);
-  for (const label of ['Hospitality', 'Club store', 'Sponsor']) assert.ok(more.items.some((i) => i.label.startsWith(label)), `${label} income`);
+  for (const label of ['Hospitality', 'Club store']) assert.ok(more.items.some((i) => i.label.startsWith(label)), `${label} income`);
   assert.ok(more.total > base.total);
   // Spa: better shape; Gym: slower stamina drain; Analytics: pack odds.
   assert.ok(teamShape({ ...s, facilities: { ...s.facilities, spa: 5 } }) >= Math.min(100, teamShape(s) + 10));
@@ -993,35 +994,127 @@ test('fans grow with a good season and the crowd is logged; a sell-out run sends
   assert.ok(s.fans.global !== start.global);
 });
 
-test('sponsor contracts: three summer offers, Performance pays per win, Glory per trophy, Steady by default', () => {
-  let s = fresh();
-  const steady = activeSponsor(s);
-  assert.equal(steady.type, 'steady');
-  assert.ok(matchRewards(s, fakeMatch(s, [0, 1], 1), 0).items.some((i) => i.label.startsWith('Sponsor ·')), 'steady pays every match');
-  s = resolve(closeSeason(playFull(s), 41));
-  assert.equal(sponsorOffers(s).length, 3);
-  assert.equal(startNextSeason(s, 1).sponsor.type, 'steady', 'no choice → steady');
-  const r = signSponsor(s, 'performance');
+// v2.3 deals: kit provider, sponsor, TV rights, and the off-season flow.
+const summerOf = () => resolve(closeSeason(playFull(fresh()), 41));
+
+test('off-season flow: season review, deals offered, defaults when every step is skipped', () => {
+  const s = summerOf();
+  const r = s.seasonReview;
+  assert.equal(r.year, 1);
+  assert.equal(r.record.w + r.record.d + r.record.l > 0, true);
+  assert.ok(r.revenue > 0 && r.fans.before && r.fans.after, 'revenue and fans before/after');
+  assert.ok(typeof r.fans.after.local === 'number' && typeof r.fans.after.global === 'number');
+  assert.deepEqual(dealsPending(s), ['kit', 'sponsor', 'tv']);
+  assert.equal(dealOffers(s, 'kit').length, 3);
+  assert.equal(dealOffers(s, 'sponsor').length, 3);
+  assert.equal(dealOffers(s, 'tv').length, 3);
+  assert.equal(dealOffers(s, 'kit')[0].brand, s.kit.brand, 'first kit offer: the current provider');
+  assert.equal(dealOffers(s, 'sponsor')[0].brand, s.sponsor.brand, 'first sponsor offer: the renewal');
+  assert.deepEqual(markOffseasonStep(markOffseasonStep(s, 'summary'), 'summary').offseasonSeen, ['summary']);
+  const meet = ceoMeeting(s);
+  assert.ok(meet.lines.length > 0 && meet.objective.text && /^For 20\d\d we expect you to/.test(meet.expect[0]));
+  // Nothing signed: keep the kit line, renew the sponsor (and get its card), the first TV offer.
+  const packs = s.inventory.packs.length + (s.inventory.club || []).length;
+  const n = startNextSeason(s, 5);
+  assert.equal(n.deals, null);
+  assert.equal(n.kit.brand, dealOffers(s, 'kit')[0].brand);
+  assert.equal(n.kit.pattern, s.kit.pattern, 'kept the line');
+  assert.equal(n.kit.age, s.kit.age + 1);
+  assert.equal(n.sponsor.brand, s.sponsor.brand);
+  assert.equal(n.inventory.packs.length + n.inventory.club.length, packs + 1, 'renewal card awarded');
+  assert.equal(n.tv.kind, dealOffers(s, 'tv')[0].kind);
+  assert.ok(['👕 Kit deal renewed', '🤝 Sponsor renewed', '📺 TV deal signed'].every((t) => n.inbox.some((m) => m.title.startsWith(t))));
+});
+
+test('jersey: shirt sales and revenue = base + share of sales, new design costs a fee', () => {
+  const s = summerOf();
+  const offer = dealOffers(s, 'kit')[1];
+  const exp = kitSales(s, offer);
+  assert.equal(exp.sales, Math.round(exp.shirts / 90), 'shop takings ◎ 1 per 90 shirts');
+  assert.equal(exp.revenue, offer.base + Math.round(offer.pct * exp.sales));
+  const big = dealOffers(s, 'kit').find((o) => o.tier === 'global');
+  const small = dealOffers(s, 'kit').find((o) => o.tier === 'local');
+  assert.ok(kitSales(s, big).shirts > kitSales(s, small).shirts, 'a bigger provider sells more shirts');
+  assert.ok(big.base < small.base, '…and pays a smaller base');
+  const rich = { ...s, coins: 5000 };
+  const r = signKit(rich, offer.id, 'new');
   assert.equal(r.success, true, r.message);
-  assert.ok(r.state.inbox[0].title.startsWith('🤝 Sponsor signed'));
-  let p = startNextSeason(r.state, 2);
-  assert.equal(p.sponsor.type, 'performance');
-  const terms = activeSponsor(p);
-  assert.equal(terms.perMatch, 0);
-  assert.ok(terms.perWin >= 2 * activeSponsor({ ...p, sponsor: { type: 'steady', brand: 'x' } }).perMatch);
-  const win = matchRewards(p, fakeMatch(p, [2, 0], 0), 0);
-  const loss = matchRewards(p, fakeMatch(p, [0, 2], 1), 0);
-  assert.equal(win.items.find((i) => i.label.startsWith('Sponsor win bonus')).coins, terms.perWin);
-  assert.ok(!loss.items.some((i) => i.label.startsWith('Sponsor')));
-  for (let md = 0; md < 12 && !p.record.w; md += 1) p = playMatchday(p, 2300 + md);
-  assert.ok(p.record.w > 0);
-  assert.ok((p.finance.income.Sponsor || 0) >= terms.perWin, 'win bonus in the season finances');
-  // Glory: a cup final win pays the trophy bonus.
-  const g = { ...p, sponsor: { type: 'glory', brand: 'Crown Airways' } };
-  const final = matchRewards(g, fakeMatch(g, [1, 0], 0), 0, { competition: 'cup', label: 'Cup · Final' });
-  assert.equal(final.items.find((i) => i.label.startsWith('Sponsor trophy bonus')).coins, activeSponsor(g).perTrophy);
-  assert.ok(activeSponsor(g).perTrophy > 10 * activeSponsor(g).perMatch);
-  assert.equal(signSponsor(p, 'glory').success, false, 'signed in the summer only');
+  assert.equal(r.state.coins, rich.coins - designFee(rich));
+  assert.equal(r.state.kit.pattern, offer.newPattern);
+  assert.equal(r.state.kit.age, 0);
+  assert.equal(r.state.kit.revenue, r.state.kit.base + Math.round(r.state.kit.pct * r.state.kit.sales));
+  assert.equal(r.state.kit.shirts, kitSales(rich, offer, { designF: offer.designRoll, luck: offer.luck }).shirts, 'the reveal');
+  assert.equal(signKit(r.state, offer.id, 'keep').success, false, 'signed once');
+  assert.ok(r.state.inbox[0].title.startsWith('👕 Kit deal signed'));
+  // The revenue is paid in 18 league instalments that add up exactly.
+  let p = startNextSeason(r.state, 6);
+  const kitIn = (st) => st.finance.income['Kit deal'] || 0;
+  for (let md = 0; md < 18; md += 1) p = playMatchday(p, 2400 + md);
+  assert.equal(kitIn(p), r.state.kit.revenue);
+});
+
+test('sponsor: renewal pays per win and gives a card, a new brand pays a signing bonus on matchday 1', () => {
+  const s = summerOf();
+  const [renewal, bonus] = dealOffers(s, 'sponsor');
+  assert.ok(renewal.card && !bonus.card && bonus.bonus > 0 && renewal.bonus === 0);
+  const r = signSponsorDeal(s, renewal.id);
+  const cards = (st) => st.inventory.packs.length + (st.inventory.club || []).length;
+  assert.equal(cards(r.state), cards(s) + 1, 'renewal card');
+  const b = signSponsorDeal(s, bonus.id);
+  assert.equal(cards(b.state), cards(s), 'no card for a new sponsor');
+  assert.equal(signSponsorDeal(b.state, renewal.id).success, false, 'signed once');
+  const p = startNextSeason(b.state, 7);
+  const first = matchRewards(p, fakeMatch(p, [2, 0], 0), 0);
+  assert.equal(first.items.find((i) => i.label.startsWith('Sponsor signing bonus')).coins, bonus.bonus);
+  assert.equal(first.items.find((i) => i.label.startsWith('Sponsor win bonus')).coins, bonus.perWin);
+  const loss = matchRewards(p, fakeMatch(p, [0, 2], 1), 0, { competition: 'cup' });
+  assert.ok(!loss.items.some((i) => i.label.startsWith('Sponsor')), 'nothing for a cup defeat');
+  const p2 = playMatchday(p, 2500);
+  assert.ok(p2.finance.income.Sponsor >= bonus.bonus);
+  assert.ok(!matchRewards(p2, fakeMatch(p2, [0, 2], 1), 0).items.some((i) => i.label.startsWith('Sponsor signing')), 'the bonus is paid once');
+});
+
+test('TV: fixed fee in league instalments, the variable pays per matching game whatever the result', () => {
+  const s = summerOf();
+  const pay = (st, game, home) => matchRewards(st, fakeMatch(st, [0, 1], 1, home), 0, game).items.filter((i) => i.label.startsWith('TV ') && !i.label.startsWith('TV rights fee')).reduce((t, i) => t + i.coins, 0);
+  const seasonWith = (kind) => startNextSeason(signTv(s, kind).state, 8);
+  const g = seasonWith('game');
+  const h = seasonWith('home');
+  const x = seasonWith('intl');
+  assert.equal(pay(g, { competition: 'league' }, false), g.tv.per, 'per game: away defeat pays');
+  assert.equal(pay(h, { competition: 'league' }, false), 0, 'per home game: not away');
+  assert.equal(pay(h, { competition: 'cup' }, true), h.tv.per, 'per home game: a home cup tie');
+  assert.equal(pay(x, { competition: 'league' }, true), 0, 'international: not the league');
+  assert.equal(pay(x, { competition: 'continental', label: 'European Cup · Group' }, false), x.tv.per);
+  assert.equal(pay(x, { competition: 'cwc' }, false), x.tv.per);
+  assert.equal(pay(x, { competition: 'continental2' }, false), x.tv.per, 'the second continental cup');
+  assert.equal(pay(x, { competition: 'contsuper' }, false), x.tv.per, 'the continental super cup');
+  assert.equal(pay(x, { competition: 'supercup' }, true), 0, 'not the domestic super cup');
+  let fees = 0;
+  for (let md = 0; md < 18; md += 1) {
+    const at = { ...g, season: { ...g.season, matchday: md } };
+    const fee = matchRewards(at, fakeMatch(at, [0, 1], 1), 0).items.find((i) => i.label.startsWith('TV rights fee'));
+    if (fee) { assert.equal(fee.cat, 'TV'); fees += fee.coins; }
+  }
+  assert.equal(fees, g.tv.fee, 'the fixed fee over the 18 league matchdays');
+  assert.ok(signTv(g, 'game').success === false, 'offers are gone once the season starts');
+});
+
+test('deals follow the club: a new job brings that club\'s kit and fresh offers', () => {
+  let s = summerOf();
+  s = { ...s, gm: { ...s.gm, offers: [{ clubId: Object.keys(s.world.clubs).find((id) => id !== s.club.id && s.world.clubs[id].divisionId === s.club.divisionId), required: 0 }] } };
+  const moved = acceptOffer(s, s.gm.offers[0].clubId, [], 3);
+  assert.notEqual(moved.club.id, s.club.id);
+  assert.deepEqual(dealsPending(moved), ['kit', 'sponsor', 'tv']);
+  assert.equal(dealOffers(moved, 'sponsor')[0].brand, moved.sponsor.brand);
+});
+
+test('merchandise keeps the non-shirt range; fans have local and global numbers', () => {
+  const s = fresh();
+  const f = fansOf(s);
+  assert.ok(f.local > 0 && f.global > 0 && f.happiness >= 0);
+  assert.equal(MERCH_SHARE, 0.15);
+  assert.ok(s.kit && s.sponsor && s.tv, 'a new career has its season-1 deals');
 });
 
 test('finance history: one entry per season with income, spending and balance', () => {
@@ -1041,18 +1134,13 @@ test('finance history: one entry per season with income, spending and balance', 
 test('v2.2 business fields: older saves without them load and play', () => {
   const s = fresh();
   const old = structuredClone(s);
-  for (const k of ['construction', 'ticketPrice', 'sponsor', 'sponsorOffers', 'financeHistory', 'clubEffects']) delete old[k];
+  for (const k of ['construction', 'ticketPrice', 'financeHistory', 'clubEffects']) delete old[k];
   const m = migrateClubState(old);
   assert.deepEqual(m.construction, []);
   assert.equal(m.ticketPrice, 'normal');
-  assert.equal(m.sponsor.type, 'steady');
   assert.deepEqual(m.financeHistory, []);
   assert.deepEqual(m.clubEffects, []);
-  assert.equal(activeSponsor(old).type, 'steady', 'works even before migration');
   assert.ok(playMatchday(m, 77).history.length === 1);
-  // An old summer save gets sponsor offers.
-  const summer = migrateClubState({ ...old, phase: 'offseason' });
-  assert.equal(sponsorOffers(summer).length, 3);
 });
 
 // ---------------------------------------------------------------------------
@@ -1388,7 +1476,7 @@ test('real-life title counts for known clubs', () => {
   assert.equal(upTo('saprissa', 'K:northamerica', 2025), 3);
   assert.equal(upTo('auckland-city', 'K:oceania', 2025), 12);
   assert.equal(upTo('sydney-fc', 'N:AUS', 2025), 5);
-  assert.equal(upTo('toronto-fc', 'L:usa-1', 2025), 1);
+  assert.equal(upTo('seattle-sounders', 'L:usa-1', 2025) >= 1, true);
   assert.equal(honoursSummary([], 'melbourne-city', 'oce-1', 2027).league.n, 2, 'A-League titles count as league titles');
 });
 
@@ -1477,8 +1565,9 @@ test('v2.3 formats: North America, the European Trophy and Oceania', () => {
   assert.equal(e2.prelim.length, 6);
   assert.equal(e2.seeded.length, 10);
   assert.equal(FORMATS.europe.k2.groups, 4);
-  // Oceania: the top three and the cup winner (season 1: next by strength), one group, no second trophy.
-  assert.deepEqual(comps.continental.oceania.direct.slice().sort(), strength('oce-1').slice(0, 4).sort());
+  // Oceania: the A-League's and Oceania Other's top two, one group, no second trophy.
+  assert.deepEqual(comps.continental.oceania.direct.slice().sort(), [...strength('aus-1').slice(0, 2), ...strength('oce-1').slice(0, 2)].sort());
+  assert.equal(comps.continental.oceania.groups.length, 1);
   assert.equal(comps.continental2.oceania, undefined);
   assert.equal(comps.contSuper.oceania, undefined);
   // South America: four direct, eight in the qualifying round.

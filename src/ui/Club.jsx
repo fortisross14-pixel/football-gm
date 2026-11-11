@@ -2,11 +2,13 @@ import React from 'react';
 import { RARITIES } from '../engine/cards.js';
 import { OFFSEASON_CARDS, cardText } from '../data/offseason.js';
 import { LEVEL_MULTIPLIER } from '../data/demo.js';
-import { AREAS, AREA_GROUPS, areaEffect, TICKET_PRICES, TICKET_IDS, SPONSOR_DEALS } from '../data/facilities.js';
+import { AREAS, AREA_GROUPS, areaEffect, TICKET_PRICES, TICKET_IDS } from '../data/facilities.js';
+import { KIT_TIERS, TV_KINDS, PATTERN_LABEL } from '../data/deals.js';
+import { MATCHDAYS } from '../engine/season.js';
 import { PHILOSOPHIES, clubIdentity } from '../data/philosophies.js';
 import {
   effectiveCohesion, squadPopularity, cardPopularity, academyInfo, seasonMods, businessIncome,
-  constructionOf, constructionList, constructionProgress, ticketOf, activeSponsor, sponsorOffers, sponsorTerms,
+  constructionOf, constructionList, constructionProgress, ticketOf, dealsPending,
 } from '../state/club.js';
 import { opinions, ownerLine, fanLine } from '../state/chronicle.js';
 import { Crest } from './Art.jsx';
@@ -14,6 +16,8 @@ import { clubVars } from './clubTheme.js';
 import { CardPlays } from './Collection.jsx';
 import { Segmented } from './Home.jsx';
 import { useSticky } from './nav.jsx';
+import { KitSummary } from './Jersey.jsx';
+import { SponsorNow } from './Offseason.jsx';
 import { yearLabel } from '../engine/years.js';
 import { StadiumCard, FansPanel, Stars } from './Stadium.jsx';
 import { projectLabel, projectIcon } from '../state/business.js';
@@ -33,15 +37,15 @@ const TABS = [
   { id: 'infra', label: 'Infrastructure' },
   { id: 'fans', label: 'Fans' },
   { id: 'finance', label: 'Finance' },
+  { id: 'jersey', label: 'Jersey' },
   { id: 'effects', label: 'Effects' },
   { id: 'trophies', label: 'Trophies' },
 ];
 
 // The Club tab: who the club is, its ten areas and building works, money, effects in play, trophies.
-export default function Club({ state, onMarket, onTicket, onSignSponsor }) {
-  const offers = state.phase === 'offseason' && sponsorOffers(state).length > 0 && !state.sponsorOffers?.signed;
-  // Summer with sponsor offers waiting: open on Finance, where they are signed.
-  const [tab, setTab] = useSticky('club-tab', offers ? 'finance' : 'overview');
+export default function Club({ state, onMarket, onTicket, onSummer }) {
+  const offers = dealsPending(state).length > 0;
+  const [tab, setTab] = useSticky('club-tab', 'overview');
   const works = constructionList(state).length;
   const labels = TABS.map((t) => ({
     ...t,
@@ -61,7 +65,8 @@ export default function Club({ state, onMarket, onTicket, onSignSponsor }) {
       {tab === 'overview' && <Overview state={state} goFinance={() => setTab('finance')} />}
       {tab === 'infra' && <Infrastructure state={state} onMarket={onMarket} />}
       {tab === 'fans' && <FansPanel state={state} />}
-      {tab === 'finance' && <Finance state={state} onTicket={onTicket} onSignSponsor={onSignSponsor} />}
+      {tab === 'finance' && <Finance state={state} onTicket={onTicket} onSummer={onSummer} />}
+      {tab === 'jersey' && <JerseyTab state={state} onSummer={onSummer} />}
       {tab === 'effects' && <Effects state={state} />}
       {tab === 'trophies' && <Trophies state={state} />}
     </div>
@@ -72,7 +77,7 @@ export default function Club({ state, onMarket, onTicket, onSignSponsor }) {
 
 function perMatch(state) {
   const biz = businessIncome(state);
-  return { home: biz.reduce((t, x) => t + x.coins, 0), away: biz.filter((x) => !x.homeOnly).reduce((t, x) => t + x.coins, 0), win: activeSponsor(state).perWin };
+  return { home: biz.reduce((t, x) => t + x.coins, 0), away: biz.filter((x) => !x.homeOnly).reduce((t, x) => t + x.coins, 0), win: state.sponsor?.perWin || 0 };
 }
 
 function Overview({ state, goFinance }) {
@@ -84,7 +89,6 @@ function Overview({ state, goFinance }) {
   const pm = perMatch(state);
   const now = sum(state.finance?.income);
   const last = state.lastFinance ? sum(state.lastFinance.income) : null;
-  const sp = activeSponsor(state);
   return (
     <>
       <section className="panel club-id">
@@ -104,7 +108,9 @@ function Overview({ state, goFinance }) {
         <ul className="champions">
           {state.gm?.objective && <li><span>Board objective</span><b>{state.gm.objective.text}</b></li>}
           {contract && <li><span>Contract</span><b>Until {yearLabel(contract.until)}{left > 0 ? ` · ${left} season${left > 1 ? 's' : ''} left` : ' · last season'}</b></li>}
-          <li><span>Sponsor</span><b>{sp.brand} · {SPONSOR_DEALS[sp.type]?.label}</b></li>
+          <li><span>Sponsor</span><b>{state.sponsor?.brand || '—'}</b></li>
+          <li><span>Kit</span><b>{state.kit?.brand || '—'}</b></li>
+          <li><span>TV</span><b>{state.tv?.brand || '—'}</b></li>
           <li><span>Ticket prices</span><b>{ticketOf(state).label}</b></li>
           <li><span>Stadium</span><b><Stars value={starsOf(state)} size={14} /> · {matchdayOf(state).capacity.toLocaleString('en')} seats</b></li>
           <li><span>Fans</span><b>{formatFans(fansOf(state).local)} local · {formatFans(fansOf(state).global)} worldwide</b></li>
@@ -199,47 +205,30 @@ function Infrastructure({ state, onMarket }) {
 
 // ---------------------------------------------------------------------------
 
-function dealPay(t) {
-  return [t.perMatch && `◎ ${t.perMatch} a match`, t.perWin && `◎ ${t.perWin} a win`, t.perTrophy && `◎ ${t.perTrophy} a trophy or promotion`].filter(Boolean).join(' · ');
-}
-
-function Sponsor({ state, onSignSponsor }) {
-  const sp = activeSponsor(state);
-  const offers = state.phase === 'offseason' ? sponsorOffers(state) : [];
-  const signed = state.sponsorOffers?.signed;
+// The three deals in force: kit, sponsor and TV (offers are signed in the off-season flow).
+function Deals({ state, onSummer }) {
+  const { kit, tv } = state;
+  const open = dealsPending(state);
   return (
     <section className="panel">
-      <h2 className="section-title">Sponsor</h2>
-      {offers.length > 0 ? (
-        <>
-          <p className="hint">Three offers for {yearLabel(state.sponsorOffers.year)}. Their size grows with the Sponsorship area and the division. Pick the one that fits your season{signed ? '' : ': if you don\'t choose by the first matchday, the club signs the steady one'}.</p>
-          <div className="deals">
-            {offers.map((o) => {
-              const d = SPONSOR_DEALS[o.type];
-              const on = signed === o.type;
-              return (
-                <button key={o.type} type="button" className={`deal${on ? ' is-on' : ''}`} onClick={() => onSignSponsor?.(o.type)} disabled={on} aria-pressed={on}>
-                  <span className="deal__kind"><span aria-hidden="true">{d.icon}</span> {d.label}</span>
-                  <b>{o.brand}</b>
-                  <span className="deal__pay">{dealPay(sponsorTerms(state, o.type))}</span>
-                  <span className="deal__text">{d.text}</span>
-                  <span className="deal__cta">{on ? '✓ Signed' : signed ? 'Switch to this one' : 'Sign'}</span>
-                </button>
-              );
-            })}
-          </div>
-        </>
-      ) : (
-        <>
-          <p className="deal-now"><span aria-hidden="true">{SPONSOR_DEALS[sp.type]?.icon}</span> <b>{sp.brand}</b> · {SPONSOR_DEALS[sp.type]?.label} contract</p>
-          <p className="hint">{dealPay(sp)}. {SPONSOR_DEALS[sp.type]?.text} New offers arrive every summer.</p>
-        </>
+      <h2 className="section-title">Deals · {yearLabel(kit?.year ?? state.season.year)}</h2>
+      {state.phase === 'offseason' && state.deals && (
+        <button type="button" className="career-link career-link--light" onClick={onSummer}>
+          <span>{open.length ? `Offers waiting for next season: ${open.map((k) => ({ kit: 'jersey', sponsor: 'sponsor', tv: 'TV' })[k]).join(', ')}` : `Next season's deals are signed`}</span>
+          <b>Off-season ›</b>
+        </button>
       )}
+      <ul className="champions">
+        {kit && <li><span>👕 Kit · {kit.brand}</span><b>◎ {kit.revenue} ({kit.shirts.toLocaleString()} shirts)</b></li>}
+        {state.sponsor && <li><span>🤝 Sponsor · {state.sponsor.brand}</span><b>◎ {state.sponsor.perWin} a win{state.sponsor.bonus ? ` + ◎ ${state.sponsor.bonus}` : ''}</b></li>}
+        {tv && <li><span>📺 TV · {tv.brand}</span><b>◎ {tv.fee} + ◎ {tv.per} {TV_KINDS[tv.kind]?.unit}</b></li>}
+      </ul>
+      <p className="hint">Kit revenue and the TV fee are paid over the {MATCHDAYS} league matchdays, the sponsor's signing bonus on matchday 1, the rest game by game.</p>
     </section>
   );
 }
 
-function Finance({ state, onTicket, onSignSponsor }) {
+function Finance({ state, onTicket, onSummer }) {
   const fin = state.finance || { income: {}, spent: {} };
   const income = Object.entries(fin.income).sort((a, b) => b[1] - a[1]);
   const spent = Object.entries(fin.spent).sort((a, b) => b[1] - a[1]);
@@ -247,12 +236,19 @@ function Finance({ state, onTicket, onSignSponsor }) {
   const totalOut = sum(fin.spent);
   const max = Math.max(1, ...income.map(([, v]) => v), ...spent.map(([, v]) => v));
   const biz = businessIncome(state);
-  const bizMax = Math.max(1, ...biz.map((x) => x.coins), biz.find((x) => x.perWin)?.perWin || 0);
+  const per = (total) => Math.round((total || 0) / MATCHDAYS);
+  const dealRows = [
+    state.kit && { label: 'Kit deal (league game)', value: per(state.kit.revenue) },
+    state.tv && { label: 'TV fee (league game)', value: per(state.tv.fee) },
+    state.tv && { label: `TV (${TV_KINDS[state.tv.kind]?.unit})`, value: state.tv.per },
+    state.sponsor && { label: 'Sponsor (a win)', value: state.sponsor.perWin },
+  ].filter((r) => r && r.value > 0);
+  const bizMax = Math.max(1, ...biz.map((x) => x.coins), ...dealRows.map((r) => r.value));
   const ticket = ticketOf(state);
   const history = [...(state.financeHistory || [])].reverse();
   return (
     <>
-      <Sponsor state={state} onSignSponsor={onSignSponsor} />
+      <Deals state={state} onSummer={onSummer} />
 
       <section className="panel">
         <h2 className="section-title">Ticket prices</h2>
@@ -269,10 +265,10 @@ function Finance({ state, onTicket, onSignSponsor }) {
 
       <section className="panel">
         <h2 className="section-title">Income per match</h2>
-        <p className="hint">From the business areas and the sponsor at today's levels, on top of results and prizes.</p>
+        <p className="hint">From the business areas at today's levels and the deals, on top of results and prizes.</p>
         <ul className="money">
           {biz.filter((it) => it.coins > 0).map((it) => <MoneyRow key={it.label} label={`${AREAS[it.area]?.label || it.label}${it.homeOnly ? ' (home)' : ''}`} value={it.coins} max={bizMax} kind="in" />)}
-          {biz.filter((it) => it.perWin).map((it) => <MoneyRow key="win" label="Sponsor (a win)" value={it.perWin} max={bizMax} kind="in" />)}
+          {dealRows.map((r) => <MoneyRow key={r.label} label={r.label} value={r.value} max={bizMax} kind="in" />)}
         </ul>
       </section>
 
@@ -351,6 +347,37 @@ function MoneyRow({ label, value, max, kind }) {
 }
 
 // ---------------------------------------------------------------------------
+
+// Club → Jersey: the kit this season, the maker, the sponsor on the front, last season's sales.
+function JerseyTab({ state, onSummer }) {
+  const kit = state.kit;
+  const last = state.seasonReview?.kit && state.seasonReview.year < (kit?.year ?? 0) ? state.seasonReview.kit : null;
+  return (
+    <>
+      <section className="panel">
+        <h2 className="section-title">Kit · {yearLabel(kit?.year ?? state.season.year)}</h2>
+        <KitSummary state={state} />
+        <SponsorNow state={state} />
+      </section>
+      {kit && (
+        <section className="panel">
+          <h2 className="section-title">Shirt sales</h2>
+          <div className="money-totals">
+            <div><span>Shirts</span><b>{kit.shirts.toLocaleString()}</b></div>
+            <div><span>Shop takings</span><b>◎ {kit.sales.toLocaleString()}</b></div>
+            <div><span>Club revenue</span><b className="is-up">◎ {kit.revenue}</b></div>
+          </div>
+          <p className="hint">{KIT_TIERS[kit.tier]?.label}: ◎ {kit.base} base + {Math.round(kit.pct * 100)}% of ◎ {kit.sales.toLocaleString()} sales = ◎ {kit.revenue}, paid over the {MATCHDAYS} league matchdays. Shop takings are the maker's, not club money.</p>
+          {last && <p className="hint">Last season: {last.brand}, {last.shirts.toLocaleString()} shirts, ◎ {last.revenue} for the club.</p>}
+        </section>
+      )}
+      {state.phase === 'offseason' && state.deals && (
+        <button type="button" className="btn btn--ghost btn--block" onClick={onSummer}>{state.deals.kit.signed ? 'Off-season plan ›' : 'Choose next season\'s kit ›'}</button>
+      )}
+      <p className="hint">Each summer: renew your maker or change, keep the line or order a new design ({Object.values(PATTERN_LABEL).join(', ').toLowerCase()}).</p>
+    </>
+  );
+}
 
 function Effects({ state }) {
   const effects = state.clubEffects || [];

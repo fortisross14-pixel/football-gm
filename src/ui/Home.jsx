@@ -11,10 +11,11 @@ import { compOfGame } from './Competitions.jsx';
 import { Confidence } from './Career.jsx';
 import { opinions, ownerLine, fanLine, unreadCount } from '../state/chronicle.js';
 import { isDerby, derbyName } from '../data/rivals.js';
-import SeasonDeal from './SeasonDeal.jsx';
+import { OFFSEASON_STEPS } from '../data/deals.js';
+import { dealsPending, offseasonStatus } from '../state/club.js';
 import { yearLabel } from '../engine/years.js';
 
-export default function Home({ state, onPlay, onCloseSeason, onStartSeason, onPickSeason, onRedrawSeason, goTo }) {
+export default function Home({ state, onPlay, onCloseSeason, onStartSeason, goTo }) {
   const { season, phase } = state;
   return (
     <div className="screen screen--home">
@@ -23,7 +24,7 @@ export default function Home({ state, onPlay, onCloseSeason, onStartSeason, onPi
       {phase === 'season' && <NextMatch state={state} onPlay={onPlay} />}
       {phase === 'season' && <MarketNote state={state} goTo={goTo} />}
       {phase === 'seasonEnd' && <SeasonEnd state={state} onClose={onCloseSeason} />}
-      {phase === 'offseason' && <Offseason state={state} goTo={goTo} onStart={onStartSeason} onPickSeason={onPickSeason} onRedrawSeason={onRedrawSeason} />}
+      {phase === 'offseason' && <Offseason state={state} goTo={goTo} onStart={onStartSeason} />}
 
       <Opinions state={state} goTo={goTo} />
       <StatusRow state={state} goTo={goTo} />
@@ -125,15 +126,16 @@ function SeasonEnd({ state, onClose }) {
         {packs.map((p, i) => <li key={i}><span>Reward pack</span><b>{PACKS[p].name}</b></li>)}
         <li><span>Off-season card</span><b>1 random</b></li>
         <li><span>Season cards</span><b>Pick 1 of 3</b></li>
+        <li><span>New deals</span><b>Jersey · sponsor · TV</b></li>
       </ul>
       {promoted && <p className="promo is-up">▲ Promoted to {upper.name}! Bigger crowds, bigger prizes (×{upper.level === 1 ? 3 : 2} rewards) and tougher rivals.</p>}
       {relegated && <p className="promo is-down">▼ Relegated to {lower.name}. Time to rebuild.</p>}
-      <button type="button" className="btn btn--primary btn--block" onClick={onClose}>Collect & open the Transfer Market</button>
+      <button type="button" className="btn btn--primary btn--block" onClick={onClose}>Collect & start the off-season</button>
     </section>
   );
 }
 
-function Offseason({ state, goTo, onStart, onPickSeason, onRedrawSeason }) {
+function Offseason({ state, goTo, onStart }) {
   const move = state.lastSeason?.userMove?.clubId === state.club.id ? state.lastSeason.userMove : null;
   return (
     <section className="offseason">
@@ -155,13 +157,7 @@ function Offseason({ state, goTo, onStart, onPickSeason, onRedrawSeason }) {
           </button>
         );
       })()}
-      {state.sponsorOffers?.offers?.length > 0 && (
-        <button type="button" className="career-link" onClick={() => goTo('club')}>
-          <span>🤝 {state.sponsorOffers.signed ? `Sponsor signed for ${yearLabel(state.sponsorOffers.year)}: ${state.sponsor?.brand}` : `3 sponsor offers for ${yearLabel(state.sponsorOffers.year)}: Steady, Performance or Glory. Pick one before the season starts.`}</span>
-          <b>Sponsor ›</b>
-        </button>
-      )}
-      <SeasonDeal state={state} onPick={onPickSeason} onRedraw={onRedrawSeason} />
+      <SummerPlan state={state} goTo={goTo} />
       <b className="offseason__title">Summer Transfer Market</b>
       <p className="hint">Fresh transfer cards in the market, club packs in Shop → Club. Play them from the Cards tab: sign players, upgrade the club's areas. Summer plays count towards next season ({cardPlays(state).used} / {cardPlays(state).limit} used).</p>
       <p className="hint">Youth academy L{state.facilities.academy || 0}: {academyInfo(state.facilities.academy || 0).count} player(s) a year, up to {RARITIES[academyInfo(state.facilities.academy || 0).best].label}. Club legends come first.</p>
@@ -174,6 +170,26 @@ function Offseason({ state, goTo, onStart, onPickSeason, onRedrawSeason }) {
         {state.gm?.sacked ? 'Take a new job first' : `Start ${yearLabel(state.season.year + 1)}`}
       </button>
     </section>
+  );
+}
+
+// The off-season flow's progress: six steps, opened from here.
+function SummerPlan({ state, goTo }) {
+  const status = offseasonStatus(state);
+  const done = OFFSEASON_STEPS.filter((s) => status[s.id]).length;
+  const next = OFFSEASON_STEPS.find((s) => !status[s.id]);
+  return (
+    <div className="summer-plan">
+      <ol className="stepper stepper--mini" aria-label={`Off-season: ${done} of ${OFFSEASON_STEPS.length} steps done`}>
+        {OFFSEASON_STEPS.map((s, k) => (
+          <li key={s.id}><span className={`stepper__step${status[s.id] ? ' is-done' : ''}`}><span className="stepper__n" aria-hidden="true">{status[s.id] ? '✓' : k + 1}</span><span className="stepper__label">{s.short}</span></span></li>
+        ))}
+      </ol>
+      <button type="button" className="btn btn--primary btn--block" onClick={() => goTo('summer')}>
+        {next ? `${done ? 'Continue' : 'Start'} the off-season · ${next.label} ›` : 'Off-season plan ›'}
+      </button>
+      {dealsPending(state).length > 0 && <p className="hint">Jersey, sponsor and TV deals not signed by kick-off take the defaults: keep the kit, renew the sponsor, the first TV offer.</p>}
+    </div>
   );
 }
 
