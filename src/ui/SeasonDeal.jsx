@@ -22,6 +22,7 @@ export default function SeasonDeal({ state, onPick, onRedraw }) {
               {o.owned && <span className="season-deal__owned">Yours from the market · free</span>}
               <OffseasonCard
                 item={o}
+                label="Season card"
                 onClick={check.ok ? () => onPick(o.key) : undefined}
                 disabled={!check.ok}
                 footer={check.ok ? 'Pick' : check.reason}

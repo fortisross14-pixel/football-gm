@@ -900,7 +900,9 @@ test('season deal: 3 cards at season end, pick one, redraws cost 200/400/800', (
   const opts = seasonDealOptions(s);
   assert.equal(opts.length, 4);
   const picked = pickSeasonCard(s, 'inv:old1', 3);
-  assert.deepEqual(picked.seasonCard, { type: 'fortressSeason', rarity: 'epic' });
+  assert.equal(picked.seasonCard.type, 'fortressSeason');
+  assert.equal(picked.seasonCard.rarity, 'epic');
+  assert.equal(picked.seasonCard.name, 'Fortress Season');
   assert.ok(!picked.inventory.offseason.some((i) => i.uid === 'old1'));
   assert.equal(picked.seasonDeal, null);
   const next = startNextSeason(resolve(picked), 5);

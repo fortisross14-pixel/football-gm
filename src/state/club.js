@@ -1127,6 +1127,10 @@ function dealSeasonCards(next, seed) {
   next.seasonDeal = { year: next.season?.year || 1, hand: dealHand(next, makeRng(seed)), redraws: 0 };
 }
 
+// The season card as stored: type and rarity (the effect) plus name, icon and text for display.
+export const seasonCardOf = (type, rarity) => ({ type, rarity, name: OFFSEASON_CARDS[type].name, icon: OFFSEASON_CARDS[type].icon, text: cardText(type, rarity) });
+const eventOf = (card) => (card ? { type: card.type, rarity: card.rarity } : null);
+
 export const redrawCost = (state) => (state.seasonDeal ? REDRAW_COSTS[state.seasonDeal.redraws] ?? null : null);
 
 // Everything you can pick right now: the 3 dealt cards plus old event cards you own.
@@ -1162,7 +1166,7 @@ export function pickSeasonCard(state, key, seed = 1) {
   const { type, rarity } = check.option;
   const next = structuredClone(state);
   if (check.option.owned) removeItem(next, key.slice(4));
-  next.seasonCard = { type, rarity };
+  next.seasonCard = seasonCardOf(type, rarity);
   next.activeEvent = { type, rarity };
   next.seasonDeal = null;
   if (type === 'goldenGeneration') {
@@ -1264,7 +1268,7 @@ export function startNextSeason(state, seed) {
   }
   const next = structuredClone(state);
   next.seasonDeal = null;
-  if (next.seasonCard) next.activeEvent = { ...next.seasonCard };
+  if (next.seasonCard) next.activeEvent = eventOf(next.seasonCard);
   next.season = newSeason(next, state.season.year + 1, seed);
   next.lastFinance = next.finance || null;
   next.finance = { income: {}, spent: {} };
@@ -1370,7 +1374,7 @@ export function acceptOffer(state, clubId, carryKeys = [], seed = 1) {
   next.inventory = inventory;
   next.coins = start.coins;
   next.facilities = fullFacilities(start.facilities);
-  next.activeEvent = next.seasonCard ? { ...next.seasonCard } : null; // the season card is the GM's: it moves with you
+  next.activeEvent = eventOf(next.seasonCard); // the season card is the GM's: it moves with you
   next.perks = { shape: 0 };
   next.clubEffects = []; // temporary club cards stay with the old club
   next.market = makeMarket(next, rng, 'summer');
@@ -1510,7 +1514,7 @@ function playCard(state, itemUid, target, seed) {
   const when = state.phase === 'season' ? 'for the rest of this season' : 'all next season';
   if (def.group === 'event' || def.group === 'season') {
     next.activeEvent = { type: item.type, rarity: item.rarity };
-    next.seasonCard = { type: item.type, rarity: item.rarity };
+    next.seasonCard = seasonCardOf(item.type, item.rarity);
     return { state: next, message: `${def.name} is active ${when}.`, success: true };
   }
   if (def.facility) {
@@ -1713,7 +1717,7 @@ export function migrateClubState(state) {
   // Season cards (v2.2): an event already active is this season's card; a summer that opened
   // before season cards existed gets its deal now.
   if (next.seasonCard === undefined) {
-    next.seasonCard = next.activeEvent ? { ...next.activeEvent } : null;
+    next.seasonCard = next.activeEvent ? seasonCardOf(next.activeEvent.type, next.activeEvent.rarity) : null;
     if (next.phase === 'offseason' && !next.activeEvent && !next.seasonDeal) {
       next.seasonDeal = { year: next.season?.year || 1, hand: dealHand(next, makeRng((next.season?.year || 1) * 97 + 5)), redraws: 0 };
     }
