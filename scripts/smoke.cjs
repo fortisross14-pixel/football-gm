@@ -92,11 +92,12 @@ const fs = require('fs');
   // The Club tab and its sub-tabs.
   await step('club-overview', () => page.click('.tabbar button:nth-child(3)').then(() => page.click('.screen--club > .segmented button:nth-child(1)')));
   await step('club-infra', () => page.click('.screen--club > .segmented button:nth-child(2)'));
-  await step('club-finance', () => page.click('.screen--club > .segmented button:nth-child(3)'));
+  await step('club-fans', () => page.click('.screen--club > .segmented button:nth-child(3)'));
+  await step('club-finance', () => page.click('.screen--club > .segmented button:nth-child(4)'));
   await step('club-finance-high', () => page.click('.screen--club .panel .segmented button:has-text("High")'));
-  await step('club-jersey', () => page.click('.screen--club > .segmented button:nth-child(4)'));
-  await step('club-effects', () => page.click('.screen--club > .segmented button:nth-child(5)'));
-  await step('club-trophies', () => page.click('.screen--club > .segmented button:nth-child(6)'));
+  await step('club-jersey', () => page.click('.screen--club > .segmented button:has-text("Jersey")'));
+  await step('club-effects', () => page.click('.screen--club > .segmented button:has-text("Effects")'));
+  await step('club-trophies', () => page.click('.screen--club > .segmented button:has-text("Trophies")'));
   // Building works from a club-area card, when the save has one.
   await step('club-build-card', async () => {
     await page.click('.tabbar button:nth-child(4)');

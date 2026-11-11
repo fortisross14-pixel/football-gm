@@ -57,8 +57,10 @@ export function successOf(state) {
 const successF = (s) => 0.85 + 0.3 * successOf(s);
 
 // Fans against the usual size for the division (clamped, so another fans scale stays sane).
-const LOCAL_NORM = { 1: 55000, 2: 23000, 3: 9000 };
-const GLOBAL_NORM = { 1: 300000, 2: 60000, 3: 15000 };
+// The middle of each level's range (state/fans.js: L3 8k–30k, L2 50k–200k, L1 250k–900k local;
+// worldwide × 2.5 / 5 / 15). Giants (2M+ local) hit the 1.25× cap.
+const LOCAL_NORM = { 1: 450000, 2: 100000, 3: 15000 };
+const GLOBAL_NORM = { 1: 450000 * 15, 2: 100000 * 5, 3: 15000 * 2.5 };
 export function fanFactors(state) {
   const f = fansOf(state);
   const lv = levelOf(state);

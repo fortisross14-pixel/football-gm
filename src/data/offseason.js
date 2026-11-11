@@ -11,7 +11,7 @@
 // summerOnly: only playable in the off-season.
 // Temporary cards: effect = { kind, homeOnly } puts an entry in state.clubEffects that lasts
 // games[t] matches (home games only when homeOnly); no effect = it happens at once.
-import { AREAS, FACILITY_LABEL } from './facilities.js';
+import { AREAS, FACILITY_LABEL, STADIUM_PARTS } from './facilities.js';
 import { SEASON_ONLY_CARDS } from './seasonCards.js';
 
 export const TIERS = ['common', 'uncommon', 'rare', 'epic', 'legend'];
@@ -34,6 +34,15 @@ function areaCard(facility, name, base, blurb) {
     name, group: 'club', kind: 'area', icon: AREAS[facility].icon, base, target: null, facility,
     values: [2, 3, 4, 5, 5],
     text: (v, r, t) => `${FACILITY_LABEL[facility]} ${t === 4 ? '+2 levels (max 5)' : `+1 level, up to level ${v}`}. ${blurb}`,
+  };
+}
+
+// A stadium part card (v2.3): one part of the stadium, same rarity caps as an area card.
+function partCard(part, name, base, blurb) {
+  return {
+    name, group: 'club', kind: 'area', icon: STADIUM_PARTS[part].icon, base, target: null, facility: 'stadium', part,
+    values: [2, 3, 4, 5, 5],
+    text: (v, r, t) => `Stadium · ${STADIUM_PARTS[part].label} ${t === 4 ? '+2 levels (max 5)' : `+1 level, up to level ${v}`}. ${blurb}`,
   };
 }
 
@@ -91,7 +100,16 @@ export const OFFSEASON_CARDS = {
   },
 
   // --------------------------------------------------------------------- Club
-  stadiumEvolution: areaCard('stadium', 'Stadium Evolution', 220, 'More seats, a bigger home gate.'),
+  stadiumEvolution: {
+    ...areaCard('stadium', 'Stadium Evolution', 220, ''),
+    text: (v, r, t) => `The stadium's weakest part ${t === 4 ? '+2 levels (max 5)' : `+1 level, up to level ${v}`}. Every part lifts the star rating.`,
+  },
+  newStand: partCard('seats', 'New Stand', 240, 'More seats: a bigger crowd when demand is there.'),
+  lockerRooms: partCard('lockers', 'Locker Room Refit', 200, 'A little better at home, and a star closer.'),
+  pitchRenewal: partCard('pitch', 'Pitch Renewal', 200, 'A perfect surface: a little better at home.'),
+  accessParking: partCard('access', 'Access & Parking', 180, 'Easier to get to: more fans want tickets.'),
+  floodlights: partCard('lighting', 'Floodlights', 200, 'Evening kick-offs: more coins per fan.'),
+  bigScreen: partCard('screens', 'Big Screen', 180, 'Replays and scoreboard: happier fans every home game.'),
   hospitality: areaCard('hospitality', 'Restaurant & Boxes', 200, 'Hospitality: more income every home game.'),
   clubStore: areaCard('store', 'Club Store', 180, 'Store sales every match.'),
   merchExpansion: areaCard('merch', 'Merchandise Line', 200, 'New products: kits, lifestyle, global. Popular players sell more.'),
@@ -152,6 +170,32 @@ export const OFFSEASON_CARDS = {
     name: 'Press Charm', group: 'club', kind: 'temp', icon: '🎙', base: 150, target: null,
     values: [3, 4, 6, 8, 10],
     text: (v) => `Owners' confidence +${v} now.`,
+  },
+  // Fan cards (v2.3): grow the fan base (state/fans.js).
+  localEvent: {
+    name: 'Local Event', group: 'club', kind: 'temp', icon: '🎪', base: 160, target: null,
+    values: [2, 3, 5, 7, 10],
+    text: (v) => `A festival in town: local fans +${v}% now (more ticket demand).`,
+  },
+  socialMedia: {
+    name: 'Social Media Campaign', group: 'club', kind: 'temp', icon: '📱', base: 160, target: null,
+    values: [3, 5, 8, 12, 18],
+    text: (v) => `Fans worldwide +${v}% now (bigger TV and shirt deals).`,
+  },
+  fanDay: {
+    name: 'Fan Day', group: 'club', kind: 'temp', icon: '🎉', base: 150, target: null,
+    values: [2, 3, 4, 5, 7], local: [1, 1, 2, 2, 3],
+    text: (v, r, t) => `Open training and autographs: happiness +${v} and local fans +${[1, 1, 2, 2, 3][t]}% now.`,
+  },
+  stadiumTour: {
+    name: 'Stadium Tour', group: 'club', kind: 'temp', icon: '🗺', base: 150, target: null,
+    values: [60, 100, 160, 260, 400], local: [1, 1, 2, 2, 3],
+    text: (v, r, t) => `Tours of the ground: ◎ ${v} now (×1.5 in a tier-2 league, ×2 in tier 1) and local fans +${[1, 1, 2, 2, 3][t]}%.`,
+  },
+  internationalTour: {
+    name: 'International Tour', group: 'club', kind: 'temp', icon: '🌏', base: 220, target: null, summerOnly: true,
+    values: [6, 9, 13, 18, 25], coins: [120, 200, 320, 500, 800], shape: [-10, -9, -8, -7, -6], shapeGames: 3,
+    text: (v, r, t) => `A summer tour abroad: fans worldwide +${v}%, ◎ ${[120, 200, 320, 500, 800][t]} (×1.5 tier 2, ×2 tier 1), but ${[-10, -9, -8, -7, -6][t]} team shape for the first 3 matches.`,
   },
   localHero: {
     name: 'Local Hero', group: 'club', kind: 'temp', icon: '🦸', base: 150, target: null,
@@ -225,6 +269,8 @@ export const OFFSEASON_IDS = Object.keys(OFFSEASON_CARDS);
 // Club cards: infrastructure (one per area) and temporary ones.
 export const CLUB_CARD_IDS = OFFSEASON_IDS.filter((id) => OFFSEASON_CARDS[id].group === 'club');
 export const AREA_CARD_IDS = CLUB_CARD_IDS.filter((id) => OFFSEASON_CARDS[id].kind === 'area');
+// The stadium's cards (Stadium Evolution and one per part) share one slot in a club pack's deal.
+export const STADIUM_CARD_IDS = AREA_CARD_IDS.filter((id) => OFFSEASON_CARDS[id].facility === 'stadium');
 export const TEMP_CARD_IDS = CLUB_CARD_IDS.filter((id) => OFFSEASON_CARDS[id].kind === 'temp');
 export const isClubCard = (type) => OFFSEASON_CARDS[type]?.group === 'club';
 // How many games a temporary card lasts at a rarity (null: it happens at once).
