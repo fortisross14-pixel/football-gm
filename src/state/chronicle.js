@@ -2,6 +2,7 @@
 // your contract, and the inbox where news arrives (titles, reactions, signings, works…).
 
 import { DIVISION_BY_ID } from '../data/world/structure.js';
+import { honoursSummary } from '../engine/titles.js';
 import { CONTINENT_NAME, CONTINENT2_NAME } from '../engine/competitions.js';
 import { standings } from '../engine/season.js';
 import { PHILOSOPHIES, clubIdentity, styleDistance } from '../data/philosophies.js';
@@ -129,4 +130,53 @@ export function moodNews(before, after, state) {
 export const CONTRACT_YEARS = { 1: 3, 2: 2, 3: 2 };
 export function newContract(year, level) {
   return { from: year, until: year + (CONTRACT_YEARS[level] || 2) - 1 };
+}
+
+// ---------------------------------------------------------------------------
+// The CEO's welcome: the season objective, the club's story so far, the football they want.
+
+const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+const listYears = (ys) => (ys.length > 1 ? `${ys.slice(0, -1).join(', ')} and ${ys.at(-1)}` : String(ys[0]));
+
+// One or two sentences about the club's history (real-life and in-game titles) before nowYear.
+export function historySentence(archive, club, nowYear) {
+  const { league, cup, continental, continental2 } = honoursSummary(archive, club.id, club.divisionId, nowYear);
+  const contParts = [continental, continental2].filter((c) => c.n).map((c) => (c.n === 1 ? `a ${c.name} title` : `${c.n} ${c.name} titles`));
+  const contBit = contParts.length ? ` and ${contParts.join(' and ')}` : '';
+  const recentAll = league.recent + cup.recent + continental.recent;
+  const gap = league.last ? nowYear - league.last : null;
+  if (league.n >= 3 && league.recent >= 2) {
+    return `We have a brilliant modern history: ${plural(league.recent, 'league title')} in the last 10 years, ${league.n} in all${contBit}. I hope we can continue the trend.`;
+  }
+  if (recentAll >= 3) {
+    return `We have a brilliant modern history, with ${plural(recentAll, 'trophy', 'trophies')} in the last 10 years. I hope we can continue the trend.`;
+  }
+  if (league.n >= 3 && gap > 10) {
+    return `We are a historic club with ${league.n} league titles${contBit}, but we haven't won the league in more than ${gap >= 20 ? Math.floor(gap / 10) * 10 : 10} years: the last one was in ${league.last}. I hope we can win the title again soon.`;
+  }
+  if (league.n >= 3) {
+    return `We are a big club: ${league.n} league titles, the last in ${league.last}${contBit}. Here we compete for trophies.`;
+  }
+  if (league.n > 0) {
+    return `We have been league champions ${league.n === 1 ? 'once' : 'twice'}, in ${listYears(league.years)}${cup.n ? `, and won ${plural(cup.n, 'domestic cup')}` : ''}${contBit}. The fans dream of another title.`;
+  }
+  if (cup.n > 0) {
+    return `We have never won the league, but we have a cup tradition: ${plural(cup.n, `${cup.name} win`)}, the last in ${cup.last}${contBit}. Let's build on it.`;
+  }
+  if (continental.n > 0) {
+    return `We have never won the league, but we know the big nights: ${plural(continental.n, `${continental.name} title`)}. Now we want the league.`;
+  }
+  return "We have no major honours yet. Dream big: let's write our own history.";
+}
+
+// The CEO's message to a new manager. objective: { text } (engine/career.js boardObjective).
+export function ceoWelcome(state, club, objective, nowYear) {
+  const identity = PHILOSOPHIES[clubIdentity(club)];
+  const body = [
+    `Welcome to ${club.name}.`,
+    objective ? `For the ${nowYear} season the board's objective is clear: ${objective.text.charAt(0).toLowerCase()}${objective.text.slice(1)}.` : '',
+    historySentence(state.archive || [], club, nowYear),
+    identity ? `As for the football, I want us to play ${identity.name.toLowerCase()}: ${identity.text.charAt(0).toLowerCase()}${identity.text.slice(1)}` : '',
+  ].filter(Boolean).join(' ');
+  return { title: `A message from the CEO of ${club.name}`, body };
 }

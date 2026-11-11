@@ -3,7 +3,7 @@ import { aiTeamFor, standings, topScorers } from '../engine/season.js';
 import { clubHistory, recordRow } from '../engine/history.js';
 import { clubManagers, clubMoves, clubRecord, clubPlayersAllTime, MOVE_LABEL } from '../engine/careers.js';
 import { emptyBook } from '../engine/statsbook.js';
-import { DIVISION_BY_ID, CONTINENT_LABEL } from '../data/world/structure.js';
+import { DIVISION_BY_ID } from '../data/world/structure.js';
 import { COACH_PASSIVES } from '../data/coachPassives.js';
 import { PHILOSOPHIES, clubIdentity } from '../data/philosophies.js';
 import { overall } from '../engine/cards.js';
@@ -16,7 +16,9 @@ import { clubVars } from './clubTheme.js';
 import { LeagueLink, ClubLink, PlayerLink, ManagerLink } from './nav.jsx';
 import { Segmented } from './Home.jsx';
 import { rivalsOf, derbyName } from '../data/rivals.js';
-import { compName, compOrder, CUP_NAME_FOR, SUPER_CUP_NAME_FOR, CONTINENTAL_NAME, CONTINENTAL2_NAME, TROPHY_ICON, trophyNames } from './names.js';
+import { compName, compOrder, TROPHY_ICON } from './names.js';
+import { yearLabel, seasonYear, FIRST_YEAR } from '../engine/years.js';
+import { clubTitles, entryWinners, competitionName, yearsText, honoursSummary } from '../engine/titles.js';
 
 const nameOf = (id) => POOL_BY_ID[id]?.name;
 const ordinal = (n) => `${n}${['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 < 14) ? 0 : n % 10] || 'th'}`;
@@ -65,6 +67,16 @@ export default function Team({ state, clubId, onBack, onCurse, tab: tabProp, onT
   );
 }
 
+// "11 league titles, the last in 2017 · 2 European Cups" (real life + in-game).
+function historyLineOf(sum) {
+  const parts = [];
+  const { league, cup, continental } = sum;
+  if (league.n) parts.push(`${league.n} league title${league.n > 1 ? 's' : ''}, the last in ${league.last}`);
+  if (continental.n) parts.push(`${continental.n} ${continental.name}${continental.n > 1 ? ' titles' : ''}`);
+  if (cup.n) parts.push(`${cup.n} ${cup.name}${cup.n > 1 ? 's' : ''}${league.n ? '' : `, the last in ${cup.last}`}`);
+  return parts.length ? parts.join(' · ') : 'No major honours yet.';
+}
+
 function Overview({ state, club, isUser, squad, hist, onCurse }) {
   const clubId = club.id;
   const div = DIVISION_BY_ID[club.divisionId];
@@ -80,13 +92,17 @@ function Overview({ state, club, isUser, squad, hist, onCurse }) {
   const gm = isUser ? { name: state.gmName || 'You', rep: state.gm?.reputation } : state.world.gms?.[clubId];
   const mkey = isUser ? 'you' : gm && `${clubId}|${gm.name}`;
   const h = hist.honours;
-  const totalHonours = h.league + h.cup + h.continental + h.cwc + (h.continental2 || 0) + (h.supercup || 0) + (h.contsuper || 0);
+  const now = seasonYear(state.season.year);
+  const sum = useMemo(() => honoursSummary(state.archive, clubId, club.divisionId, now + 1), [state.archive, clubId, club.divisionId, now]);
+  const majors = sum.titles.filter((t) => t.kind !== 'super');
+  const totalHonours = majors.reduce((n, t) => n + t.n, 0);
+  const historyLine = historyLineOf(sum);
   return (
     <>
       <div className="stat-tiles">
         <div><span>Position</span><b>{row?.p ? ordinal(pos) : '—'}</b><small>{row ? `${row.pts} pts · ${row.w}-${row.d}-${row.l}` : ''}</small></div>
         <div><span>Strength</span><b>{Math.round(isUser ? squadOvr(squad.lineup) : club.strength)}</b><small>{squad.formation}</small></div>
-        <div><span>Honours</span><b>{totalHonours}</b><small>{hist.seasons.length} seasons on record</small></div>
+        <div><span>Honours</span><b>{totalHonours}</b><small>major trophies</small></div>
       </div>
       {isUser && <p className="hint hint--accent">This is your club.</p>}
       {!isUser && vs.length > 0 && <p className="hint">Your recent record against them: {vsRec.W}W {vsRec.D}D {vsRec.L}L</p>}
@@ -112,15 +128,19 @@ function Overview({ state, club, isUser, squad, hist, onCurse }) {
 
       <section>
         <h2 className="section-title">Honours</h2>
+        <p className="club-history-line">{historyLine}</p>
         <div className="honours">
-          <div><b>{h.league}</b><span>League titles</span></div>
-          <div><b>{h.cup}</b><span>Domestic cups</span></div>
-          <div><b>{h.supercup || 0}</b><span>Super cups</span></div>
-          <div><b>{h.continental}</b><span>{CONTINENTAL_NAME[div.continent]}</span></div>
-          {CONTINENTAL2_NAME[div.continent] && <div><b>{h.continental2 || 0}</b><span>{CONTINENTAL2_NAME[div.continent]}</span></div>}
-          <div><b>{h.cwc}</b><span>Club World Cups</span></div>
+          <div><b>{sum.league.n}</b><span>League titles</span></div>
+          <div><b>{sum.cup.n}</b><span>Domestic cups</span></div>
+          <div><b>{sum.continental.n + sum.continental2.n}</b><span>Continental cups</span></div>
+          <div><b>{sum.world.n}</b><span>Club World Cups</span></div>
           <div><b>{h.runnerUp}</b><span>League runner-up</span></div>
         </div>
+        {majors.length > 0 && (
+          <ul className="honour-lines">
+            {majors.slice(0, 4).map((t) => <li key={t.key}><b>{t.name} ×{t.n}</b> <span>({yearsText([...t.real, ...t.game], 4)})</span></li>)}
+          </ul>
+        )}
       </section>
 
       {scorersNow.length > 0 && (
@@ -218,7 +238,7 @@ function History({ state, club, hist }) {
               <tbody>
                 {hist.seasons.map((s) => (
                   <tr key={s.year} className={s.pos === 1 ? 'is-top' : ''}>
-                    <td>{s.year}</td>
+                    <td>{yearLabel(s.year)}</td>
                     <td className="table__club"><LeagueLink divId={s.divId}>{DIVISION_BY_ID[s.divId].name}</LeagueLink></td>
                     <td><b>{s.pos}</b></td>
                     <td>{s.pts}</td>
@@ -243,7 +263,7 @@ function History({ state, club, hist }) {
               <tbody>
                 {managers.map((m) => (
                   <tr key={m.key} className={m.key === 'you' ? 'is-user' : ''}>
-                    <td>{m.current ? `S${m.from}–now` : m.from === m.to ? `S${m.from}` : `S${m.from}–S${m.to}`}</td>
+                    <td>{m.current ? `${yearLabel(m.from)}–now` : m.from === m.to ? `${yearLabel(m.from)}` : `${yearLabel(m.from)}–${yearLabel(m.to)}`}</td>
                     <td className="table__club"><ManagerLink mkey={m.key}>{m.name}{m.key === 'you' ? ' (you)' : ''}</ManagerLink></td>
                     <td>{m.p}</td><td>{m.w}-{m.d}-{m.l}</td><td>{pct(m.w, m.p)}</td><td>{m.titles}</td>
                   </tr>
@@ -265,7 +285,7 @@ function History({ state, club, hist }) {
                   {signings.map((m, i) => (
                     <li key={`${m.id}-${i}`} className={`r-${rarity(m.id)}`}>
                       <b><PlayerLink id={m.id} name={moveName(m.id)} /></b>
-                      <span>S{m.year} · {MOVE_LABEL[m.type]}{m.from ? <> from <ClubLink id={m.from}>{state.world.clubs[m.from]?.short}</ClubLink></> : m.type === 's' ? ' (free agent)' : ''}</span>
+                      <span>{yearLabel(m.year)} · {MOVE_LABEL[m.type]}{m.from ? <> from <ClubLink id={m.from}>{state.world.clubs[m.from]?.short}</ClubLink></> : m.type === 's' ? ' (free agent)' : ''}</span>
                     </li>
                   ))}
                 </ul>
@@ -278,7 +298,7 @@ function History({ state, club, hist }) {
                   {departures.map((m, i) => (
                     <li key={`${m.id}-${i}`} className={`r-${rarity(m.id)}`}>
                       <b><PlayerLink id={m.id} name={moveName(m.id)} /></b>
-                      <span>S{m.year} · {m.to ? <>{MOVE_LABEL[m.type]} to <ClubLink id={m.to}>{state.world.clubs[m.to]?.short}</ClubLink></> : MOVE_LABEL[m.type]}</span>
+                      <span>{yearLabel(m.year)} · {m.to ? <>{MOVE_LABEL[m.type]} to <ClubLink id={m.to}>{state.world.clubs[m.to]?.short}</ClubLink></> : MOVE_LABEL[m.type]}</span>
                     </li>
                   ))}
                 </ul>
@@ -324,7 +344,7 @@ function ClubStats({ state, club }) {
   const linkable = (id) => POOL_BY_ID[id] || state.careers?.[id] || clubId === state.club.id;
   return (
     <>
-      <Segmented small label="Period" value={period} options={[{ id: 'season', label: `Season ${state.stats?.year || state.season.year}` }, { id: 'all', label: 'All-time' }]} onChange={setPeriod} />
+      <Segmented small label="Period" value={period} options={[{ id: 'season', label: yearLabel(state.stats?.year || state.season.year) }, { id: 'all', label: 'All-time' }]} onChange={setPeriod} />
       <section>
         <h2 className="section-title">Record by competition</h2>
         {recRows.length ? (
@@ -366,57 +386,55 @@ function ClubStats({ state, club }) {
   );
 }
 
-// Every trophy the club has won, by competition, with the seasons.
-export function clubHonoursList(archive, clubId) {
-  const map = {};
-  const add = (kind, label, year) => {
-    const k = `${kind}:${label}`;
-    (map[k] = map[k] || { kind, label, years: [] }).years.push(year);
-  };
-  for (const e of archive || []) {
-    for (const [divId, lg] of Object.entries(e.leagues)) {
-      if (lg.table[0]?.[0] === clubId) add('league', DIVISION_BY_ID[divId]?.name || divId, e.year);
-      if (lg.table[1]?.[0] === clubId) add('runnerUp', `${DIVISION_BY_ID[divId]?.name || divId} runner-up`, e.year);
-    }
-    for (const [code, c] of Object.entries(e.cups)) if (c?.winner === clubId) add('cup', CUP_NAME_FOR(code), e.year);
-    for (const [code, c] of Object.entries(e.supercups || {})) if (c?.winner === clubId) add('supercup', SUPER_CUP_NAME_FOR(code), e.year);
-    for (const [k, c] of Object.entries(e.continental)) if (c?.winner === clubId) add('continental', CONTINENTAL_NAME[k] || k, e.year);
-    for (const [k, c] of Object.entries(e.continental2 || {})) if (c?.winner === clubId) add('continental2', CONTINENTAL2_NAME[k] || k, e.year);
-    for (const [k, c] of Object.entries(e.contSuper || {})) if (c?.winner === clubId) add('contsuper', trophyNames.contsuper(k), e.year);
-    if (e.cwc?.winner === clubId) add('cwc', 'Club World Cup', e.year);
-  }
-  const order = { cwc: 0, continental: 1, continental2: 2, contsuper: 3, league: 4, cup: 5, supercup: 6, runnerUp: 7 };
-  return Object.values(map).sort((a, b) => order[a.kind] - order[b.kind] || b.years.length - a.years.length);
-}
+const HONOUR_ICON = { league: '🏆', cup: '🥇', super: '🎖️', continental: '🌍', world: '🌐' };
 
+// Every trophy the club has won, real life and in-game, by competition.
 function Honours({ state, club }) {
-  const list = useMemo(() => clubHonoursList(state.archive, club.id), [state.archive, club.id]);
+  const list = useMemo(() => clubTitles(state.archive, club.id), [state.archive, club.id]);
+  const runnerUps = useMemo(() => {
+    const map = {};
+    for (const e of state.archive || []) {
+      for (const [divId, lg] of Object.entries(e.leagues)) if (lg.table[1]?.[0] === club.id) (map[divId] = map[divId] || []).push(e.year);
+    }
+    return Object.entries(map);
+  }, [state.archive, club.id]);
   const finals = useMemo(() => {
     const out = [];
     for (const e of state.archive || []) {
-      for (const [code, c] of Object.entries(e.cups)) if (c?.runnerUp === club.id) out.push({ year: e.year, label: `${CUP_NAME_FOR(code)} final`, winner: c.winner });
-      for (const [k, c] of Object.entries(e.continental)) if (c?.runnerUp === club.id) out.push({ year: e.year, label: `${CONTINENTAL_NAME[k]} final`, winner: c.winner });
-      for (const [k, c] of Object.entries(e.continental2 || {})) if (c?.runnerUp === club.id) out.push({ year: e.year, label: `${CONTINENTAL2_NAME[k]} final`, winner: c.winner });
-      if (e.cwc?.runnerUp === club.id) out.push({ year: e.year, label: 'Club World Cup final', winner: e.cwc.winner });
+      for (const w of entryWinners(e)) if (w.runnerUp === club.id && !w.key.startsWith('L:')) out.push({ year: e.year, label: `${competitionName(w.key)} final`, winner: w.winner });
     }
     return out.reverse();
   }, [state.archive, club.id]);
-  if (!list.length && !finals.length) return <p className="hint">No trophies yet{(state.archive || []).length ? '' : ': the first ones are decided when this season ends'}.</p>;
+  if (!list.length && !finals.length && !runnerUps.length) return <p className="hint">No major honours yet{(state.archive || []).length ? '' : ': the first trophies of the game are decided when this season ends'}.</p>;
   return (
     <>
       <ul className="trophy-list">
         {list.map((t) => (
-          <li key={`${t.kind}-${t.label}`} className={`trophy-list__${t.kind}`}>
-            <span className="trophy-list__icon" aria-hidden="true">{t.kind === 'runnerUp' ? '🥈' : TROPHY_ICON[t.kind]}</span>
-            <span className="trophy-list__body"><b>{t.label}</b><small>{t.years.map((y) => `S${y}`).join(' · ')}</small></span>
-            <span className="trophy-list__n">{t.years.length}</span>
+          <li key={t.key} className={`trophy-list__${t.kind}`}>
+            <span className="trophy-list__icon" aria-hidden="true">{HONOUR_ICON[t.kind]}</span>
+            <span className="trophy-list__body">
+              <b>{t.name}</b>
+              <small>
+                {t.real.length > 0 && <span>{yearsText(t.real)}</span>}
+                {t.game.length > 0 && <span className="trophy-list__game">{t.real.length ? ' · ' : ''}{yearsText(t.game)}</span>}
+              </small>
+            </span>
+            <span className="trophy-list__n">×{t.n}</span>
+          </li>
+        ))}
+        {runnerUps.map(([divId, years]) => (
+          <li key={`ru-${divId}`} className="trophy-list__runnerUp">
+            <span className="trophy-list__icon" aria-hidden="true">🥈</span>
+            <span className="trophy-list__body"><b>{DIVISION_BY_ID[divId]?.name} runner-up</b><small>{years.map(yearLabel).join(', ')}</small></span>
+            <span className="trophy-list__n">×{years.length}</span>
           </li>
         ))}
       </ul>
+      <p className="hint">Real-life titles up to 2026, then <b className="trophy-list__game">titles won in the game</b> from {FIRST_YEAR}.</p>
       {finals.length > 0 && (
         <section>
           <h2 className="section-title">Lost finals</h2>
-          <ul className="champions">{finals.map((f, i) => <li key={i}><span>S{f.year} · {f.label}</span><b>lost to <ClubLink id={f.winner}>{state.world.clubs[f.winner]?.short}</ClubLink></b></li>)}</ul>
+          <ul className="champions">{finals.map((f, i) => <li key={i}><span>{yearLabel(f.year)} · {f.label}</span><b>lost to <ClubLink id={f.winner}>{state.world.clubs[f.winner]?.short}</ClubLink></b></li>)}</ul>
         </section>
       )}
     </>

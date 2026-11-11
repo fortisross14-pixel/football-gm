@@ -37,7 +37,8 @@ npm run build      # static build in dist/
 - **Cards tab:** Owned (Players: squad, coaches, player packs, transfer cards · Club: club packs, club cards, active effects, boosts · Season · Album) and Shop.
 - **Club cards:** infrastructure cards raise one club area for good (rarity caps the level); temporary cards last a few games: High Season (home gate ×2), Viral Merchandise, Ticket Promo, Recovery Camp, Analyst Report (tactics grade one step better), or pay off at once: Sponsor Night, Team Building, Press Charm, Local Hero.
 - **League tab:** every league by name, with table, fixtures, scorers, cups and **History**: champion, runner-up, top scorer, MVP and Golden Glove for every season, records by league, country or world, and your career season by season. Tap any club for its page (Overview, Squad, History with managers and transfers, Stats, Honours), any player for his profile (Overview, History club by club and season by season, Stats by competition) and any manager for his page.
-- **World tab:** manager rankings (you against 400+ AI managers), power ranking and most decorated clubs, world records, Hall of Fame.
+- **World tab:** manager rankings (you against 400+ AI managers), most decorated clubs (real-life + in-game titles; all / league / cup / continental) and power ranking, world records, Hall of Fame.
+- **Real history:** the game starts in **2027** (seasons are shown as years). Club pages list their real-life titles up to 2026 plus the ones won in the game ("Copa Libertadores ×2 (1989, 2016)"), every competition's History shows its real winners by year and then the game's, and the CEO welcomes you at every new club with the objective, the club's story and the football they want.
 - **Season end:** prize money, reward packs, a free management card and the **season card deal**: 3 season cards, pick 1 for next season (redraw for ◎ 200 / 400 / 800).
 - **Transfer Market, open all year:** transfer cards (random signings, youth, veterans, trainers, retraining…), each with a rarity that sets its strength. 5 offers each summer, 3 new ones every 5 league matchdays. Play cards (transfer and club) from the Cards tab any time, up to **8 card plays a season** (+1 at Analytics level 3 and 5).
 - **Card wear:** players and coaches lose a match each time they play and retire at 0. Academy graduates start with their full career, pack players with 50–90% of it, signings with what they had left.
@@ -76,6 +77,10 @@ Progress is saved in the browser, automatically.
 | `src/data/pool.js` | Original card pool (112 players, 16 coaches) |
 | `src/data/world/` | World structure, the 5 region files (clubs + their named players) and the squads files (history pools; `squads-e/f.js` for the v1.9 clubs, written with `src/data/cardgen.js`) |
 | `scripts/check-world.mjs` | Validates the world data |
+| `src/data/history/` | Real-life winners by year for every league, cup, super cup and continental competition (to 2026) |
+| `src/engine/titles.js` | Real + in-game titles: club honours, competition winners, most decorated |
+| `src/engine/years.js` | Season numbers as calendar years (season 1 = 2027) |
+| `scripts/check-history.mjs` | Validates the history data (`--counts`, `--club <id>`) |
 | `scripts/check-nations.mjs` | Every named player/coach has a known nation (`src/data/nations.js`: code → name + flag) |
 | `src/state/managers.js` | Managers book: every career you have played, ranked (main menu → Managers) |
 | `src/data/offseason.js` | The 53 management card types: transfer (Transfer Market), club (infrastructure + temporary), season events, plus the season-only cards |
