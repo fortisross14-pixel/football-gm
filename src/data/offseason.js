@@ -9,6 +9,7 @@
 // target: what the player has to pick when using the card.
 // summerOnly: only playable in the off-season.
 import { AREAS, FACILITY_LABEL } from './facilities.js';
+import { SEASON_ONLY_CARDS } from './seasonCards.js';
 
 export const TIERS = ['common', 'uncommon', 'rare', 'epic', 'legend'];
 export const tierIndex = (rarity) => Math.max(0, TIERS.indexOf(rarity));
@@ -165,6 +166,9 @@ export const OFFSEASON_CARDS = {
     values: [6, 8, 10, 13, 17],
     text: (v) => `+${pct(v)} all stats in continental and Club World Cup matches.`,
   },
+
+  // Season cards that are only dealt at season end (data/seasonCards.js), never sold.
+  ...SEASON_ONLY_CARDS,
 };
 
 export const OFFSEASON_IDS = Object.keys(OFFSEASON_CARDS);
@@ -190,4 +194,4 @@ export function cardPrice(type, rarity, level = null) {
 // Cards from older saves that were replaced.
 export const RENAMED_CARDS = { shirtSponsor: 'findSponsor' };
 
-export const GROUP_LABEL = { transfer: 'Transfer', club: 'Club', event: 'Season event' };
+export const GROUP_LABEL = { transfer: 'Transfer', club: 'Club', event: 'Season event', season: 'Season card' };
