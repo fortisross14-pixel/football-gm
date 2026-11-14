@@ -2,7 +2,7 @@
 // and promotion/relegation at the end.
 import { recordGame as recordStats } from './statsbook.js';
 import { makeRng } from './rng.js';
-import { buildAiTeam, pickSquad, squadStrength, FILLER_RATING } from './aiTeam.js';
+import { buildAiTeam, pickSquad, squadStrength, fillerFor } from './aiTeam.js';
 import { DIVISIONS, DIVISION_BY_ID, DIVISION_SIZE } from '../data/world/structure.js';
 import { drawStartingSquads } from './transfers.js';
 
@@ -34,7 +34,7 @@ const hash = (str) => [...str].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>>
 // Strength = the starting 7's average OVR (named cards plus generic fillers).
 export function clubStrength(club, poolById) {
   const named = club.keyPlayers.map((id) => poolById[id]).filter(Boolean);
-  const { lineup } = pickSquad(named, club.formation, FILLER_RATING[club.level], makeRng(hash(club.id)), club.id);
+  const { lineup } = pickSquad(named, club.formation, fillerFor(club), makeRng(hash(club.id)), club.id);
   return squadStrength(lineup, club.formation);
 }
 

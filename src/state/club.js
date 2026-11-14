@@ -13,7 +13,7 @@ import {
   HOSPITALITY_INCOME, PART_IDS, STORE_INCOME, MERCH_MULT, COHESION_GAIN, COHESION_MAX_BONUS,
   GYM_DRAIN, SPA_SHAPE, ANALYTICS_ODDS, FACILITY_LABEL, fullFacilities, cardPlayLimit,
 } from '../data/facilities.js';
-import { makeGenericCard, FILLER_RATING, squadStrength } from '../engine/aiTeam.js';
+import { makeGenericCard, FILLER_RATING, fillerFor, squadStrength } from '../engine/aiTeam.js';
 import { makeRng } from '../engine/rng.js';
 import { archiveSeason, foldRecords, compactEntry } from '../engine/history.js';
 import { ensureGms, updateGms } from '../engine/gms.js';
@@ -26,6 +26,9 @@ import { makeDealOffersInto, settleDealsInto, initialDealsInto, dealMatchItems }
 import { newStadium, stadiumOf, matchdayOf, homeStatBonus, partLevel, weakestPart, ensureStadiumInto, capacityOf, starsOf } from './stadium.js';
 import { initialFans, ensureFansInto, fanMatchInto, fanSeasonInto, recordCrowdInto, boostFansInto, addHappinessInto, fansOf } from './fans.js';
 import { decideAwards } from '../engine/awards.js';
+import { isIntlSlot } from '../engine/intl.js';
+import { clubNation } from '../data/nationalTeams.js';
+import { newSeasonIntl, playIntlSlot, nationalFixture, recordNationalSlot, nationalSeasonItems, nationalOffers, userNation } from './national.js';
 import { foldSeason, recordMove, holders, diffMoves } from '../engine/careers.js';
 import { newStats, emptyBook, recordGame as recordStats, recordTitle, coachKey } from '../engine/statsbook.js';
 import { styleDistance, clubIdentity } from '../data/philosophies.js';
@@ -199,6 +202,8 @@ export function newClubState(seed = 12345, { clubId = USER_CLUB.id, gmName = 'Yo
   pushInbox(state, 'career', `Welcome to ${state.club.name}`, `The owners hand you the keys: a ${state.gm.contract.until - state.gm.contract.from + 1}-season contract. Your coach is ${state.coaches.coach.name}. Good luck.`);
   state.qualification = qualifiers(tablesByStrength(state.world));
   state.season = newSeason(state, 1, seed);
+  // A small federation or two is already interested: a national team job alongside the club.
+  state.nationOffers = nationalOffers(state, seed + 43);
   state.market = makeMarket(state, makeRng(seed + 77), 'season');
   setObjective(state);
   initialDealsInto(state, seed + 91); // the club's kit, sponsor and TV deals for season 1
@@ -215,6 +220,7 @@ export function newSeason(state, year, seed) {
   const season = createSeason({ year, world: state.world, seed });
   season.slot = 0;
   season.comps = createCompetitions(state.world, state.qualification, seed + 5);
+  season.intl = newSeasonIntl(state, year, seed + 31, POOL_BY_ID); // national teams: qualifiers and the summer tournament
   return advanceToUser({ ...state, season }, seed + 9).season;
 }
 
@@ -237,6 +243,11 @@ function advanceToUser(state, seed) {
   while (season.slot < CALENDAR.length) {
     const slot = CALENDAR[season.slot];
     if (slot === 'L') break;
+    if (isIntlSlot(slot)) {
+      if (playIntlSlot(next, slot, rng, POOL_BY_ID)) break; // your national team plays
+      season.slot += 1;
+      continue;
+    }
     const entries = prepareSlot(season.comps, slot, next.world, rng.int(1, 2 ** 30));
     if (entries.some((e) => involves(e, next.club.id))) break;
     for (const e of entries) {
@@ -259,6 +270,7 @@ export function nextUserGame(state) {
     if (!fx) return null;
     return { slot, competition: 'league', label: `League · Matchday ${season.matchday + 1}`, homeId: fx.home, awayId: fx.away, isHome: fx.isHome, neutral: false, knockout: false, opponentId: fx.opponentId };
   }
+  if (isIntlSlot(slot)) return nationalFixture(state, slot, POOL_BY_ID);
   const comps = structuredClone(season.comps);
   const entry = prepareSlot(comps, slot, state.world, 1).find((e) => involves(e, state.club.id));
   if (!entry) return null;
@@ -689,6 +701,19 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
   return { state: next, retired: [...retired, ...retiredCoaches], boostReward };
 }
 
+// Your national team's game: the engine match (or a quick sim with match = null), then the
+// season moves on to your next game.
+export function applyNationalMatch(state, match, userSide, seed) {
+  const fx = nextUserGame(state);
+  if (!fx?.national) return state;
+  const next = recordNationalSlot(state, { match, userSide }, seed, POOL_BY_ID);
+  next.season.slot += 1;
+  next.season = advanceToUser(next, seed + 13).season;
+  if (next.season.slot >= CALENDAR.length) next.phase = 'seasonEnd';
+  return next;
+}
+export const simNationalGame = (state, seed) => applyNationalMatch(state, null, 0, seed);
+
 // Silverware: cup, continental and Club World Cup wins go in the cabinet with a reward pack.
 function awardTrophy(next, entry) {
   const comps = next.season.comps;
@@ -708,8 +733,11 @@ function awardTrophy(next, entry) {
   pushInbox(next, 'title', `🏆 You won the ${trophy.competition}!`, `A night to remember for ${next.club.name}. Reward: ${trophy.packs.length} ${trophy.packs.join(' and ')} pack${trophy.packs.length > 1 ? 's' : ''} and a fame boost for the whole squad.`);
 }
 
+// Your club's country (a nation code): academy products play for it.
+export const homeNation = (state) => clubNation(state.club.id, DIVISION_BY_ID[state.club.divisionId]?.code);
+
 function academyPlayer(state, rng, pos) {
-  const card = makeGenericCard(rng, { id: `academy-${uid(state)}`, pos, rating: 48 + 2 * lvl(state, 'academy'), rarity: 'academy' });
+  const card = makeGenericCard(rng, { id: `academy-${uid(state)}`, pos, rating: 48 + 2 * lvl(state, 'academy'), rarity: 'academy', nation: homeNation(state) || undefined });
   card.matchesLeft = null;
   return card;
 }
@@ -1093,7 +1121,9 @@ export function closeSeason(state, seed) {
     const summary = seasonSummary(state);
     const objective = state.gm.objective || { target: 10, text: 'Finish the season' };
     const verdict = judgeObjective(objective, position);
-    const items = mediaBoost(weighReputation(reputationChanges({ verdict, promoted: summary.promoted, leagueTitle: position === 1, trophies: state.season.userTrophies || [] }), state.club.level, next.gm.reputation), gmTrait(state));
+    const nat = nationalSeasonItems(state);
+    const items = [...mediaBoost(weighReputation(reputationChanges({ verdict, promoted: summary.promoted, leagueTitle: position === 1, trophies: state.season.userTrophies || [] }), state.club.level, next.gm.reputation), gmTrait(state)), ...nat.items];
+    for (const line of nat.lines) pushInbox(next, 'career', 'National team', line);
     const before = next.gm.reputation;
     next.gm.missedInRow = verdict === 'missed' ? next.gm.missedInRow + 1 : 0;
     fanSeasonInto(next, { year: state.season.year, promoted: summary.promoted, relegated: summary.relegated, title: position === 1, verdict, popularity: squadPopularity(state) });
@@ -1129,10 +1159,13 @@ export function closeSeason(state, seed) {
       reputation: next.gm.reputation, currentClubId: next.club.id, sacked: next.gm.sacked, good: verdict !== 'missed', seed: seed + 41,
       ...offerBoost(state),
     });
+    // National teams looking for a manager (a second job; see state/national.js).
+    next.nationOffers = nationalOffers(next, seed + 43);
+    if (next.nationOffers.length) pushInbox(next, 'career', 'A federation is calling', `${next.nationOffers.length === 1 ? 'A national team wants' : 'National teams want'} you as their manager, alongside your club job. See Career → National team.`);
   }
   // Your academy intake: club legends where possible, waiting for Keep/Discard.
   const intake = userAcademyIntake(next.world, {
-    level: lvl(next, 'academy'), clubId: next.club.id, nation: DIVISION_BY_ID[next.club.divisionId].code,
+    level: lvl(next, 'academy'), clubId: next.club.id, nation: homeNation(next) || DIVISION_BY_ID[next.club.divisionId].code,
     pools: CLUB_POOLS, poolById: POOL_BY_ID, allCards: PLAYER_CARDS, userIds: ownedIds(next), seed: seed + 23,
   });
   const rngYouth = makeRng(seed + 31);
@@ -1489,7 +1522,7 @@ export function acceptOffer(state, clubId, carryKeys = [], seed = 1) {
   const want = [...SQUAD_SHAPE];
   const squad = named.sort((a, b) => overall(b) - overall(a)).slice(0, SQUAD_SIZE);
   for (const c of squad) { const i = want.indexOf(c.pos); if (i >= 0) want.splice(i, 1); else want.pop(); }
-  want.forEach((pos, i) => squad.push(makeGenericCard(rng, { id: `gen-${clubId}-${uid(next)}-${i}`, pos, rating: FILLER_RATING[level], used })));
+  want.forEach((pos, i) => squad.push(makeGenericCard(rng, { id: `gen-${clubId}-${uid(next)}-${i}`, pos, rating: fillerFor({ id: clubId, level }), used })));
   for (const id of carriedPlayers) {
     const card = next.squad.find((c) => c.id === id);
     const victims = squad.filter((c) => c.generic);
@@ -1597,7 +1630,7 @@ export function lookForOffers(state, seed) {
 export function signingCandidates(state, tiers, scope) {
   const mine = new Set(ownedIds(state));
   const resting = new Set(Object.keys(state.world?.resting || {}));
-  const nation = DIVISION_BY_ID[state.club.divisionId].code;
+  const nation = homeNation(state) || DIVISION_BY_ID[state.club.divisionId].code;
   const ok = (c) => !mine.has(c.id) && !resting.has(c.id) && tiers.includes(TIERS.indexOf(c.rarity));
   const all = PLAYER_CARDS.filter(ok);
   if (scope !== 'national') return all;
@@ -1869,7 +1902,7 @@ const YOUTH_RATING = [58, 64, 71, 78, 85];
 
 function youthPlayer(state, rng, pos, tier) {
   const rating = YOUTH_RATING[tier] - 1 + rng.int(-1, 1) + Math.floor(lvl(state, 'academy') / 2);
-  const card = makeGenericCard(rng, { id: `youth-${uid(state)}`, pos, rating });
+  const card = makeGenericCard(rng, { id: `youth-${uid(state)}`, pos, rating, nation: homeNation(state) || undefined });
   card.rarity = rarityForOverall(overall(card));
   card.matchesLeft = 200 + rng.int(0, 40);
   card.youth = true;

@@ -1,7 +1,8 @@
 import { PHILOSOPHIES, clubIdentity } from '../data/philosophies.js';
 // Club squads: a few named cards plus generic Common players (surname only).
 import { makeRng } from './rng.js';
-import { overall, slotFit, FORMATIONS } from './cards.js';
+import { overall, slotFit, FORMATIONS, rarityForOverall } from './cards.js';
+import { TOP_CLUBS } from '../data/world/structure.js';
 
 export const SURNAMES = [
   'Moreno', 'Silva', 'Keller', 'Rossi', 'Novak', 'Duarte', 'Brandt', 'Lindqvist', 'Costa', 'Varga', 'Marín', 'Okafor',
@@ -19,8 +20,13 @@ const STAT_SHAPE = {
   FWD: { att: 5, def: -28, phy: 0 },
 };
 
-// Generic players are always Common (OVR 55–61); the division sets where in that range.
-export const FILLER_RATING = { 1: 60, 2: 58, 3: 56 };
+// Generic players by division. v2.5: a real step between levels (60/58/56 before, all Common):
+// level 1 generics are Uncommon, the giants' Rare, so a promoted squad meets a tougher league.
+export const FILLER_RATING = { 1: 70, 2: 66, 3: 56 };
+export const GIANT_FILLER = 74;
+export const fillerFor = (club) => (TOP_CLUBS.includes(club.id) ? GIANT_FILLER : FILLER_RATING[club.level]);
+// The OVR band each generic rarity must land in.
+const BAND = { common: [55, 61], uncommon: [62, 67], rare: [68, 74] };
 export const AI_SETTLED_BONUS = 0.1;
 // Higher divisions are tougher: their AI squads play with more of an edge.
 export const AI_SETTLED_BY_LEVEL = { 1: 0.09, 2: 0.11, 3: 0.08 };
@@ -34,7 +40,8 @@ export function genericName(rng, used = new Set()) {
 }
 
 // nation is optional: generic cards carry none unless the caller passes one (no flag shown).
-export function makeGenericCard(rng, { id, pos, rating, rarity = 'common', used, nation }) {
+export function makeGenericCard(rng, { id, pos, rating, rarity: given, used, nation }) {
+  const rarity = given || (rating >= 68 ? 'rare' : rating >= 62 ? 'uncommon' : 'common');
   const shape = STAT_SHAPE[pos];
   let card;
   for (let tries = 0; tries < 12; tries += 1) {
@@ -53,7 +60,8 @@ export function makeGenericCard(rng, { id, pos, rating, rarity = 'common', used,
       ...(nation ? { nation } : {}),
     };
     const ovr = overall(card);
-    if (rarity !== 'common' || (ovr >= 55 && ovr <= 61)) break;
+    const band = given ? null : BAND[rarity];
+    if (!band || (ovr >= band[0] && ovr <= band[1])) break;
     used?.delete(card.name);
   }
   return card;
@@ -96,7 +104,7 @@ export function squadStrength(lineup, formation) {
 export function buildAiTeam(club, seed = 7) {
   const rng = makeRng(seed);
   const formation = club.formation || '2-3-1';
-  const filler = FILLER_RATING[club.level] ?? (club.rating ? Math.min(61, Math.max(55, club.rating - 10)) : 57);
+  const filler = (club.level ? fillerFor(club) : null) ?? (club.rating ? Math.min(61, Math.max(55, club.rating - 10)) : 57);
   const { lineup, bench } = pickSquad(club.keyPlayers || [], formation, filler, rng, club.id);
   return {
     id: club.id,

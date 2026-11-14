@@ -41,6 +41,7 @@ export default function Result({ match, userSide, rewards, retired, boostReward,
         </div>
       </div>
 
+      {rewards.national ? <p className="hint">National team game: no prize money, no wear on your club's cards. Results count for your reputation at the summer tournaments.</p> : (
       <section className="panel rewards">
         <h2 className="section-title">Rewards</h2>
         <ul>
@@ -60,6 +61,7 @@ export default function Result({ match, userSide, rewards, retired, boostReward,
           </div>
         )}
       </section>
+      )}
 
       <section>
         <h2 className="section-title">Man of the match</h2>

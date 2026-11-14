@@ -12,6 +12,7 @@ import { HallOfFame } from './Collection.jsx';
 import Stats from './Stats.jsx';
 import Awards from './Awards.jsx';
 import { yearLabel, FIRST_YEAR } from '../engine/years.js';
+import { NationsWorld } from './Nation.jsx';
 
 const nameOf = (id) => POOL_BY_ID[id]?.name;
 
@@ -24,7 +25,7 @@ export default function World({ state }) {
         small
         label="World"
         value={view}
-        options={[{ id: 'stats', label: 'Stats' }, { id: 'awards', label: 'Awards' }, { id: 'gms', label: 'Managers' }, { id: 'clubs', label: 'Clubs' }, { id: 'hof', label: 'Hall of Fame' }]}
+        options={[{ id: 'stats', label: 'Stats' }, { id: 'awards', label: 'Awards' }, { id: 'nations', label: 'Nations' }, { id: 'gms', label: 'Managers' }, { id: 'clubs', label: 'Clubs' }, { id: 'hof', label: 'Hall of Fame' }]}
         onChange={setView}
       />
       {view === 'gms' && <Managers state={state} />}
@@ -35,6 +36,7 @@ export default function World({ state }) {
         ? <Records state={state} archive={state.archive} divId={state.club.divisionId} initialScope="world" />
         : <p className="hint">Season-by-season records (titles, best seasons) start after your first season. For live numbers, open Stats.</p>)}
       {view === 'hof' && <Legends state={state} />}
+      {view === 'nations' && <NationsWorld state={state} />}
     </div>
   );
 }

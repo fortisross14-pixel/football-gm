@@ -11,10 +11,11 @@ import Sheet from './Sheet.jsx';
 import { GmCard, GmFlag } from './GmCard.jsx';
 import { nationOf } from '../data/nations.js';
 import { yearLabel } from '../engine/years.js';
+import { NationalCareer } from './Nation.jsx';
 
 const VERDICT = { met: 'Objective met', exceeded: 'Objective exceeded', missed: 'Objective missed' };
 
-export default function Career({ state, onAccept, onBack, onLook, onRead }) {
+export default function Career({ state, onAccept, onBack, onLook, onRead, onAcceptNation, onResignNation, onManageNation }) {
   const gm = state.gm;
   const [picking, setPicking] = useState(null); // offer being accepted
   const unread = unreadCount(state);
@@ -40,12 +41,14 @@ export default function Career({ state, onAccept, onBack, onLook, onRead }) {
           { id: 'inbox', label: `Inbox${unread ? ` · ${unread}` : ''}` },
           { id: 'overview', label: 'Overview' },
           { id: 'offers', label: state.phase === 'offseason' ? `Offers${gm.offers.length ? ` · ${gm.offers.length}` : ''}` : 'Offers' },
+          { id: 'national', label: `National team${(state.nationOffers || []).length && !state.nationJob ? ` · ${state.nationOffers.length}` : ''}` },
           { id: 'history', label: 'History' },
         ]}
         onChange={setTab}
       />
 
       {tab === 'inbox' && <Inbox state={state} onRead={onRead} />}
+      {tab === 'national' && <NationalCareer state={state} onAccept={onAcceptNation} onResign={onResignNation} onManage={onManageNation} />}
 
       {tab === 'overview' && (<>
       <section className="panel">
