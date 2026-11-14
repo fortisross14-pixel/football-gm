@@ -1,10 +1,10 @@
-// National team job (v2.5): a second, lighter job next to your club. No money and no packs:
+// National team job (v2.5): instead of a club (one or the other, never both). No money, no packs:
 // you call up any of the nation's players (yours, other clubs', its academy products), appoint
 // the head coach, and play the qualifiers in the international windows and the summer
 // tournaments. Results move your reputation. Federations offer jobs by reputation: Brazil or
 // Germany only call a top manager.
 //
-// state.nationJob: { code, since, coach, calls: { id: 'start' | 'bench' }, record, caps, results, trophies }
+// state.nationJob: { code, since, coach, picks, starters, lockedYear, record, caps, results, trophies }
 // state.nationOffers: [code] (refreshed every summer)
 import { makeRng } from '../engine/rng.js';
 import { overall, autoArrange, FORMATIONS } from '../engine/cards.js';
@@ -73,98 +73,110 @@ export function nationalFixture(state, slot, poolById) {
 
 export const CALL_STARTERS = 7;
 export const CALL_RESERVES = 5;
+export const SQUAD_SIZE = CALL_STARTERS + CALL_RESERVES;
 
-// Call-ups are per event: you pick 12 for this year's qualifiers or the summer tournament, and
-// once its first game is played the squad is set; within it you only swap starters and reserves.
-// Returns 'Q' (qualifiers) or 'T' (tournament) with the year, or null when your nation has nothing on.
-export function currentEvent(state) {
+// You pick 12 for the year: they play every national game of the year (qualifiers and the
+// summer tournament). The year's first game sets them; until then you can change anyone.
+// job.picks: [id] (up to 12), job.starters: [id] (up to 7, among the picks), job.lockedYear.
+export const intlYear = (state) => state.season?.intl?.year ?? null;
+export const squadLocked = (state) => !!state.nationJob && state.nationJob.lockedYear != null && state.nationJob.lockedYear === intlYear(state);
+
+// What's on for your nation this year, in words (for the squad screen).
+export function yearEvents(state) {
   const job = state.nationJob;
   const intl = state.season?.intl;
-  if (!job || !intl) return null;
+  if (!job || !intl) return [];
   const conf = NATIONAL_TEAMS[job.code].conf;
-  const inT = CALENDAR[state.season.slot]?.[0] === 'T' || state.season.slot >= CALENDAR.length;
-  const hasQ = !!intl.quals?.[conf];
-  if (!inT && hasQ) return { key: `${intl.year}-Q`, kind: 'Q', name: `${intl.quals[conf].target === 'W' ? WORLD_CUP : tournamentName(conf)} qualifiers` };
+  const out = [];
+  if (intl.quals?.[conf]) out.push(`${intl.quals[conf].target === 'W' ? WORLD_CUP : tournamentName(conf)} qualifiers`);
   const { tour } = confYear(conf, intl.year);
-  if (tour) return { key: `${intl.year}-T`, kind: 'T', name: tour === 'W' ? WORLD_CUP : tournamentName(conf) };
-  return null;
-}
-export function squadLocked(state) {
-  const ev = currentEvent(state);
-  return !!ev && state.nationJob?.squad?.event === ev.key ? state.nationJob.squad.ids : null;
+  if (!tour) return out;
+  // Only a tournament your nation is in (or, for the open cups, likely to be in).
+  const drawn = Object.values(intl.tournaments || {}).find((t) => t.key === (tour === 'W' ? 'W' : conf));
+  const inIt = drawn ? drawn.teams.includes(job.code)
+    : tour === 'W' ? (intl.qualified?.W?.[conf] || []).includes(job.code)
+      : conf === 'europe' ? (intl.qualified?.cup?.europe || []).includes(job.code) : true;
+  if (inIt) out.push(tour === 'W' ? WORLD_CUP : tournamentName(conf));
+  return out;
 }
 
-// Your squad for the next game: { formation, lineup: [card x7 in slot order], bench: [card], pool, locked }.
-// Your picks first; empty places are filled with the best available.
+// Your squad for the next game: { formation, lineup: [card x7 in slot order], bench: [card],
+// squad: [card x12], picked: n, pool: every eligible player, locked }.
+// Places you haven't filled yet are filled with the best available (used when you simulate).
 export function nationSelection(state, poolById, ctx = null) {
   const job = state.nationJob;
   const { pools } = ctx || intlContext(state, poolById);
-  const locked = squadLocked(state);
-  const full = pools[job.code] || [];
-  const lockedPool = locked ? full.filter((c) => locked.includes(c.id)) : null;
-  // A locked squad that lost players (retired, a passport change) tops up from the best available.
-  const pool = lockedPool ? [...lockedPool, ...full.filter((c) => !locked.includes(c.id))].slice(0, Math.max(12, lockedPool.length)) : full;
-  const formation = job.coach?.formation || nationFormation(job.code);
-  const calls = job.calls || {};
+  const pool = pools[job.code] || [];
   const byId = Object.fromEntries(pool.map((c) => [c.id, c]));
-  let starters = Object.keys(calls).filter((id) => calls[id] === 'start' && byId[id]).map((id) => byId[id]);
-  let bench = Object.keys(calls).filter((id) => calls[id] === 'bench' && byId[id]).map((id) => byId[id]);
-  const auto = bestSelection(pool, formation);
-  const taken = new Set([...starters, ...bench].map((c) => c.id));
-  for (const c of auto.lineup) if (starters.length < CALL_STARTERS && !taken.has(c.id)) { starters.push(c); taken.add(c.id); }
-  for (const c of [...auto.bench, ...pool]) if (bench.length < CALL_RESERVES && !taken.has(c.id)) { bench.push(c); taken.add(c.id); }
-  starters = starters.slice(0, CALL_STARTERS);
-  bench = bench.slice(0, CALL_RESERVES);
+  const formation = job.coach?.formation || nationFormation(job.code);
+  const picks = (job.picks || []).filter((id) => byId[id]).slice(0, SQUAD_SIZE);
+  const squad = picks.map((id) => byId[id]);
+  if (squad.length < SQUAD_SIZE) {
+    const best = bestSelection(pool.filter((c) => !picks.includes(c.id)), formation);
+    for (const c of [...best.lineup, ...best.bench, ...pool]) if (squad.length < SQUAD_SIZE && !squad.includes(c)) squad.push(c);
+  }
+  const starters = (job.starters || []).filter((id) => squad.some((c) => c.id === id)).map((id) => byId[id]).slice(0, CALL_STARTERS);
+  if (starters.length < CALL_STARTERS) {
+    const best = bestSelection(squad.filter((c) => !starters.includes(c)), formation).lineup;
+    for (const c of best) if (starters.length < CALL_STARTERS) starters.push(c);
+  }
   const order = autoArrange(starters, formation);
-  return { formation, lineup: order.map((id) => byId[id] || starters.find((c) => c.id === id)), bench, pool, locked: !!locked, all: full };
+  const lineup = order.map((id) => byId[id]);
+  const bench = squad.filter((c) => !lineup.includes(c));
+  return { formation, lineup, bench, squad, picked: picks.length, pool, locked: squadLocked(state) };
 }
 
-// Tap a player: not called → starter (if there is room) → reserve (if there is room) → not called.
-export function cycleCall(state, id, poolById) {
-  if (!state.nationJob) return state;
+// Pick or drop a player for the year's 12 (not once the year's first game is played).
+export function togglePick(state, id) {
+  if (!state.nationJob || squadLocked(state) || state.phase === 'offseason') return state;
   const next = structuredClone(state);
-  const calls = next.nationJob.calls || {};
-  const count = (role) => Object.values(calls).filter((r) => r === role).length;
-  const now = calls[id];
-  const locked = squadLocked(state);
-  if (locked) {
-    // Squad set for this event: only starter ↔ reserve, among the 12.
-    if (!locked.includes(id)) return state;
-    const sel = nationSelection(state, poolById);
-    const role = sel.lineup.some((c) => c.id === id) ? 'start' : 'bench';
-    next.nationJob.calls = Object.fromEntries([...sel.lineup.map((c) => [c.id, 'start']), ...sel.bench.map((c) => [c.id, 'bench'])]);
-    if (role === 'start') {
-      // Swap with the best reserve in the same position, or the best reserve.
-      const card = sel.lineup.find((c) => c.id === id);
-      const sub = sel.bench.find((c) => c.pos === card.pos) || sel.bench[0];
-      if (sub) { next.nationJob.calls[id] = 'bench'; next.nationJob.calls[sub.id] = 'start'; }
-    } else {
-      const card = sel.bench.find((c) => c.id === id);
-      const out = sel.lineup.find((c) => c.pos === card.pos) || [...sel.lineup].sort((a, b) => overall(a) - overall(b))[0];
-      next.nationJob.calls[id] = 'start'; next.nationJob.calls[out.id] = 'bench';
-    }
-    return next;
-  }
-  if (!now) calls[id] = count('start') < CALL_STARTERS ? 'start' : count('bench') < CALL_RESERVES ? 'bench' : undefined;
-  else if (now === 'start') calls[id] = count('bench') < CALL_RESERVES ? 'bench' : undefined;
-  else delete calls[id];
-  if (calls[id] === undefined) delete calls[id];
-  next.nationJob.calls = calls;
+  const job = next.nationJob;
+  const picks = job.picks || [];
+  if (picks.includes(id)) {
+    job.picks = picks.filter((x) => x !== id);
+    job.starters = (job.starters || []).filter((x) => x !== id);
+  } else if (picks.length < SQUAD_SIZE) job.picks = [...picks, id];
+  else return state;
   return next;
 }
 
-// Your picks become the current best selection, so you can edit from there.
-export function lockSelection(state, poolById) {
-  if (!state.nationJob || squadLocked(state)) return state;
+// Starter or reserve, among the 12 (any time between games).
+export function toggleStarter(state, id, poolById) {
+  if (!state.nationJob) return state;
+  const sel = nationSelection(state, poolById);
+  if (!sel.squad.some((c) => c.id === id)) return state;
+  const next = structuredClone(state);
+  const job = next.nationJob;
+  let starters = sel.lineup.map((c) => c.id);
+  if (starters.includes(id)) {
+    // Out of the 7: the best reserve in his position (or the best reserve) comes in.
+    const out = sel.lineup.find((c) => c.id === id);
+    const sub = sel.bench.find((c) => c.pos === out.pos) || sel.bench[0];
+    if (!sub) return state;
+    starters = starters.map((x) => (x === id ? sub.id : x));
+  } else {
+    // Into the 7, for the starter in his position (or the weakest).
+    const card = sel.bench.find((c) => c.id === id);
+    const out = sel.lineup.find((c) => c.pos === card.pos) || [...sel.lineup].sort((a, b) => overall(a) - overall(b))[0];
+    starters = starters.map((x) => (x === out.id ? id : x));
+  }
+  job.starters = starters;
+  return next;
+}
+
+// The rest of the 12 from the best available.
+export function fillPicks(state, poolById) {
+  if (!state.nationJob || squadLocked(state) || state.phase === 'offseason') return state;
   const sel = nationSelection(state, poolById);
   const next = structuredClone(state);
-  next.nationJob.calls = Object.fromEntries([...sel.lineup.map((c) => [c.id, 'start']), ...sel.bench.map((c) => [c.id, 'bench'])]);
+  next.nationJob.picks = sel.squad.map((c) => c.id);
   return next;
 }
-export function clearCalls(state) {
+export function clearPicks(state) {
   if (!state.nationJob || squadLocked(state)) return state;
   const next = structuredClone(state);
-  next.nationJob.calls = {};
+  next.nationJob.picks = [];
+  next.nationJob.starters = [];
   return next;
 }
 
@@ -218,28 +230,30 @@ export function nationalOffers(state, seed, count = 2) {
   return picks;
 }
 
+// The national job itself (state/club.js takeNationalJob handles leaving your club). Starts with
+// next season.
 export function acceptNationalJob(state, code) {
   if (!NATIONAL_TEAMS[code] || !(state.nationOffers || []).includes(code)) return state;
   const next = structuredClone(state);
-  const year = next.season?.year ?? 2027;
+  const year = (next.season?.year ?? 0) + 1;
   const old = next.nationJob;
   if (old) next.nationPast = [...(next.nationPast || []), { code: old.code, from: old.since, to: year, record: old.record, trophies: old.trophies || [] }];
   next.nationJob = {
-    code, since: year, coach: federationCoach(code), calls: {},
+    code, since: year, coach: federationCoach(code), picks: [], starters: [], lockedYear: null,
     record: { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0 }, caps: {}, results: [], trophies: [],
   };
   next.nationOffers = (next.nationOffers || []).filter((c) => c !== code);
-  pushInbox(next, 'career', `New job: ${nationName(code)} head of football`, `The ${nationName(code)} federation hands you the national team. Pick your head coach and call up your players before the next international window.`);
+  pushInbox(next, 'career', `New job: ${nationName(code)} head of football`, `The ${nationName(code)} federation hands you the national team. Pick your head coach and your 12 players for the year before the first game.`);
   return next;
 }
 
-export function resignNationalJob(state) {
-  if (!state.nationJob) return state;
-  const next = structuredClone(state);
+// Leaving the national team (for a club job). Mutates `next`.
+export function endNationalJobInto(next) {
   const old = next.nationJob;
+  if (!old) return next;
   next.nationPast = [...(next.nationPast || []), { code: old.code, from: old.since, to: next.season?.year ?? old.since, record: old.record, trophies: old.trophies || [] }];
   next.nationJob = null;
-  pushInbox(next, 'career', `You leave ${nationName(old.code)}`, 'You step down as national team manager to focus on your club.');
+  pushInbox(next, 'career', `You leave ${nationName(old.code)}`, 'You step down as national team manager to take a club job.');
   return next;
 }
 
@@ -267,12 +281,12 @@ export function recordNationalSlot(state, { match = null, userSide = 0, quick = 
   const { strengths } = intlContext(next, poolById);
   const code = userNation(next);
   const rng = makeRng(seed);
-  // The first game of an event sets its squad.
-  const ev = currentEvent(next);
-  if (ev && next.nationJob.squad?.event !== ev.key) {
+  // The year's first game sets the 12.
+  if (!squadLocked(next)) {
     const sel = nationSelection(next, poolById);
-    next.nationJob.squad = { event: ev.key, ids: [...sel.lineup, ...sel.bench].map((c) => c.id) };
-    next.nationJob.calls = Object.fromEntries([...sel.lineup.map((c) => [c.id, 'start']), ...sel.bench.map((c) => [c.id, 'bench'])]);
+    next.nationJob.picks = sel.squad.map((c) => c.id);
+    next.nationJob.starters = sel.lineup.map((c) => c.id);
+    next.nationJob.lockedYear = intl.year;
   }
   const entries = prepareIntlSlot(intl, CALENDAR[next.season.slot], strengths, 1);
   for (const e of entries) {

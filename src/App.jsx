@@ -8,7 +8,7 @@ import {
   startNextSeason, useOffseasonCard, seeMarket, POOL_BY_ID, nextUserGame, acceptOffer, discardCommons, lookForOffers, toggleCurse,
   setTicketPrice, signKit, signSponsorDeal, signTv, markOffseasonStep, dealsPending,
   pickSeasonCard, redrawSeasonCards,
-  buyClubPack, openOwnedClubPack, pickClubCard, applyNationalMatch, simNationalGame,
+  buyClubPack, openOwnedClubPack, pickClubCard, applyNationalMatch, simNationalGame, takeNationalJob,
 } from './state/club.js';
 import { Crest, BadgesContext } from './ui/Art.jsx';
 import { clubVars } from './ui/clubTheme.js';
@@ -27,8 +27,9 @@ import Menu, { SettingsSheet } from './ui/Menu.jsx';
 import NewCareer from './ui/NewCareer.jsx';
 import Tip from './ui/Tip.jsx';
 import { markRead, pushInbox } from './state/chronicle.js';
-import { NationalTeam, NationPreMatch } from './ui/Nation.jsx';
-import { userNationTeam, aiNationTeam, acceptNationalJob, resignNationalJob } from './state/national.js';
+import { NationalTeam, NationPreMatch, NationHome } from './ui/Nation.jsx';
+import { userNationTeam, aiNationTeam } from './state/national.js';
+import { nationFlag } from './engine/intl.js';
 import Team, { HouseRules } from './ui/Team.jsx';
 import World from './ui/World.jsx';
 import Player from './ui/Player.jsx';
@@ -212,6 +213,9 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
     setToast({ text: r.message, tone: r.success === false ? 'bad' : 'good' });
   };
 
+  // A national team instead of a club: no Club or Cards tabs, Squad is the national squad.
+  const national = state.mode === 'nation';
+  const tabs = national ? TABS.filter((t) => !['club', 'cards'].includes(t.id)) : TABS;
   const isTab = TABS.some((t) => t.id === screen) || ['club', 'career', 'team', 'player', 'manager', 'shop', 'comp', 'summer', 'nation'].includes(screen);
 
   return (
@@ -219,12 +223,12 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
     <div className={`app${isTab ? ' app--tabs' : ''} app--${screen}`}>
       {screen !== 'match' && (
         <header className="topbar" style={clubVars(state.club)}>
-          <button type="button" className="topbar__crest" onClick={() => setScreen('club')} aria-label="Club details">
-            <Crest colors={state.club.colors} short={state.club.short} size={30} id={state.club.id} />
+          <button type="button" className="topbar__crest" onClick={() => setScreen(national ? 'squad' : 'club')} aria-label={national ? 'National team' : 'Club details'}>
+            {national ? <span className="nation-flag" aria-hidden="true">{nationFlag(state.nationJob.code)}</span> : <Crest colors={state.club.colors} short={state.club.short} size={30} id={state.club.id} />}
           </button>
           <div className="topbar__club">
             <b>{state.club.name}</b>
-            <span><LeagueLink divId={state.club.divisionId}>{state.club.division}</LeagueLink></span>
+            <span>{national ? 'National team' : <LeagueLink divId={state.club.divisionId}>{state.club.division}</LeagueLink>}</span>
           </div>
           <i className="club-stripes" aria-hidden="true" />
           <div className="topbar__coins" aria-label="Coins"><span key={state.coins} className="coin-bump">◎ {state.coins.toLocaleString()}</span></div>
@@ -233,7 +237,16 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
       )}
 
       <main>
-        {screen === 'home' && (
+        {screen === 'home' && national && (
+          <NationHome
+            state={state}
+            onPlay={() => setScreen('prematch')}
+            onClose={() => setState((s) => closeSeason(s, randomSeed()))}
+            onStart={() => setState((s) => startNextSeason(s, randomSeed()))}
+            goTo={setScreen}
+          />
+        )}
+        {screen === 'home' && !national && (
           <Home
             state={state}
             onPlay={() => setScreen('prematch')}
@@ -256,7 +269,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
             goTo={setScreen}
           />
         )}
-        {screen === 'squad' && <Squad state={state} setState={setState} />}
+        {screen === 'squad' && (national ? <NationalTeam state={state} setState={setState} /> : <Squad state={state} setState={setState} />)}
         {(screen === 'cards' || screen === 'shop') && (
           <CardsHub
             key={screen}
@@ -303,9 +316,12 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
               setToast({ text: 'New club, new challenge. Your squad is ready.', tone: 'good' });
               setScreen('home');
             }}
-            onAcceptNation={(code) => { setState((s) => acceptNationalJob(s, code)); setScreen('nation'); }}
-            onResignNation={() => setState((s) => resignNationalJob(s))}
-            onManageNation={() => setScreen('nation')}
+            onAcceptNation={(code) => {
+              setState((s) => takeNationalJob(s, code));
+              setToast({ text: 'New job: pick your head coach and your 12 for the year.', tone: 'good' });
+              setScreen('squad');
+            }}
+            onManageNation={() => setScreen('squad')}
           />
         )}
         {screen === 'nation' && <NationalTeam state={state} setState={setState} onBack={() => setScreen('home')} />}
@@ -336,7 +352,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
 
       {isTab && (
         <nav className="tabbar" aria-label="Main">
-          {TABS.map((t) => (
+          {tabs.map((t) => (
             <button key={t.id} type="button" className={screen === t.id || (t.id === 'home' && screen === 'summer') || (t.id === 'cards' && screen === 'shop') || (t.id === 'league' && screen === 'comp') ? 'is-on' : ''} onClick={() => { if (t.id === 'league') setLeagueNav(null); backStack.current = []; resetSticky(); setScreen(t.id); }}>
               <span className="tabbar__icon" aria-hidden="true">{t.icon}</span>
               <span className="tabbar__label">{t.short ? <><span className="tabbar__short">{t.short}</span><span className="tabbar__full">{t.label}</span></> : t.label}</span>

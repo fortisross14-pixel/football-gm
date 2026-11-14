@@ -301,7 +301,21 @@ export function seasonIntl(prev, year, strengths, seed) {
   }
   // A new cycle: last cycle's World Cup places are spent.
   if (cyclePhase(year) === 0) qualified.W = {};
-  return { year, quals: createQualifiers(year, strengths, seed), qualified, tournaments: {}, history: prev?.history || [] };
+  const quals = createQualifiers(year, strengths, seed);
+  return { year, quals, friendlies: createFriendlies(year, quals, seed + 1), qualified, tournaments: {}, history: prev?.history || [] };
+}
+
+// Friendlies: nations with no qualifiers this year play one in every international window,
+// against another free nation from anywhere (drawn at random). They count for nothing.
+export function createFriendlies(year, quals, seed) {
+  const free = NATION_CODES.filter((c) => !quals[NATIONAL_TEAMS[c].conf]);
+  return WINDOW_SLOTS.map((_, w) => {
+    const rng = makeRng(seed + w * 7);
+    const order = [...free].sort(() => rng.next() - 0.5);
+    const out = [];
+    for (let i = 0; i + 1 < order.length; i += 2) out.push(tie(order[i], order[i + 1], { friendly: true }));
+    return out;
+  });
 }
 
 const ROUND_LABEL = { TQ: 'Quarter-final', TS: 'Semi-final', TF: 'Final' };
@@ -319,6 +333,7 @@ export function prepareIntlSlot(intl, slot, strengths, seed) {
         label: `${q.target === 'W' ? WORLD_CUP : NATIONS_CUP_NAME[conf]} qualifying · Group ${'ABCDEFGH'[gi]}`,
       })));
     }
+    for (const game of intl.friendlies?.[r] || []) games.push({ kind: 'friendly', key: null, game, knockout: false, neutral: false, label: 'International friendly' });
     return games;
   }
   if (slot === 'T0' && !intl.drawn) { intl.tournaments = tournamentsFor(intl.year, intl.qualified, strengths, seed); intl.drawn = true; }
@@ -351,7 +366,7 @@ export function recordIntl(intl, entry, score, pens = null) {
   if (entry.knockout) {
     if (score[0] !== score[1]) g.winner = score[0] > score[1] ? g.home : g.away;
     else { g.pens = pens; g.winner = pens[0] > pens[1] ? g.home : g.away; }
-  } else {
+  } else if (entry.kind !== 'friendly') {
     const group = entry.kind === 'qual' ? intl.quals[entry.key].groups[entry.group] : intl.tournaments[entry.key].groups[entry.group];
     [[g.home, score[0], score[1]], [g.away, score[1], score[0]]].forEach(([id, gf, ga]) => {
       const r = group.table[id];
