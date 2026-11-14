@@ -35,7 +35,7 @@ import { seasonYear, yearLabel, FIRST_YEAR } from '../src/engine/years.js';
 import { historySentence } from '../src/state/chronicle.js';
 import {
   newClubState, buildUserTeam, matchRewards, applyMatch, buyPack, keepPending, mergePending, discardPending,
-  pendingCard, duplicateOf, nextUserGame, newSeason, closeSeason, toggleCurse, teamShape, shapeLabel, acceptOffer, carryOptions, starterOffers, discardCommons, buyMarketCard, useOffseasonCard, startNextSeason, POOLS, POOL_BY_ID, applyNationalMatch, simNationalGame, homeNation,
+  pendingCard, duplicateOf, nextUserGame, newSeason, closeSeason, toggleCurse, teamShape, shapeLabel, acceptOffer, carryOptions, starterOffers, discardCommons, buyMarketCard, useOffseasonCard, startNextSeason, POOLS, POOL_BY_ID, applyNationalMatch, simNationalGame, homeNation, takeNationalJob,
   canUseOffseason, cardPlays, migrateClubState, effectiveCohesion, seasonMods, packShift, MARKET_EVERY, MARKET_SIZE,
   buyClubPack, openOwnedClubPack, pickClubCard, businessIncome,
   startConstruction, constructionOf, setTicketPrice, matchdayOf, capacityOf, starsOf, fansOf, signKit, signSponsorDeal, signTv, dealOffers, dealSigned, dealsPending, kitSales, designFee,
@@ -1645,66 +1645,76 @@ test('v2.5 national teams: cycle, qualifying, tournaments and your job', () => {
   assert.equal(sel.lineup.length, 7);
   assert.equal(sel.bench.length, 5);
   assert.ok(sel.lineup.every((c) => c.nation === offers[0]));
-  // Tap a reserve: he becomes a starter (your pick), the rest still filled by the coach.
-  const pick = sel.pool.find((c) => !sel.lineup.includes(c));
-  st = N.cycleCall(st, pick.id, C.POOL_BY_ID);
-  assert.ok(N.nationSelection(st, C.POOL_BY_ID).lineup.some((c) => c.id === pick.id));
+  // Nothing picked yet: the best 12 fill in (for simulated games).
+  assert.equal(sel.picked, 0);
   // The coach: options include the federation's own; appointing one changes the formation.
   const opts = N.nationCoachOptions(st.nationJob.code, st.nationJob.since);
   st = N.appointCoach(st, opts.at(-1).id);
   assert.equal(st.nationJob.coach.id, opts.at(-1).id);
 });
 
-test('v2.5 your national team plays in the windows; academy players carry your country', () => {
-  let s = fresh();
-  s = N.acceptNationalJob(s, s.nationOffers[0]);
-  const code = s.nationJob.code;
-  let national = 0;
-  for (let guard = 0; s.phase === 'season' && guard < 80; guard += 1) {
+test('v2.5 a club or a national team: switching both ways, 12 for the year, friendlies', () => {
+  // Club season 1, then a federation's offer in the summer.
+  let s = resolve(closeSeason(playFull(fresh()), 5));
+  s = { ...s, nationOffers: ['HUN'] };
+  const oldClub = s.club.id;
+  const named = s.squad.filter((c) => POOL_BY_ID[c.id]).length;
+  s = takeNationalJob(s, 'HUN');
+  assert.equal(s.mode, 'nation');
+  assert.equal(s.nationJob.code, 'HUN');
+  assert.equal(s.squad.length, 0);
+  assert.ok(s.world.clubs[oldClub].keyPlayers.length > 0 || named === 0); // the old club keeps your named players
+  // Not both: there is no club offer to accept mid-season, and club tabs are gone (mode).
+  s = startNextSeason(s, 6);
+  assert.equal(s.phase, 'season');
+  // Pick 12: until then, kick off is for 12 only; picks stop at 12.
+  let sel = N.nationSelection(s, POOL_BY_ID);
+  assert.equal(sel.picked, 0);
+  for (const c of sel.pool.slice(0, 14)) s = N.togglePick(s, c.id);
+  assert.equal(s.nationJob.picks.length, 12);
+  sel = N.nationSelection(s, POOL_BY_ID);
+  assert.ok(sel.squad.every((c) => s.nationJob.picks.includes(c.id)));
+  // Starter ↔ reserve among the 12.
+  const bencher = sel.bench[0];
+  s = N.toggleStarter(s, bencher.id, POOL_BY_ID);
+  assert.ok(N.nationSelection(s, POOL_BY_ID).lineup.some((c) => c.id === bencher.id));
+  // Hungary (Europe) in 2028: no qualifiers (the Euro year), so friendlies in every window. The
+  // first game sets the 12 for the year.
+  let games = 0;
+  for (let guard = 0; s.phase === 'season' && guard < 20; guard += 1) {
     const fx = nextUserGame(s);
-    if (!fx) break;
-    if (fx.national) {
-      national += 1;
-      assert.ok(fx.nation === code && fx.opponentNation !== code);
-      s = national === 1 ? (() => {
-        const home = fx.homeId === `nat-${code}`;
-        const me = N.userNationTeam(s, POOL_BY_ID, home && !fx.neutral);
-        const ai = N.aiNationTeam(s, fx.opponentNation, POOL_BY_ID);
-        const m = simulateMatch({ home: home ? me : ai, away: home ? ai : me, seed: 7, context: { competition: 'national', knockout: fx.knockout, neutral: fx.neutral } });
-        return applyNationalMatch(s, m, home ? 0 : 1, 8);
-      })() : simNationalGame(s, 9 + guard);
-      continue;
-    }
-    const ai = aiTeamFor(s.world, fx.opponentId, POOL_BY_ID, guard + 1);
-    const home = fx.homeId === s.club.id;
-    const me = buildUserTeam(s, [], home && !fx.neutral);
-    const m = simulateMatch({ home: home ? me : ai, away: home ? ai : me, seed: 300 + guard, context: { competition: fx.competition, knockout: fx.knockout, neutral: fx.neutral } });
-    s = resolve(applyMatch(s, m, home ? 0 : 1, clubById(s.world, fx.opponentId), matchRewards(s, m, home ? 0 : 1, fx), 500 + guard, fx).state);
+    assert.ok(fx?.national, 'only national games without a club');
+    if (games === 0) {
+      const home = fx.homeId === 'nat-HUN';
+      const me = N.userNationTeam(s, POOL_BY_ID, home && !fx.neutral);
+      const ai = N.aiNationTeam(s, fx.opponentNation, POOL_BY_ID);
+      const m = simulateMatch({ home: home ? me : ai, away: home ? ai : me, seed: 7, context: { competition: 'national', knockout: fx.knockout, neutral: fx.neutral } });
+      s = applyNationalMatch(s, m, home ? 0 : 1, 8);
+      assert.ok(N.squadLocked(s));
+      const before = s.nationJob.picks.join();
+      const outsider = N.nationSelection(s, POOL_BY_ID).pool.find((c) => !s.nationJob.picks.includes(c.id));
+      assert.equal(N.togglePick(s, outsider.id), s); // set for the year
+      assert.equal(s.nationJob.picks.join(), before);
+    } else s = simNationalGame(s, 9 + guard);
+    games += 1;
   }
   assert.equal(s.phase, 'seasonEnd');
-  assert.ok(national >= 2, `national games ${national}`);
-  assert.equal(s.nationJob.record.p, national);
-  // The squad was set at the event's first game: 12 players, and outsiders can't be called up.
-  assert.equal(s.nationJob.squad.ids.length, 12);
-  assert.ok(s.nationJob.squad.event.endsWith('-Q') || s.nationJob.squad.event.endsWith('-T'));
-  // Mid-event: tapping someone outside the 12 does nothing; tapping a starter swaps him with a reserve.
-  {
-    let m = N.acceptNationalJob({ ...fresh(), nationOffers: ['NZL'] }, 'NZL');
-    m.season.slot = CALENDAR_V23.indexOf('N1');
-    const sel = N.nationSelection(m, POOL_BY_ID);
-    m.nationJob.squad = { event: N.currentEvent(m).key, ids: [...sel.lineup, ...sel.bench].map((c) => c.id) };
-    const outsider = sel.all.find((c) => !m.nationJob.squad.ids.includes(c.id));
-    assert.equal(N.cycleCall(m, outsider.id, POOL_BY_ID), m);
-    const starter = sel.lineup[0];
-    const after = N.nationSelection(N.cycleCall(m, starter.id, POOL_BY_ID), POOL_BY_ID);
-    assert.ok(after.bench.some((c) => c.id === starter.id));
-    assert.ok([...after.lineup, ...after.bench].every((c) => m.nationJob.squad.ids.includes(c.id)));
-  }
-  // Your club's country: Racing Santander's academy products are Spanish.
-  assert.equal(homeNation(s), 'ESP');
-  // The next season keeps the qualifying campaign going.
-  const closed = closeSeason(s, 5);
-  assert.ok(Array.isArray(closed.nationOffers));
+  assert.ok(games >= 6, `national games ${games}`);
+  assert.equal(s.season.matchday, 18); // the leagues played on without you
+  // The summer: club offers (from your last club's level) and federations.
+  s = closeSeason(s, 10);
+  assert.equal(s.phase, 'offseason');
+  assert.ok(Array.isArray(s.gm.offers) && Array.isArray(s.nationOffers));
+  // Back to a club: the national job ends.
+  const offer = s.gm.offers[0] || { clubId: Object.keys(s.world.clubs).find((id) => s.world.clubs[id].level === 3) };
+  if (!s.gm.offers[0]) s.gm.offers = [{ ...offer, name: s.world.clubs[offer.clubId].name, division: 'x' }];
+  s = acceptOffer(s, offer.clubId, [], 11);
+  assert.equal(s.mode, 'club');
+  assert.equal(s.nationJob, null);
+  assert.equal(s.nationPast.at(-1).code, 'HUN');
+  assert.equal(s.squad.length, 12);
+  // Your club's country: academy products carry it.
+  assert.ok(homeNation(s));
 });
 
 console.log(`\n${passed} tests passed`);

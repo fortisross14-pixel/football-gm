@@ -15,7 +15,7 @@ import { NationalCareer } from './Nation.jsx';
 
 const VERDICT = { met: 'Objective met', exceeded: 'Objective exceeded', missed: 'Objective missed' };
 
-export default function Career({ state, onAccept, onBack, onLook, onRead, onAcceptNation, onResignNation, onManageNation }) {
+export default function Career({ state, onAccept, onBack, onLook, onRead, onAcceptNation, onManageNation }) {
   const gm = state.gm;
   const [picking, setPicking] = useState(null); // offer being accepted
   const unread = unreadCount(state);
@@ -23,6 +23,7 @@ export default function Career({ state, onAccept, onBack, onLook, onRead, onAcce
   const op = opinions(state);
   const pos = standings(state.season, state.club.divisionId).findIndex((r) => r.id === state.club.id) + 1;
   const review = gm.review;
+  const national = state.mode === 'nation';
 
   return (
     <div className="screen">
@@ -48,7 +49,7 @@ export default function Career({ state, onAccept, onBack, onLook, onRead, onAcce
       />
 
       {tab === 'inbox' && <Inbox state={state} onRead={onRead} />}
-      {tab === 'national' && <NationalCareer state={state} onAccept={onAcceptNation} onResign={onResignNation} onManage={onManageNation} />}
+      {tab === 'national' && <NationalCareer state={state} onAccept={onAcceptNation} onManage={onManageNation} />}
 
       {tab === 'overview' && (<>
       <section className="panel">
@@ -61,6 +62,8 @@ export default function Career({ state, onAccept, onBack, onLook, onRead, onAcce
           </p>
         </div>
       </section>
+      {national && <p className="hint">You manage {state.club.name}: no owners, no contract, no board objective. Your reputation moves with the national team's results, and summers bring offers from clubs and federations.</p>}
+      {!national && (<>
       <section className="opinions">
         <div className="opinion">
           <span className="opinion__who">Owners · {op.owners.value}</span>
@@ -86,8 +89,9 @@ export default function Career({ state, onAccept, onBack, onLook, onRead, onAcce
       )}
 
       <Confidence state={state} />
+      </>)}
 
-      {state.phase === 'season' && gm.objective && (
+      {state.phase === 'season' && gm.objective && !national && (
         <section className="panel">
           <h2 className="section-title">Board objective</h2>
           <p className="objective"><b>{gm.objective.text}</b><span className={pos <= gm.objective.target ? 'is-up' : 'is-down'}>Currently {pos}{['th', 'st', 'nd', 'rd'][pos] || 'th'}</span></p>
@@ -98,7 +102,7 @@ export default function Career({ state, onAccept, onBack, onLook, onRead, onAcce
       {review && state.phase !== 'season' && (
         <section className="panel">
           <h2 className="section-title">{yearLabel(review.season)} review</h2>
-          <p className="objective"><b>{review.objective.text}</b><span className={review.verdict === 'missed' ? 'is-down' : 'is-up'}>{VERDICT[review.verdict]} · finished {review.position}{['th', 'st', 'nd', 'rd'][review.position] || 'th'}</span></p>
+          {review.objective && <p className="objective"><b>{review.objective.text}</b><span className={review.verdict === 'missed' ? 'is-down' : 'is-up'}>{VERDICT[review.verdict]} · finished {review.position}{['th', 'st', 'nd', 'rd'][review.position] || 'th'}</span></p>}
           <ul className="champions">
             {review.items.map((i) => <li key={i.label}><span>{i.label}</span><b className={i.value >= 0 ? 'is-up' : 'is-down'}>{i.value >= 0 ? '+' : ''}{i.value}</b></li>)}
           </ul>

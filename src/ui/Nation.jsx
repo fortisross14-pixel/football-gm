@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { POOL_BY_ID } from '../state/club.js';
+import { POOL_BY_ID, nextUserGame } from '../state/club.js';
 import {
-  nationSelection, cycleCall, lockSelection, clearCalls, appointCoach, nationCoachOptions, intlContext,
-  nationRequirement, CALL_STARTERS, CALL_RESERVES, currentEvent,
+  nationSelection, togglePick, toggleStarter, fillPicks, clearPicks, appointCoach, nationCoachOptions, intlContext,
+  nationRequirement, SQUAD_SIZE, yearEvents, intlYear,
 } from '../state/national.js';
 import {
   groupTable, tournamentName, nationName, nationFlag, qualifiedFrom, WORLD_CUP, NATIONS_CUP_NAME, nationTitles, yearPlan, confYear,
@@ -108,14 +108,13 @@ export function NationalTeam({ state, setState, onBack }) {
     return (
       <div className="screen">
         <p className="hint">You don't manage a national team. Federations call in the summer, by reputation: see Career → National team.</p>
-        <button type="button" className="btn btn--ghost" onClick={onBack}>Back</button>
+        {onBack && <button type="button" className="btn btn--ghost" onClick={onBack}>Back</button>}
       </div>
     );
   }
   const n = NATIONAL_TEAMS[job.code];
   const sel = nationSelection(state, POOL_BY_ID, ctx);
   const intl = state.season?.intl;
-  const ev = currentEvent(state);
   const rec = job.record;
   return (
     <div className="screen nation-screen">
@@ -125,16 +124,15 @@ export function NationalTeam({ state, setState, onBack }) {
           <b>{nationName(job.code)}</b>
           <span>{PRESTIGE[n.prestige]} · {INTL_CONF_LABEL[n.conf]} · strength {Math.round(ctx.strengths[job.code])} · since {yearLabel(job.since)}</span>
         </div>
-        <button type="button" className="btn btn--small btn--ghost" onClick={onBack}>Back</button>
+        {onBack && <button type="button" className="btn btn--small btn--ghost" onClick={onBack}>Back</button>}
       </div>
-      <p className="hint">A second job, free of money: call up anyone with a {nationName(job.code)} passport, wherever he plays, and pick the head coach. Your club cards don't tire in national games.</p>
       <div className="stat-tiles">
         <div><span>Played</span><b>{rec.p}</b><small>{rec.w}W {rec.d}D {rec.l}L</small></div>
         <div><span>Goals</span><b>{rec.gf}–{rec.ga}</b><small>for and against</small></div>
         <div><span>Trophies</span><b>{(job.trophies || []).length}</b><small>{(job.trophies || []).map((x) => x.name).join(', ') || 'none yet'}</small></div>
       </div>
-      <Segmented small label="National team" value={tab} options={[{ id: 'squad', label: 'Call-ups' }, { id: 'coach', label: 'Coach' }, { id: 'games', label: 'Games' }, { id: 'comp', label: yearPlan(intl?.year ?? 2027)[n.conf] }]} onChange={setTab} />
-      {tab === 'squad' && <CallUps state={state} setState={setState} sel={sel} ev={ev} />}
+      <Segmented small label="National team" value={tab} options={[{ id: 'squad', label: 'Squad' }, { id: 'coach', label: 'Coach' }, { id: 'games', label: 'Games' }, { id: 'comp', label: yearPlan(intl?.year ?? 2027)[n.conf] }]} onChange={setTab} />
+      {tab === 'squad' && <CallUps state={state} setState={setState} sel={sel} />}
       {tab === 'coach' && (
         <section>
           <h2 className="section-title">Head coach</h2>
@@ -149,10 +147,10 @@ export function NationalTeam({ state, setState, onBack }) {
       {tab === 'games' && (
         <section>
           <h2 className="section-title">Results</h2>
-          {(job.results || []).length === 0 ? <p className="hint">No games yet. Qualifiers are played in three international windows a season.</p> : (
+          {(job.results || []).length === 0 ? <p className="hint">No games yet. Six international windows a season: qualifiers, or friendlies in a year without them.</p> : (
             <ul className="champions">
               {job.results.map((r, i) => (
-                <li key={i}><span>{r.label.split(' · ')[0]} · vs <NationName code={r.opp} /></span><b className={r.outcome === 'W' ? 'is-up' : r.outcome === 'L' ? 'is-down' : ''}>{r.score[0]}–{r.score[1]}{r.pens ? ` (${r.pens[0]}–${r.pens[1]} p)` : ''}</b></li>
+                <li key={i}><span>{r.year} · {r.label.split(' · ')[0]} · vs <NationName code={r.opp} /></span><b className={r.outcome === 'W' ? 'is-up' : r.outcome === 'L' ? 'is-down' : ''}>{r.score[0]}–{r.score[1]}{r.pens ? ` (${r.pens[0]}–${r.pens[1]} p)` : ''}</b></li>
               ))}
             </ul>
           )}
@@ -171,55 +169,84 @@ export function NationalTeam({ state, setState, onBack }) {
   );
 }
 
-function CallUps({ state, setState, sel, ev }) {
-  const calls = state.nationJob.calls || {};
-  const inSquad = new Set([...sel.lineup, ...sel.bench].map((c) => c.id));
+const POS_FILTER = ['All', 'GK', 'DEF', 'MID', 'FWD'];
+const RARITY_FILTER = [['all', 'All'], ['legend', 'Legend'], ['epic', 'Epic'], ['rare', 'Rare'], ['uncommon', 'Uncommon'], ['common', 'Common'], ['academy', 'Academy']];
+
+// The year's 12: pick them one by one from everyone eligible (filter by position and rarity, sort
+// by level or name). Once the year's first game is played they are set; starters and reserves
+// can still be swapped.
+function CallUps({ state, setState, sel }) {
+  const job = state.nationJob;
+  const picks = job.picks || [];
+  const [pos, setPos] = useState('All');
+  const [rarity, setRarity] = useState('all');
+  const [sort, setSort] = useState('level');
+  const [limit, setLimit] = useState(40);
+  const events = yearEvents(state);
   const starters = new Set(sel.lineup.map((c) => c.id));
-  const picked = Object.keys(calls).length;
-  const [all, setAll] = useState(false);
-  const shown = all ? sel.pool : sel.pool.slice(0, 30);
+  const list = sel.pool
+    .filter((c) => (pos === 'All' || c.pos === pos) && (rarity === 'all' || c.rarity === rarity))
+    .sort(sort === 'name' ? (a, b) => a.name.localeCompare(b.name) : (a, b) => overall(b) - overall(a) || a.name.localeCompare(b.name));
+  const squadCards = sel.locked ? sel.squad : picks.map((id) => sel.pool.find((c) => c.id === id)).filter(Boolean);
+  if (state.phase === 'offseason') {
+    return (
+      <section>
+        <h2 className="section-title">Your 12 for next season</h2>
+        <p className="hint">You pick the year's 12 when the season starts, from everyone with a {nationName(job.code)} passport at that moment (summer transfers and the national academy's new intake change the list). Meanwhile, appoint your head coach.</p>
+      </section>
+    );
+  }
   return (
     <section>
-      <h2 className="section-title">Squad · {sel.formation} · {teamOverall(sel.lineup)} OVR</h2>
-      <div className="nation-xi">
-        {sel.lineup.map((c) => <MiniCard key={c.id} card={c} selected />)}
-      </div>
-      <div className="nation-xi nation-xi--bench">
-        {sel.bench.map((c) => <MiniCard key={c.id} card={c} dim />)}
-      </div>
-      {sel.locked ? (
-        <p className="promo">Squad set for the {ev.name}: these 12 until it ends. Tap a player to swap him between starter and reserve.</p>
-      ) : (
-        <p className="hint">{ev ? `Pick your 12 for the ${ev.name}: the squad is set at its first game.` : 'Nothing on for your nation right now.'} Tap a player below: starter → reserve → not called. Places you leave open are filled with the best available. {picked ? `${picked} picked by you.` : 'Right now the coach picks the best 7 and 5 reserves.'}</p>
+      <h2 className="section-title">Your 12 · {squadCards.length}/{SQUAD_SIZE}{sel.locked ? ' · set for the year' : ''}</h2>
+      <p className="hint">{sel.locked
+        ? `These 12 play every game of ${intlYear(state)}${events.length ? ` (${events.join(', ')})` : ''}. Tap a player to swap him between starter and reserve.`
+        : `Pick 12 players for ${intlYear(state)}${events.length ? `: ${events.join(', ')}` : ''}. The year's first game sets them. Starters: tap a picked player.`}</p>
+      {squadCards.length > 0 && (
+        <div className="nation-xi">
+          {squadCards.map((c) => <MiniCard key={c.id} card={c} selected={starters.has(c.id)} dim={!starters.has(c.id)} onClick={() => setState((s) => toggleStarter(s, c.id, POOL_BY_ID))} />)}
+        </div>
       )}
-      {!sel.locked && <div className="cta-row">
-        <button type="button" className="btn btn--small btn--ghost" onClick={() => setState((s) => lockSelection(s, POOL_BY_ID))}>Pick from the best</button>
-        <button type="button" className="btn btn--small btn--ghost" onClick={() => setState((s) => clearCalls(s))} disabled={!picked}>Clear my picks</button>
-      </div>}
-      <div className="scroll-x">
-        <table className="table table--history nation-pool">
-          <thead><tr><th>OVR</th><th className="table__club">Player</th><th>Call</th></tr></thead>
-          <tbody>
-            {shown.map((c) => {
-              const role = calls[c.id] || (starters.has(c.id) ? 'start*' : inSquad.has(c.id) ? 'bench*' : '');
-              const club = c.clubId ? state.world.clubs[c.clubId] : null;
-              return (
-                <tr key={c.id} className={c.yours ? 'is-user' : ''} onClick={() => setState((s) => cycleCall(s, c.id, POOL_BY_ID))}>
-                  <td><b>{overall(c)}</b></td>
-                  <td className="table__club nation-pool__who"><b>{c.name}</b><small>{c.pos} · {club ? <ClubLink id={club.id}>{club.short}</ClubLink> : 'abroad'}{c.youth ? ' · academy' : ''}{c.yours ? ' · yours' : ''}</small></td>
-                  <td>
-                    <button type="button" className={`chip-btn${calls[c.id] ? ' is-on' : ''}`} onClick={(e) => { e.stopPropagation(); setState((s) => cycleCall(s, c.id, POOL_BY_ID)); }}>
-                      {role.startsWith('start') ? 'Starter' : role.startsWith('bench') ? 'Reserve' : '—'}{role.endsWith('*') ? ' (auto)' : ''}
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      {sel.pool.length > 30 && !all && <button type="button" className="btn btn--small btn--ghost" onClick={() => setAll(true)}>Show all {sel.pool.length} eligible players</button>}
-      <p className="hint">Starters: {CALL_STARTERS}, reserves: {CALL_RESERVES}. "Academy" players come through the nation's club academies: every country's clubs produce players for it.</p>
+      <p className="hint">{sel.formation} · {teamOverall(sel.lineup)} OVR · highlighted = starting 7{squadCards.length < SQUAD_SIZE ? ' (open places are filled with the best available)' : ''}.</p>
+      {!sel.locked && (
+        <div className="cta-row">
+          <button type="button" className="btn btn--small btn--ghost" onClick={() => setState((s) => fillPicks(s, POOL_BY_ID))} disabled={picks.length >= SQUAD_SIZE}>Fill with the best</button>
+          <button type="button" className="btn btn--small btn--ghost" onClick={() => setState((s) => clearPicks(s))} disabled={!picks.length}>Clear</button>
+        </div>
+      )}
+      {!sel.locked && (
+        <>
+          <h3 className="sub-title">Eligible players · {list.length}</h3>
+          <div className="chip-row">{POS_FILTER.map((p) => <button key={p} type="button" className={`chip-btn${pos === p ? ' is-on' : ''}`} onClick={() => setPos(p)}>{p}</button>)}</div>
+          <div className="chip-row">{RARITY_FILTER.map(([id, label]) => <button key={id} type="button" className={`chip-btn${rarity === id ? ' is-on' : ''}`} onClick={() => setRarity(id)}>{label}</button>)}</div>
+          <div className="chip-row">
+            <span className="chip-row__label">Sort</span>
+            {[['level', 'Level'], ['name', 'Name']].map(([id, label]) => <button key={id} type="button" className={`chip-btn${sort === id ? ' is-on' : ''}`} onClick={() => setSort(id)}>{label}</button>)}
+          </div>
+          <table className="table table--history nation-pool">
+            <thead><tr><th>OVR</th><th className="table__club">Player</th><th /></tr></thead>
+            <tbody>
+              {list.slice(0, limit).map((c) => {
+                const picked = picks.includes(c.id);
+                const club = c.clubId ? state.world.clubs[c.clubId] : null;
+                return (
+                  <tr key={c.id} className={picked ? 'is-user' : ''}>
+                    <td><b>{overall(c)}</b></td>
+                    <td className="table__club nation-pool__who"><b>{c.name}</b><small>{c.pos} · {c.rarity === 'academy' ? 'Academy' : c.rarity[0].toUpperCase() + c.rarity.slice(1)} · {club ? <ClubLink id={club.id}>{club.short}</ClubLink> : 'abroad'}{c.youth ? ' · national academy' : ''}</small></td>
+                    <td>
+                      <button type="button" className={`chip-btn${picked ? ' is-on' : ''}`} disabled={!picked && picks.length >= SQUAD_SIZE} onClick={() => setState((s) => togglePick(s, c.id))}>
+                        {picked ? 'Picked' : 'Pick'}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {list.length > limit && <button type="button" className="btn btn--small btn--ghost" onClick={() => setLimit(limit + 60)}>Show more ({list.length - limit} left)</button>}
+          <p className="hint">Everyone with a {nationName(job.code)} passport, wherever he plays. "National academy": players the country's club academies bring through for it.</p>
+        </>
+      )}
     </section>
   );
 }
@@ -237,7 +264,7 @@ export function NationNext({ state, game, onPlay }) {
   const venue = game.neutral ? 'Neutral' : game.isHome ? 'Home' : 'Away';
   return (
     <section className="next-match next-match--national">
-      <div className="next-match__meta"><span>International · {game.label}</span><span>{nationName(us)}</span></div>
+      <div className="next-match__meta"><span>{yearLabelOf(state)} · {game.label}</span><span>{nationName(us)}</span></div>
       <div className="matchup matchup--hero">
         <NationSide code={left} ovr={ovr(left)} />
         <div className="matchup__vs"><span>VS</span><small>{venue}{game.knockout ? ' · KO' : ''}</small></div>
@@ -247,6 +274,7 @@ export function NationNext({ state, game, onPlay }) {
     </section>
   );
 }
+const yearLabelOf = (state) => (state.season ? yearLabel(state.season.year) : '');
 
 function NationSide({ code, ovr }) {
   return (
@@ -266,6 +294,7 @@ export function NationPreMatch({ state, fixture, onStart, onSim, onBack, onEdit 
   const [left, right] = fixture.homeId === `nat-${us}` ? [us, them] : [them, us];
   const ovr = (code) => (code === us ? teamOverall(sel.lineup) : Math.round(ctx.strengths[code]));
   const coach = state.nationJob.coach;
+  const ready = sel.locked || sel.picked >= SQUAD_SIZE;
   return (
     <div className="screen screen--prematch">
       <div className="prematch__main">
@@ -278,15 +307,52 @@ export function NationPreMatch({ state, fixture, onStart, onSim, onBack, onEdit 
           <h2 className="section-title">{nationName(us)} · {sel.formation} · coach {coach?.name}</h2>
           <div className="nation-xi">{sel.lineup.map((c) => <MiniCard key={c.id} card={c} selected />)}</div>
           <div className="nation-xi nation-xi--bench">{sel.bench.map((c) => <MiniCard key={c.id} card={c} dim />)}</div>
-          <p className="hint">National games use no boosts and cost your club nothing. Not in the mood? Simulate it.</p>
+          {ready
+            ? <p className="hint">National games use no boosts. Not in the mood? Simulate it.</p>
+            : <p className="promo">Pick your 12 for the year first ({sel.picked}/{SQUAD_SIZE}): Squad → pick, or "Fill with the best". This game sets them for the year. Simulating fills the open places with the best available.</p>}
         </section>
       </div>
       <div className="cta-row cta-row--sticky">
         <button type="button" className="btn btn--ghost" onClick={onBack}>Back</button>
-        <button type="button" className="btn btn--ghost" onClick={onEdit}>Call-ups</button>
+        <button type="button" className="btn btn--ghost" onClick={onEdit}>Squad</button>
         <button type="button" className="btn btn--ghost" onClick={onSim}>Simulate</button>
-        <button type="button" className="btn btn--primary" onClick={onStart}>Kick off</button>
+        <button type="button" className="btn btn--primary" onClick={onStart} disabled={!ready}>Kick off</button>
       </div>
+    </div>
+  );
+}
+
+// Home without a club: the next national game, the end of the season, or the summer.
+export function NationHome({ state, onPlay, onClose, onStart, goTo }) {
+  const game = nextUserGame(state);
+  const job = state.nationJob;
+  const review = state.seasonReview?.national ? state.seasonReview : null;
+  return (
+    <div className="screen">
+      {game && <NationNext state={state} game={game} onPlay={onPlay} />}
+      {state.phase === 'seasonEnd' && (
+        <section className="season-end">
+          <span className="season-end__label">The {yearLabel(state.season.year)} season is complete</span>
+          <b className="season-end__pos">{nationName(job.code)} · {job.record.w}W {job.record.d}D {job.record.l}L</b>
+          <button type="button" className="btn btn--primary btn--block" onClick={onClose}>Season review</button>
+        </section>
+      )}
+      {state.phase === 'offseason' && (
+        <section className="panel">
+          <h2 className="section-title">Summer {review ? `· ${review.year ? yearLabel(review.year) : ''} review` : ''}</h2>
+          {review?.lines?.length ? <ul className="news">{review.lines.map((l) => <li key={l}>{l}</li>)}</ul> : <p className="hint">A quiet year for {nationName(job.code)}.</p>}
+          {state.gm?.review && <p className="hint">Reputation {state.gm.review.before} → <b>{state.gm.review.after}</b></p>}
+          <p className="hint">Clubs and federations call in the summer: {(state.gm?.offers || []).length} club offer{(state.gm?.offers || []).length === 1 ? '' : 's'}, {(state.nationOffers || []).length} from federations. Taking a club ends your national job.</p>
+          <div className="cta-row">
+            <button type="button" className="btn btn--ghost" onClick={() => goTo('career')}>See offers</button>
+            <button type="button" className="btn btn--primary" onClick={onStart}>Start next season</button>
+          </div>
+        </section>
+      )}
+      <section className="panel">
+        <h2 className="section-title">This season</h2>
+        <ConfSeason intl={state.season?.intl} conf={NATIONAL_TEAMS[job.code].conf} mine={job.code} />
+      </section>
     </div>
   );
 }
@@ -294,10 +360,12 @@ export function NationPreMatch({ state, fixture, onStart, onSim, onBack, onEdit 
 // ---------------------------------------------------------------------------
 // Career → National team: your job, offers, past jobs
 
-export function NationalCareer({ state, onAccept, onResign, onManage }) {
+export function NationalCareer({ state, onAccept, onManage }) {
   const job = state.nationJob;
   const offers = state.nationOffers || [];
   const rep = state.gm?.reputation ?? 0;
+  const summer = state.phase === 'offseason';
+  const clubName = state.mode === 'nation' ? null : state.club.name;
   return (
     <>
       {job ? (
@@ -306,10 +374,10 @@ export function NationalCareer({ state, onAccept, onResign, onManage }) {
           <p><NationName code={job.code} /> · since {yearLabel(job.since)} · {job.record.w}W {job.record.d}D {job.record.l}L</p>
           <div className="cta-row">
             <button type="button" className="btn btn--primary btn--small" onClick={onManage}>Manage</button>
-            <button type="button" className="btn btn--ghost btn--small" onClick={onResign}>Resign</button>
           </div>
+          <p className="hint">To go back to club football, take a club offer in the summer (Career → Offers).</p>
         </section>
-      ) : <p className="hint">You don't manage a national team. It's a second job next to your club: no money, just pride, reputation and the big summer tournaments.</p>}
+      ) : <p className="hint">A national team instead of a club: no money and no packs, just your pick of the country's players, the qualifiers and the big summer tournaments. You can't do both.</p>}
       <section>
         <h2 className="section-title">Federations calling</h2>
         {offers.length === 0 ? <p className="hint">No offers right now. Federations call every summer, by reputation (yours: {rep}).</p> : (
@@ -319,14 +387,14 @@ export function NationalCareer({ state, onAccept, onResign, onManage }) {
                 <span className="nation-flag" aria-hidden="true">{nationFlag(code)}</span>
                 <div className="offer__body">
                   <b>{nationName(code)}</b>
-                  <span>{PRESTIGE[NATIONAL_TEAMS[code].prestige]} · {INTL_CONF_LABEL[NATIONAL_TEAMS[code].conf]}</span>
+                  <span>{PRESTIGE[NATIONAL_TEAMS[code].prestige]} · {INTL_CONF_LABEL[NATIONAL_TEAMS[code].conf]}{clubName ? ` · you leave ${clubName}` : ''}</span>
                 </div>
-                <button type="button" className="btn btn--small btn--primary" onClick={() => onAccept(code)}>{job ? 'Switch' : 'Accept'}</button>
+                <button type="button" className="btn btn--small btn--primary" disabled={!summer || !!state.pendingOpen} onClick={() => onAccept(code)}>{job ? 'Switch' : 'Accept'}</button>
               </div>
             ))}
           </div>
         )}
-        <p className="hint">What federations ask: {Object.entries(NATION_REPUTATION).map(([p, r]) => `${PRESTIGE[p]} ${r}+`).join(' · ')}. Elite: Spain, England, Germany, France, Brazil, Argentina.</p>
+        <p className="hint">What federations ask: {Object.entries(NATION_REPUTATION).map(([p, r]) => `${PRESTIGE[p]} ${r}+`).join(' · ')}. Elite: Spain, England, Germany, France, Brazil, Argentina.{clubName ? ` Taking one ends your job at ${clubName}: the club keeps its players.` : ''}</p>
       </section>
       {(state.nationPast || []).length > 0 && (
         <section>

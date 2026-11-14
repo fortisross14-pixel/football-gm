@@ -6,6 +6,7 @@ import {
 import { finalsByKey } from '../engine/history.js';
 import { standings } from '../engine/season.js';
 import { nextUserGame } from '../state/club.js';
+import { yearEvents } from '../state/national.js';
 import { Crest } from './Art.jsx';
 import { CompLink, ClubLink } from './nav.jsx';
 import { DomesticCup, Continental, ClubWorldCup, SuperCup } from './Cups.jsx';
@@ -58,7 +59,8 @@ export default function Competitions({ state }) {
   const csup = comps.contSuper?.[conf];
   const k1 = comps.continental?.[conf];
   const k2 = comps.continental2?.[conf];
-  const mine = [
+  const national = state.mode === 'nation';
+  const mine = national ? [] : [
     { c: { type: 'league', id: div.id }, sub: `${div.country} · ${pos ? `you're ${ordinal(pos)}` : 'starts soon'}` },
     sup?.clubs.includes(me) && { c: { type: 'super', id: div.code }, sub: singleStatus(state, sup) },
     cup && { c: { type: 'cup', id: div.code }, sub: cupStatus },
@@ -74,6 +76,7 @@ export default function Competitions({ state }) {
     <div className="screen comps-hub">
       <section>
         <h2 className="section-title">Your competitions · {yearLabel(state.season.year)}</h2>
+        {national && <p className="hint">{state.club.name}: {yearEvents(state).join(', ') || 'friendlies'} this year. Groups and brackets are in World → Nations and on your national team page.</p>}
         <div className="comp-cards">
           {mine.map(({ c, sub }) => (
             <CompLink key={`${c.type}-${c.id}`} comp={c} className={`comp-card comp-card--${c.type}`}>

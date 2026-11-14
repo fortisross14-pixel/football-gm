@@ -26,9 +26,10 @@ import { makeDealOffersInto, settleDealsInto, initialDealsInto, dealMatchItems }
 import { newStadium, stadiumOf, matchdayOf, homeStatBonus, partLevel, weakestPart, ensureStadiumInto, capacityOf, starsOf } from './stadium.js';
 import { initialFans, ensureFansInto, fanMatchInto, fanSeasonInto, recordCrowdInto, boostFansInto, addHappinessInto, fansOf } from './fans.js';
 import { decideAwards } from '../engine/awards.js';
-import { isIntlSlot } from '../engine/intl.js';
 import { clubNation } from '../data/nationalTeams.js';
-import { newSeasonIntl, playIntlSlot, nationalFixture, recordNationalSlot, nationalSeasonItems, nationalOffers, userNation } from './national.js';
+import { newSeasonIntl, playIntlSlot, nationalFixture, recordNationalSlot, nationalSeasonItems, nationalOffers, acceptNationalJob, endNationalJobInto } from './national.js';
+import { NATIONAL_TEAMS } from '../data/nationalTeams.js';
+import { isIntlSlot, nationTeamId, nationName } from '../engine/intl.js';
 import { foldSeason, recordMove, holders, diffMoves } from '../engine/careers.js';
 import { newStats, emptyBook, recordGame as recordStats, recordTitle, coachKey } from '../engine/statsbook.js';
 import { styleDistance, clubIdentity } from '../data/philosophies.js';
@@ -41,7 +42,7 @@ import {
 } from '../engine/gmTraits.js';
 import { SEASON_DECK, SEASON_WEIGHTS, REDRAW_COSTS, HAND_SIZE } from '../data/seasonCards.js';
 import { PACKS, openPack, mergeDuplicate, drawFromPool, MAX_STARS } from '../engine/packs.js';
-import { PROMOTION_SPOTS, applyCurses, buildWorld, createSeason, playMatchday, goalsFromMatch, standings, removeKeyPlayer, endOfSeason, divisionName, refreshStrengths, userFixture, quickResult } from '../engine/season.js';
+import { PROMOTION_SPOTS, applyCurses, buildWorld, createSeason, playMatchday, goalsFromMatch, standings, removeKeyPlayer, endOfSeason, divisionName, refreshStrengths, userFixture, quickResult, clubStrength } from '../engine/season.js';
 import {
   CALENDAR, createCompetitions, prepareSlot, recordGame, quickKnockout, involves, compKey, qualifiers, tablesByStrength, tablesFromSeason, seasonResults, continentalClubs, compRefOf,
   CONTINENT_NAME, CONTINENT2_NAME, CONT_SUPER_NAME, CONTINENTS, cupName, superCupName,
@@ -202,8 +203,6 @@ export function newClubState(seed = 12345, { clubId = USER_CLUB.id, gmName = 'Yo
   pushInbox(state, 'career', `Welcome to ${state.club.name}`, `The owners hand you the keys: a ${state.gm.contract.until - state.gm.contract.from + 1}-season contract. Your coach is ${state.coaches.coach.name}. Good luck.`);
   state.qualification = qualifiers(tablesByStrength(state.world));
   state.season = newSeason(state, 1, seed);
-  // A small federation or two is already interested: a national team job alongside the club.
-  state.nationOffers = nationalOffers(state, seed + 43);
   state.market = makeMarket(state, makeRng(seed + 77), 'season');
   setObjective(state);
   initialDealsInto(state, seed + 91); // the club's kit, sponsor and TV deals for season 1
@@ -239,9 +238,17 @@ function setObjective(state) {
 function advanceToUser(state, seed) {
   const next = { ...state, season: structuredClone(state.season) };
   const rng = makeRng(seed);
-  const { season } = next;
+  let { season } = next;
   while (season.slot < CALENDAR.length) {
     const slot = CALENDAR[season.slot];
+    if (slot === 'L' && state.mode === 'nation') {
+      // No club of your own: the whole matchday plays itself.
+      const slotNow = season.slot;
+      season = playMatchday(season, next.world, null, POOL_BY_ID, rng.int(1, 2 ** 30), next.stats, null);
+      season.slot = slotNow + 1;
+      next.season = season;
+      continue;
+    }
     if (slot === 'L') break;
     if (isIntlSlot(slot)) {
       if (playIntlSlot(next, slot, rng, POOL_BY_ID)) break; // your national team plays
@@ -701,6 +708,89 @@ export function applyMatch(state, match, userSide, opponent, rewards, seed, game
   return { state: next, retired: [...retired, ...retiredCoaches], boostReward };
 }
 
+// Leaving a club: it keeps the named cards you leave behind. Mutates `next`.
+function leaveClubInto(next, carriedPlayers = [], toClubId = null) {
+  const oldId = next.club.id;
+  const world = next.world;
+  const leftNamed = next.squad.filter((c) => POOL_BY_ID[c.id] && !carriedPlayers.includes(c.id));
+  const oldDiv = DIVISION_BY_ID[world.clubs[oldId].divisionId];
+  world.clubs[oldId].keyPlayers = leftNamed.sort((a, b) => overall(b) - overall(a)).slice(0, namedCap(oldId, oldDiv)).map((c) => c.id);
+  for (const c of leftNamed) world.cardLeft[c.id] = c.matchesLeft ?? 150;
+  for (const c of next.squad) {
+    if (carriedPlayers.includes(c.id)) logMove(next, c.id, oldId, toClubId, 'c');
+    else if (!world.clubs[oldId].keyPlayers.includes(c.id)) logMove(next, c.id, oldId, null, 'r');
+  }
+  world.clubs[oldId].strength = clubStrength(world.clubs[oldId], POOL_BY_ID);
+}
+
+// ---------------------------------------------------------------------------
+// National-team careers (v2.5): a club or a national team, never both. Without a club, the
+// world plays itself between your national games; summers bring club and federation offers.
+
+// Take a federation's offer (summer only): you leave your club, which keeps its players.
+export function takeNationalJob(state, code) {
+  if (state.phase !== 'offseason' || state.pendingOpen || state.pendingPick || !(state.nationOffers || []).includes(code)) return state;
+  let next = structuredClone(state);
+  if (next.mode !== 'nation') {
+    leaveClubInto(next);
+    next.lastClub = { id: next.club.id, name: next.club.name, divisionId: next.club.divisionId };
+    next.squad = []; next.lineup = []; next.bench = []; next.lastLineup = [];
+    next.construction = []; next.clubEffects = [];
+    pushInbox(next, 'career', `You leave ${next.club.name}`, `The owners wish you well. ${next.club.name} keep the players you leave behind.`);
+  } else endNationalJobInto(next);
+  next = acceptNationalJob(next, code);
+  const last = next.gm.career[next.gm.career.length - 1];
+  if (last && !last.to) last.to = next.season.year;
+  next.gm.career.push({ clubId: null, nation: code, name: nationName(code), from: next.season.year + 1, to: null });
+  next.gm.offers = [];
+  next.gm.sacked = false;
+  next.gm.outOfContract = false;
+  next.mode = 'nation';
+  const n = NATIONAL_TEAMS[code];
+  next.club = { id: nationTeamId(code), name: nationName(code), short: code, colors: n.colors, divisionId: next.lastClub.divisionId, level: 1, division: 'National team', national: true };
+  return next;
+}
+
+// The season's end without a club: the world's end of season, your national team's review,
+// and offers from clubs and federations.
+function closeNationSeason(state, seed) {
+  const next = structuredClone(state);
+  closeWorldInto(state, next, seed, { userClub: false });
+  const nat = nationalSeasonItems(state);
+  const rec = state.nationJob?.record;
+  const before = next.gm.reputation;
+  const items = [...nat.items];
+  // A year of results: winning most games builds a name; losing nearly all of them dents it.
+  if (rec && rec.p >= 4) {
+    const share = rec.w / rec.p;
+    if (share >= 0.5) items.push({ label: `${rec.w} wins in ${rec.p} games`, value: Math.max(1, Math.round(3 * (1 - before / 150))) });
+    else if (share < 0.2) items.push({ label: `${rec.w} wins in ${rec.p} games`, value: -1 });
+  }
+  next.gm.reputation = applyReputation(before, items);
+  next.gm.review = { season: state.season.year, objective: null, position: null, verdict: 'met', items, before, after: next.gm.reputation, sacked: false, national: state.nationJob?.code };
+  for (const line of nat.lines) pushInbox(next, 'career', 'National team', line);
+  pushInbox(next, 'board', `${seasonYear(state.season.year)} review`, `${nat.lines.join(' ') || 'A quiet year.'} Reputation ${before} → ${next.gm.reputation}.`);
+  next.gm.searched = false;
+  next.gm.offers = next.lastClub ? jobOffers(next.world, { reputation: next.gm.reputation, currentClubId: next.lastClub.id, good: true, seed: seed + 41 }) : [];
+  next.nationOffers = nationalOffers(next, seed + 43);
+  if (next.gm.offers.length || next.nationOffers.length) pushInbox(next, 'career', 'Offers this summer', 'Clubs and federations have called. See Career → Offers and National team.');
+  const recLine = rec && rec.p ? [`${nationName(state.nationJob.code)}: ${rec.p} games, ${rec.w} won, ${rec.d} drawn, ${rec.l} lost (${rec.gf}–${rec.ga}).`] : [];
+  next.seasonReview = { national: true, year: state.season.year, nation: state.nationJob?.code, record: rec ? { ...rec } : null, lines: [...recLine, ...nat.lines] };
+  next.phase = 'offseason';
+  return next;
+}
+
+function startNationSeason(state, seed) {
+  const next = structuredClone(state);
+  next.season = newSeason(next, state.season.year + 1, seed);
+  next.phase = next.season.slot >= CALENDAR.length ? 'seasonEnd' : 'season';
+  next.gm.offers = [];
+  next.nationOffers = [];
+  next.record = { w: 0, d: 0, l: 0, gf: 0, ga: 0 };
+  next.seasonStats = {};
+  return next;
+}
+
 // Your national team's game: the engine match (or a quick sim with match = null), then the
 // season moves on to your next game.
 export function applyNationalMatch(state, match, userSide, seed) {
@@ -1027,20 +1117,13 @@ export function seasonLeaders(stats) {
   };
 }
 
-export function closeSeason(state, seed) {
-  if (state.phase !== 'seasonEnd') return state;
-  const next = structuredClone(state);
-  const { position, prize, packs, table, promoted } = seasonSummary(state);
-  track(next, 'income', 'Prizes', prize);
-  if (position === 1) for (const c of next.squad) addFame(c, 1);
+// The world's end of season, shared by club and national-team careers: next season's continental
+// places, the history book, awards, careers, promotion and relegation, every AI club's summer.
+// position: your league finish (null without a club).
+function closeWorldInto(state, next, seed, { position = null, userClub = true } = {}) {
   // Next season's continental places come from this season's final tables.
   const final = tablesFromSeason(state.season);
   next.qualification = qualifiers(final.tables, final.points, seasonResults(state.season.comps));
-  next.coins += prize;
-  recordFinanceInto(next, state.season.year); // season finance history (updated again when the next season starts)
-  next.inventory.packs.push(...packs);
-  const champion = next.world.clubs[table[0].id];
-  next.trophies.push({ season: next.season.year, competition: state.club.division, position, champion: champion.name });
   // The history book: every league and cup this season, plus your own season.
   const entry = archiveSeason(state.season, { gkOf: (clubId) => keeperOf(state, clubId), known: (id) => !!CARD_BY_ID[id] });
   next.records = foldRecords(next.records, entry, (id) => !!CARD_BY_ID[id]);
@@ -1078,7 +1161,7 @@ export function closeSeason(state, seed) {
   next.stats.season = emptyBook();
   next.stats.year = state.season.year + 1;
   updateGms(next.world, { archiveEntry: entry, seed: seed + 6, userClubId: state.club.id, year: state.season.year });
-  next.careerLog = [...(next.careerLog || []), {
+  if (userClub) next.careerLog = [...(next.careerLog || []), {
     year: state.season.year, clubId: state.club.id, divId: state.club.divisionId, position,
     record: { ...state.record }, trophies: [...(state.season.userTrophies || []), ...(position === 1 ? [state.club.division] : [])],
     leaders: seasonLeaders(state.seasonStats || {}),
@@ -1094,12 +1177,12 @@ export function closeSeason(state, seed) {
   applyCurses(next.world, next.houseRules?.cursed || [], POOL_BY_ID);
   // Every named card that changed club this summer, in the career log.
   const squadIds = next.squad.map((c) => c.id);
-  next.moves = diffMoves(next.moves || {}, holders(end.world, next.club.id, squadIds), holders(next.world, next.club.id, squadIds), state.season.year + 1, (id, from, to) => {
+  if (userClub) next.moves = diffMoves(next.moves || {}, holders(end.world, next.club.id, squadIds), holders(next.world, next.club.id, squadIds), state.season.year + 1, (id, from, to) => {
     if (to) return off.joined?.[id] === 'academy' ? 'a' : 's';
     return next.world.resting?.[id] && !end.world.resting?.[id] ? 'x' : 'r';
   });
   const userMove = end.moves.find((m) => m.clubId === next.club.id) || null;
-  next.club = clubInfo(next.club, next.world.clubs[next.club.id].divisionId);
+  if (userClub) next.club = clubInfo(next.club, next.world.clubs[next.club.id].divisionId);
   next.lastSeason = {
     year: next.season.year,
     position,
@@ -1116,14 +1199,28 @@ export function closeSeason(state, seed) {
     cwc: state.season.comps.cwc?.winner ? next.world.clubs[state.season.comps.cwc.winner].name : null,
     userTrophies: state.season.userTrophies || [],
   };
+  return { entry, awards };
+}
+
+export function closeSeason(state, seed) {
+  if (state.phase !== 'seasonEnd') return state;
+  if (state.mode === 'nation') return closeNationSeason(state, seed);
+  const next = structuredClone(state);
+  const { position, prize, packs, table, promoted } = seasonSummary(state);
+  track(next, 'income', 'Prizes', prize);
+  if (position === 1) for (const c of next.squad) addFame(c, 1);
+  next.coins += prize;
+  recordFinanceInto(next, state.season.year); // season finance history (updated again when the next season starts)
+  next.inventory.packs.push(...packs);
+  const champion = next.world.clubs[table[0].id];
+  next.trophies.push({ season: next.season.year, competition: state.club.division, position, champion: champion.name });
+  const { awards } = closeWorldInto(state, next, seed, { position });
   // Board review: objective, reputation, and job offers (or the sack).
   if (next.gm) {
     const summary = seasonSummary(state);
     const objective = state.gm.objective || { target: 10, text: 'Finish the season' };
     const verdict = judgeObjective(objective, position);
-    const nat = nationalSeasonItems(state);
-    const items = [...mediaBoost(weighReputation(reputationChanges({ verdict, promoted: summary.promoted, leagueTitle: position === 1, trophies: state.season.userTrophies || [] }), state.club.level, next.gm.reputation), gmTrait(state)), ...nat.items];
-    for (const line of nat.lines) pushInbox(next, 'career', 'National team', line);
+    const items = mediaBoost(weighReputation(reputationChanges({ verdict, promoted: summary.promoted, leagueTitle: position === 1, trophies: state.season.userTrophies || [] }), state.club.level, next.gm.reputation), gmTrait(state));
     const before = next.gm.reputation;
     next.gm.missedInRow = verdict === 'missed' ? next.gm.missedInRow + 1 : 0;
     fanSeasonInto(next, { year: state.season.year, promoted: summary.promoted, relegated: summary.relegated, title: position === 1, verdict, popularity: squadPopularity(state) });
@@ -1159,9 +1256,9 @@ export function closeSeason(state, seed) {
       reputation: next.gm.reputation, currentClubId: next.club.id, sacked: next.gm.sacked, good: verdict !== 'missed', seed: seed + 41,
       ...offerBoost(state),
     });
-    // National teams looking for a manager (a second job; see state/national.js).
+    // National teams looking for a manager (instead of a club; see state/national.js).
     next.nationOffers = nationalOffers(next, seed + 43);
-    if (next.nationOffers.length) pushInbox(next, 'career', 'A federation is calling', `${next.nationOffers.length === 1 ? 'A national team wants' : 'National teams want'} you as their manager, alongside your club job. See Career → National team.`);
+    if (next.nationOffers.length) pushInbox(next, 'career', 'A federation is calling', `${next.nationOffers.length === 1 ? 'A national team wants' : 'National teams want'} you as their manager. Taking it means leaving your club. See Career → National team.`);
   }
   // Your academy intake: club legends where possible, waiting for Keep/Discard.
   const intake = userAcademyIntake(next.world, {
@@ -1443,6 +1540,7 @@ export function buyMarketCard(state, offerUid) {
 
 export function startNextSeason(state, seed) {
   if (state.phase !== 'offseason' || state.pendingOpen || state.pendingPick) return state;
+  if (state.mode === 'nation') return startNationSeason(state, seed);
   if (state.gm?.sacked) return state; // a sacked GM must take a new job first
   // Nobody picked a season card: the first dealt card that needs no decisions is played.
   if (state.seasonDeal && !state.seasonCard) {
@@ -1500,17 +1598,15 @@ export function acceptOffer(state, clubId, carryKeys = [], seed = 1) {
   const oldId = next.club.id;
   const world = next.world;
   const carried = carryKeys.map((k) => k.split(':'));
+  const fromNation = state.mode === 'nation';
+  if (fromNation) {
+    endNationalJobInto(next);
+    next.mode = 'club';
+  }
 
   // 1. The old club keeps the named cards you leave behind.
   const carriedPlayers = carried.filter(([k]) => k === 'player').map(([, id]) => id);
-  const leftNamed = next.squad.filter((c) => POOL_BY_ID[c.id] && !carriedPlayers.includes(c.id));
-  const oldDiv = DIVISION_BY_ID[world.clubs[oldId].divisionId];
-  world.clubs[oldId].keyPlayers = leftNamed.sort((a, b) => overall(b) - overall(a)).slice(0, namedCap(oldId, oldDiv)).map((c) => c.id);
-  for (const c of leftNamed) world.cardLeft[c.id] = c.matchesLeft ?? 150;
-  for (const c of next.squad) {
-    if (carriedPlayers.includes(c.id)) logMove(next, c.id, oldId, clubId, 'c');
-    else if (!world.clubs[oldId].keyPlayers.includes(c.id)) logMove(next, c.id, oldId, null, 'r');
-  }
+  if (!fromNation) leaveClubInto(next, carriedPlayers, clubId);
 
   // 2. The new club's squad: its named cards plus generic commons, then your carried players.
   const newClub = world.clubs[clubId];
@@ -1615,10 +1711,12 @@ export function lookForOffers(state, seed) {
   if (state.phase !== 'offseason' || !state.gm || state.gm.searched || state.gm.sacked) return state;
   const next = structuredClone(state);
   const verdict = next.gm.review?.verdict || 'met';
-  const found = jobOffers(next.world, { reputation: next.gm.reputation, currentClubId: next.club.id, good: verdict !== 'missed', seed, extra: extraJobOffers(gmTrait(next)) });
+  const national = next.mode === 'nation';
+  const found = jobOffers(next.world, { reputation: next.gm.reputation, currentClubId: national ? next.lastClub?.id : next.club.id, good: verdict !== 'missed', seed, extra: extraJobOffers(gmTrait(next)) });
   const have = new Set(next.gm.offers.map((o) => o.clubId));
   next.gm.offers = [...next.gm.offers, ...found.filter((o) => !have.has(o.clubId))];
   next.gm.searched = true;
+  if (national) return next; // no owners to upset
   next.gm.confidence = scaleConfidence(next.gm.confidence, { ...next.gm.confidence, board: Math.max(0, (next.gm.confidence?.board ?? 60) - LOOK_COST) }, gmTrait(next));
   return next;
 }
