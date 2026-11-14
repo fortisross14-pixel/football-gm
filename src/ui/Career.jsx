@@ -12,6 +12,7 @@ import { GmCard, GmFlag } from './GmCard.jsx';
 import { nationOf } from '../data/nations.js';
 import { yearLabel } from '../engine/years.js';
 import { NationalCareer } from './Nation.jsx';
+import { nationFlag, nationName } from '../engine/intl.js';
 
 const VERDICT = { met: 'Objective met', exceeded: 'Objective exceeded', missed: 'Objective missed' };
 
@@ -24,6 +25,7 @@ export default function Career({ state, onAccept, onBack, onLook, onRead, onAcce
   const pos = standings(state.season, state.club.divisionId).findIndex((r) => r.id === state.club.id) + 1;
   const review = gm.review;
   const national = state.mode === 'nation';
+  const nationOffers = state.phase === 'offseason' ? (state.nationOffers || []) : [];
 
   return (
     <div className="screen">
@@ -41,7 +43,7 @@ export default function Career({ state, onAccept, onBack, onLook, onRead, onAcce
         options={[
           { id: 'inbox', label: `Inbox${unread ? ` · ${unread}` : ''}` },
           { id: 'overview', label: 'Overview' },
-          { id: 'offers', label: state.phase === 'offseason' ? `Offers${gm.offers.length ? ` · ${gm.offers.length}` : ''}` : 'Offers' },
+          { id: 'offers', label: state.phase === 'offseason' && gm.offers.length + nationOffers.length ? `Offers · ${gm.offers.length + nationOffers.length}` : 'Offers' },
           { id: 'national', label: `National team${(state.nationOffers || []).length && !state.nationJob ? ` · ${state.nationOffers.length}` : ''}` },
           { id: 'history', label: 'History' },
         ]}
@@ -142,7 +144,24 @@ export default function Career({ state, onAccept, onBack, onLook, onRead, onAcce
               })}
             </div>
           )}
-          {!gm.sacked && gm.offers.length > 0 && <p className="hint">Or stay where you are: just start the next season.</p>}
+          {nationOffers.length > 0 && (
+            <>
+              <h3 className="sub-title">Federations</h3>
+              <div className="offers">
+                {nationOffers.map((code) => (
+                  <div key={code} className="offer">
+                    <span className="nation-flag" aria-hidden="true">{nationFlag(code)}</span>
+                    <div className="offer__body">
+                      <b>{nationName(code)}</b>
+                      <span>National team{national ? '' : ` · you leave ${state.club.name}`}</span>
+                    </div>
+                    <button type="button" className="btn btn--small btn--primary" disabled={!!state.pendingOpen} onClick={() => onAcceptNation(code)}>Accept</button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          {!gm.sacked && (gm.offers.length > 0 || nationOffers.length > 0) && <p className="hint">Or stay with {state.club.name}: just start the next season. A club or a national team, never both.</p>}
         </section>
       ))}
 
