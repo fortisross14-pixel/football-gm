@@ -1077,3 +1077,19 @@ The kit, sponsor and TV deals replace the sponsor contract and half of the merch
 | Great | 1,174 → 1,189 (+1%) | 6,882 → 7,054 (+2.5%) | 21,861 → 23,739 (+9%) | 1,137 → 1,853 |
 
 Choices against defaults (great bot, same seeds): the deal lines earn 363 / 567 / 799 against 327 / 540 / 692 in seasons 2–4 (+11%) and +5.6% over seasons 2–6; most of it is the kit (a new design when the line is old, the global brand for a popular squad: kit revenue +38% in season 6) and the TV offer that fits the season. Late-season totals move with the careers (who gets promoted when), so they are noisy at 12 careers.
+
+### Steps between divisions (v2.5)
+
+Owner's feedback: "Game is too easy. PSG can be 72 and I reach that level with a 2nd division team in a year and a half. There should be a jump between divisions." Most of an AI club's 7 are generic players, so their rating sets the gap. Generic players by level (engine/aiTeam.js `FILLER_RATING`, `GIANT_FILLER`): 60 / 58 / 56 (all Common) → **70 / 66 / 56**, the 23 giants **74**. Level-1 generics are now Rare-rated, level-2 Uncommon. Starting world (club strength, median): level 3 59 (unchanged, so season 1 is as before), level 2 61 → 67, level 1 64 → 72, giants 66–75 → 74–79. A club you join comes with its own generics, so moving up also lifts your squad; what you bring from packs must now beat a higher bar.
+
+## 15. National teams (v2.5)
+
+A second job next to the club, lighter and free of money ("a bit more free game than regular"). Code: `src/data/nationalTeams.js`, `src/engine/intl.js`, `src/state/national.js`, `src/ui/Nation.jsx`.
+
+- **Nations:** 67 playable, every nation with a league or clubs in the game (the mixed "Other" leagues' clubs carry a country, `CLUB_NATION`) plus Ivory Coast, Cameroon, Ghana and Senegal through their players. Four confederations: Europe 22, Americas 16 (South + North America), Africa 12, Asia-Pacific 17 (Asia + Oceania). Prestige 1 (Elite: Spain, England, Germany, France, Brazil, Argentina) to 5 (minnows).
+- **Players:** anyone with the nation's passport: named cards at any club, your own cards (they don't tire in national games), and 12 academy products a year, the players its clubs' academies bring through (generic, rated by prestige: 66 / 64 / 61 / 58 / 55). Your own academy and youth players now carry your club's country.
+- **Cycle** (season 1 = 2027): odd years start a qualifying campaign, even years finish it and the tournament follows the club season. 2028, 2032 … four continental championships (European Championship, Copa de las Américas, Africa Cup of Nations, Asia-Pacific Cup), 8 nations each: 2 groups of 4 → semi-finals → final. 2030, 2034 … the **World Cup**, 16 nations (Europe 7, Americas 4, Africa 3, Asia-Pacific 2): 4 groups → quarter-finals → semi-finals → final.
+- **Qualifying:** each confederation drawn by pots into groups of 3–4, home and away over two seasons, three international windows a season (calendar slots N0–N2). Group winners first, then the best runners-up by points per game. Tournament games are the T slots after the Club World Cup.
+- **The job:** federations offer by reputation (Elite 84+, Major 70+, Established 50+, Rising 28+, Minnows any). Two offers at the start of a career (minnows) and every summer; take one, switch, or resign. You call up 7 starters + 5 reserves (open places filled with the best available) and appoint the head coach from four candidates (the coach sets formation and style; no tactics clash). Play a game or simulate it.
+- **Reputation** at season end: tournament stage (World Cup winner +9, final +5, semi +3, quarter +1; continental +6 / +3 / +2 / +1), extra credit for small nations going far, +1 for a minnow qualifying, −3 for a Major or Elite nation missing a tournament. No sacking.
+- **World → Nations:** qualifying groups and tournaments this season, past winners, and a ranking by strength with real-life titles (World Cup to 2022, continental to 2024).

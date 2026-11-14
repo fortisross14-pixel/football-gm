@@ -83,7 +83,7 @@ export default function Competitions({ state }) {
             </CompLink>
           ))}
         </div>
-        {next && <p className="hint">Next: {next.label} vs <ClubLink id={next.opponentId}>{state.world.clubs[next.opponentId]?.name}</ClubLink></p>}
+        {next && <p className="hint">Next: {next.label} vs {next.national ? next.opponent.name : <ClubLink id={next.opponentId}>{state.world.clubs[next.opponentId]?.name}</ClubLink>}</p>}
       </section>
 
       {state.history?.length > 0 && (

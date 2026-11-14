@@ -1,4 +1,5 @@
 import React from 'react';
+import { NationNext } from './Nation.jsx';
 import { Crest } from './Art.jsx';
 import { clubVars } from './clubTheme.js';
 import { Table } from './League.jsx';
@@ -67,6 +68,7 @@ function NextMatch({ state, onPlay }) {
   const { season } = state;
   const game = nextUserGame(state);
   if (!game) return null;
+  if (game.national) return <NationNext state={state} game={game} onPlay={onPlay} />;
   const opp = clubById(state.world, game.opponentId);
   const starters = state.lineup.map((id) => state.squad.find((c) => c.id === id));
   const pos = standings(season, state.club.divisionId).findIndex((r) => r.id === state.club.id) + 1;
@@ -278,7 +280,7 @@ export function Segmented({ label, value, options, onChange, small }) {
 // "NEXT GAME IS A RIVALRY GAME!" — something big is coming.
 export function DerbyAlert({ state, compact }) {
   const game = nextUserGame(state);
-  if (!game || !isDerby(state.club.id, game.opponentId)) return null;
+  if (!game || game.national || !isDerby(state.club.id, game.opponentId)) return null;
   const opp = clubById(state.world, game.opponentId);
   const past = (state.history || []).filter((h) => h.opponentId === game.opponentId || h.opponent === opp.name);
   const rec = { W: 0, D: 0, L: 0 };

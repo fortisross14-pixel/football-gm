@@ -8,7 +8,7 @@ import {
   startNextSeason, useOffseasonCard, seeMarket, POOL_BY_ID, nextUserGame, acceptOffer, discardCommons, lookForOffers, toggleCurse,
   setTicketPrice, signKit, signSponsorDeal, signTv, markOffseasonStep, dealsPending,
   pickSeasonCard, redrawSeasonCards,
-  buyClubPack, openOwnedClubPack, pickClubCard,
+  buyClubPack, openOwnedClubPack, pickClubCard, applyNationalMatch, simNationalGame,
 } from './state/club.js';
 import { Crest, BadgesContext } from './ui/Art.jsx';
 import { clubVars } from './ui/clubTheme.js';
@@ -27,6 +27,8 @@ import Menu, { SettingsSheet } from './ui/Menu.jsx';
 import NewCareer from './ui/NewCareer.jsx';
 import Tip from './ui/Tip.jsx';
 import { markRead, pushInbox } from './state/chronicle.js';
+import { NationalTeam, NationPreMatch } from './ui/Nation.jsx';
+import { userNationTeam, aiNationTeam, acceptNationalJob, resignNationalJob } from './state/national.js';
 import Team, { HouseRules } from './ui/Team.jsx';
 import World from './ui/World.jsx';
 import Player from './ui/Player.jsx';
@@ -159,10 +161,21 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
   useEffect(() => { if (screen === 'summer' && state.phase !== 'offseason') setScreen('home'); }, [screen, state.phase]);
 
   const fixture = nextUserGame(state);
-  const opponent = fixture ? clubById(state.world, fixture.opponentId) : null;
+  const opponent = fixture ? (fixture.national ? fixture.opponent : clubById(state.world, fixture.opponentId)) : null;
 
   const kickoff = () => {
     const seed = randomSeed();
+    if (fixture.national) {
+      // National team: your call-ups and coach against the other federation's best.
+      const userHome = fixture.homeId === `nat-${fixture.nation}`;
+      const user = userNationTeam(state, POOL_BY_ID, userHome && !fixture.neutral);
+      const ai = aiNationTeam(state, fixture.opponentNation, POOL_BY_ID);
+      const [home, away] = userHome ? [user, ai] : [ai, user];
+      const match = createMatch({ home, away, seed, context: { competition: 'national', knockout: fixture.knockout, neutral: fixture.neutral } });
+      setLive({ match, userSide: userHome ? 0 : 1, game: fixture });
+      setScreen('match');
+      return;
+    }
     // The competition's home side goes first, so scores line up with the fixture.
     const userHomeSide = fixture.homeId === state.club.id;
     const user = buildUserTeam(state, loadout, userHomeSide && !fixture.neutral);
@@ -175,6 +188,12 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
 
   const finish = (match) => {
     const { userSide, game } = live;
+    if (game.national) {
+      setState(applyNationalMatch(state, match, userSide, randomSeed()));
+      setOutcome({ match, userSide, rewards: { total: 0, items: [], national: true }, retired: [], boostReward: null, coinsAfter: state.coins });
+      setScreen('result');
+      return;
+    }
     const rewards = matchRewards(state, match, userSide, game);
     const applied = applyMatch(state, match, userSide, opponent, rewards, randomSeed(), game);
     setState(applied.state);
@@ -193,7 +212,7 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
     setToast({ text: r.message, tone: r.success === false ? 'bad' : 'good' });
   };
 
-  const isTab = TABS.some((t) => t.id === screen) || ['club', 'career', 'team', 'player', 'manager', 'shop', 'comp', 'summer'].includes(screen);
+  const isTab = TABS.some((t) => t.id === screen) || ['club', 'career', 'team', 'player', 'manager', 'shop', 'comp', 'summer', 'nation'].includes(screen);
 
   return (
     <NavContext.Provider value={nav}>
@@ -284,9 +303,23 @@ function Game({ slot, initial, settings, setSettings, onExit }) {
               setToast({ text: 'New club, new challenge. Your squad is ready.', tone: 'good' });
               setScreen('home');
             }}
+            onAcceptNation={(code) => { setState((s) => acceptNationalJob(s, code)); setScreen('nation'); }}
+            onResignNation={() => setState((s) => resignNationalJob(s))}
+            onManageNation={() => setScreen('nation')}
           />
         )}
-        {screen === 'prematch' && fixture && (
+        {screen === 'nation' && <NationalTeam state={state} setState={setState} onBack={() => setScreen('home')} />}
+        {screen === 'prematch' && fixture?.national && (
+          <NationPreMatch
+            state={state}
+            fixture={fixture}
+            onStart={kickoff}
+            onSim={() => { setState((s) => simNationalGame(s, randomSeed())); setToast({ text: 'Simulated. See the result in your national team page.', tone: 'good' }); setScreen('home'); }}
+            onBack={() => setScreen('home')}
+            onEdit={() => setScreen('nation')}
+          />
+        )}
+        {screen === 'prematch' && fixture && !fixture.national && (
           <PreMatch
             state={state}
             opponent={opponent}

@@ -16,9 +16,12 @@ import { standings } from './season.js';
 // CP = continental preliminary round, CQ = continental qualifying, CG = continental group games,
 // CQF = quarter-finals (16-club tournaments), CSF / CF = semi-finals / finals,
 // CUP0 = domestic cup preliminary round (20- and 10-club cups), CUP1–4 the knockout rounds.
+// N0–N2 = international windows (national-team qualifiers, engine/intl.js); T0–TF = the summer
+// tournament after the club season (World Cup or continental championships, even years only).
 export const CALENDAR = [
-  'S', 'L', 'KS', 'L', 'CP', 'L', 'CQ', 'L', 'CUP0', 'L', 'CG0', 'L', 'CUP1', 'L', 'L', 'CG1', 'L', 'CUP2', 'L', 'L',
-  'CG2', 'L', 'CUP3', 'L', 'CQF', 'L', 'CSF', 'L', 'CUP4', 'L', 'L', 'L', 'CF', 'CWC0', 'CWC1', 'CWC2', 'CWCF',
+  'S', 'L', 'KS', 'L', 'CP', 'L', 'N0', 'CQ', 'L', 'CUP0', 'L', 'CG0', 'L', 'CUP1', 'L', 'N1', 'L', 'CG1', 'L', 'CUP2', 'L', 'L',
+  'CG2', 'L', 'N2', 'CUP3', 'L', 'CQF', 'L', 'CSF', 'L', 'CUP4', 'L', 'L', 'L', 'CF', 'CWC0', 'CWC1', 'CWC2', 'CWCF',
+  'T0', 'T1', 'T2', 'TQ', 'TS', 'TF',
 ];
 const CUP_SLOTS = CALENDAR.filter((s) => s.startsWith('CUP')).length;
 

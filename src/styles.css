@@ -2104,3 +2104,16 @@ html.reduce-motion .reveal-row { animation-delay: 0s; }
 .table--history.table--narrow td.table__club { max-width: 46vw; }
 .table--history.table--narrow td, .table--history.table--narrow th { padding-left: 5px; padding-right: 5px; }
 @media (min-width: 700px) { .table--history.table--narrow td.table__club { max-width: 320px; } }
+
+/* ---------- National teams (v2.5) ---------- */
+.nation-inline { white-space: nowrap; }
+.nation-flag { font-size: 30px; line-height: 1; }
+.nation-flag--big { font-size: 40px; }
+.next-match--national .matchup__vs small { background: var(--red); }
+.nation-xi { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 6px; margin-bottom: 6px; }
+.nation-xi--bench { opacity: .9; }
+.coach-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+.nation-pool tbody tr { cursor: pointer; }
+.nation-pool .chip-btn { white-space: nowrap; }
+.nation-pool__who b { display: block; }
+.nation-pool__who small { color: var(--muted); font-size: 12px; }
