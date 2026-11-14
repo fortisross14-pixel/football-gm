@@ -16,7 +16,7 @@ import {
 import {
   nationPools, nationStrengths, bestSelection, nationFormation, federationCoach, nationMatchTeam, seasonIntl,
   prepareIntlSlot, involvesNation, recordIntl, quickIntl, isIntlSlot, nationTeamId, nationAsClub, nationName,
-  tournamentName, tournamentStage, qualifiedFrom, WORLD_CUP,
+  tournamentName, tournamentStage, qualifiedFrom, WORLD_CUP, confYear,
 } from '../engine/intl.js';
 import { pushInbox } from './chronicle.js';
 import { CALENDAR } from '../engine/competitions.js';
@@ -74,12 +74,36 @@ export function nationalFixture(state, slot, poolById) {
 export const CALL_STARTERS = 7;
 export const CALL_RESERVES = 5;
 
-// Your squad for the next game: { formation, lineup: [card x7 in slot order], bench: [card], pool }.
+// Call-ups are per event: you pick 12 for this year's qualifiers or the summer tournament, and
+// once its first game is played the squad is set; within it you only swap starters and reserves.
+// Returns 'Q' (qualifiers) or 'T' (tournament) with the year, or null when your nation has nothing on.
+export function currentEvent(state) {
+  const job = state.nationJob;
+  const intl = state.season?.intl;
+  if (!job || !intl) return null;
+  const conf = NATIONAL_TEAMS[job.code].conf;
+  const inT = CALENDAR[state.season.slot]?.[0] === 'T' || state.season.slot >= CALENDAR.length;
+  const hasQ = !!intl.quals?.[conf];
+  if (!inT && hasQ) return { key: `${intl.year}-Q`, kind: 'Q', name: `${intl.quals[conf].target === 'W' ? WORLD_CUP : tournamentName(conf)} qualifiers` };
+  const { tour } = confYear(conf, intl.year);
+  if (tour) return { key: `${intl.year}-T`, kind: 'T', name: tour === 'W' ? WORLD_CUP : tournamentName(conf) };
+  return null;
+}
+export function squadLocked(state) {
+  const ev = currentEvent(state);
+  return !!ev && state.nationJob?.squad?.event === ev.key ? state.nationJob.squad.ids : null;
+}
+
+// Your squad for the next game: { formation, lineup: [card x7 in slot order], bench: [card], pool, locked }.
 // Your picks first; empty places are filled with the best available.
 export function nationSelection(state, poolById, ctx = null) {
   const job = state.nationJob;
   const { pools } = ctx || intlContext(state, poolById);
-  const pool = pools[job.code] || [];
+  const locked = squadLocked(state);
+  const full = pools[job.code] || [];
+  const lockedPool = locked ? full.filter((c) => locked.includes(c.id)) : null;
+  // A locked squad that lost players (retired, a passport change) tops up from the best available.
+  const pool = lockedPool ? [...lockedPool, ...full.filter((c) => !locked.includes(c.id))].slice(0, Math.max(12, lockedPool.length)) : full;
   const formation = job.coach?.formation || nationFormation(job.code);
   const calls = job.calls || {};
   const byId = Object.fromEntries(pool.map((c) => [c.id, c]));
@@ -92,16 +116,35 @@ export function nationSelection(state, poolById, ctx = null) {
   starters = starters.slice(0, CALL_STARTERS);
   bench = bench.slice(0, CALL_RESERVES);
   const order = autoArrange(starters, formation);
-  return { formation, lineup: order.map((id) => byId[id] || starters.find((c) => c.id === id)), bench, pool };
+  return { formation, lineup: order.map((id) => byId[id] || starters.find((c) => c.id === id)), bench, pool, locked: !!locked, all: full };
 }
 
 // Tap a player: not called → starter (if there is room) → reserve (if there is room) → not called.
-export function cycleCall(state, id) {
+export function cycleCall(state, id, poolById) {
   if (!state.nationJob) return state;
   const next = structuredClone(state);
   const calls = next.nationJob.calls || {};
   const count = (role) => Object.values(calls).filter((r) => r === role).length;
   const now = calls[id];
+  const locked = squadLocked(state);
+  if (locked) {
+    // Squad set for this event: only starter ↔ reserve, among the 12.
+    if (!locked.includes(id)) return state;
+    const sel = nationSelection(state, poolById);
+    const role = sel.lineup.some((c) => c.id === id) ? 'start' : 'bench';
+    next.nationJob.calls = Object.fromEntries([...sel.lineup.map((c) => [c.id, 'start']), ...sel.bench.map((c) => [c.id, 'bench'])]);
+    if (role === 'start') {
+      // Swap with the best reserve in the same position, or the best reserve.
+      const card = sel.lineup.find((c) => c.id === id);
+      const sub = sel.bench.find((c) => c.pos === card.pos) || sel.bench[0];
+      if (sub) { next.nationJob.calls[id] = 'bench'; next.nationJob.calls[sub.id] = 'start'; }
+    } else {
+      const card = sel.bench.find((c) => c.id === id);
+      const out = sel.lineup.find((c) => c.pos === card.pos) || [...sel.lineup].sort((a, b) => overall(a) - overall(b))[0];
+      next.nationJob.calls[id] = 'start'; next.nationJob.calls[out.id] = 'bench';
+    }
+    return next;
+  }
   if (!now) calls[id] = count('start') < CALL_STARTERS ? 'start' : count('bench') < CALL_RESERVES ? 'bench' : undefined;
   else if (now === 'start') calls[id] = count('bench') < CALL_RESERVES ? 'bench' : undefined;
   else delete calls[id];
@@ -112,14 +155,14 @@ export function cycleCall(state, id) {
 
 // Your picks become the current best selection, so you can edit from there.
 export function lockSelection(state, poolById) {
-  if (!state.nationJob) return state;
+  if (!state.nationJob || squadLocked(state)) return state;
   const sel = nationSelection(state, poolById);
   const next = structuredClone(state);
   next.nationJob.calls = Object.fromEntries([...sel.lineup.map((c) => [c.id, 'start']), ...sel.bench.map((c) => [c.id, 'bench'])]);
   return next;
 }
 export function clearCalls(state) {
-  if (!state.nationJob) return state;
+  if (!state.nationJob || squadLocked(state)) return state;
   const next = structuredClone(state);
   next.nationJob.calls = {};
   return next;
@@ -224,6 +267,13 @@ export function recordNationalSlot(state, { match = null, userSide = 0, quick = 
   const { strengths } = intlContext(next, poolById);
   const code = userNation(next);
   const rng = makeRng(seed);
+  // The first game of an event sets its squad.
+  const ev = currentEvent(next);
+  if (ev && next.nationJob.squad?.event !== ev.key) {
+    const sel = nationSelection(next, poolById);
+    next.nationJob.squad = { event: ev.key, ids: [...sel.lineup, ...sel.bench].map((c) => c.id) };
+    next.nationJob.calls = Object.fromEntries([...sel.lineup.map((c) => [c.id, 'start']), ...sel.bench.map((c) => [c.id, 'bench'])]);
+  }
   const entries = prepareIntlSlot(intl, CALENDAR[next.season.slot], strengths, 1);
   for (const e of entries) {
     if (involvesNation(e, code)) {
@@ -266,38 +316,39 @@ const STAGE_REP = { W: { winner: 9, final: 5, semi: 3, quarter: 1, group: 0 }, c
 const STAGE_TEXT = { winner: 'won it', final: 'reached the final', semi: 'reached the semi-finals', quarter: 'reached the quarter-finals', group: 'went out in the group stage' };
 
 // Reputation items for the season just ended: { items: [{ label, value }], lines: [text] }.
+// Qualifiers: a Major or Elite nation that fails to qualify costs you; a minnow that makes it earns
+// a little. Tournaments: by the stage reached (small nations get extra credit for going far).
 export function nationalSeasonItems(state) {
   const job = state.nationJob;
   const intl = state.season?.intl;
-  if (!job || !intl || intl.campaign?.year !== intl.year) return { items: [], lines: [] };
+  if (!job || !intl) return { items: [], lines: [] };
   const code = job.code;
-  const conf = NATIONAL_TEAMS[code].conf;
-  const key = intl.campaign.kind === 'WC' ? 'W' : conf;
-  const t = intl.tournaments?.[key];
-  const name = intl.campaign.kind === 'WC' ? WORLD_CUP : tournamentName(conf);
+  const n = NATIONAL_TEAMS[code];
   const rep = state.gm?.reputation ?? 0;
   const damp = (v) => (v > 0 ? Math.max(1, Math.round(v * (1 - rep / 150))) : v);
-  const stage = tournamentStage(t, code);
-  if (!stage) {
-    // Out in qualifying: a let-down only for a nation that should have gone through.
-    const expected = NATIONAL_TEAMS[code].prestige <= (intl.campaign.kind === 'WC' ? 2 : 3);
-    return expected
-      ? { items: [{ label: `${nationName(code)} missed the ${name}`, value: -3 }], lines: [`${nationName(code)} did not qualify for the ${name}.`] }
-      : { items: [], lines: [`${nationName(code)} did not qualify for the ${name}.`] };
-  }
-  const base = STAGE_REP[key === 'W' ? 'W' : 'cont'][stage];
-  // Small nations get extra credit for going far; giants are expected to.
-  const bonus = stage !== 'group' ? Math.max(0, NATIONAL_TEAMS[code].prestige - 2) : 0;
-  const qualBonus = NATIONAL_TEAMS[code].prestige >= 4 ? 1 : 0;
   const items = [];
-  if (qualBonus) items.push({ label: `${nationName(code)} qualified for the ${name}`, value: damp(qualBonus) });
-  if (base + bonus > 0) items.push({ label: `${nationName(code)} ${STAGE_TEXT[stage]} at the ${name}`, value: damp(base + bonus) });
-  return { items, lines: [`${nationName(code)} ${STAGE_TEXT[stage]} at the ${name}.`] };
-}
-
-// Who qualified for this summer's tournament(s) so far, for the UI (after the campaign ends).
-export function campaignQualifiers(intl, conf) {
-  return intl?.campaign?.confs?.[conf] ? qualifiedFrom(intl.campaign.confs[conf]) : [];
+  const lines = [];
+  const q = intl.quals?.[n.conf];
+  if (q) {
+    const name = q.target === 'W' ? WORLD_CUP : tournamentName(n.conf);
+    if (qualifiedFrom(q).includes(code)) {
+      lines.push(`${nationName(code)} qualified for the ${name}.`);
+      if (n.prestige >= 4) items.push({ label: `${nationName(code)} qualified for the ${name}`, value: damp(n.prestige - 2) });
+    } else {
+      lines.push(`${nationName(code)} did not qualify for the ${name}.`);
+      if (n.prestige <= (q.target === 'W' ? 2 : 3)) items.push({ label: `${nationName(code)} missed the ${name}`, value: -3 });
+    }
+  }
+  for (const t of Object.values(intl.tournaments || {})) {
+    const stage = tournamentStage(t, code);
+    if (!stage) continue;
+    const name = tournamentName(t.key);
+    const base = STAGE_REP[t.key === 'W' ? 'W' : 'cont'][stage];
+    const bonus = stage !== 'group' ? Math.max(0, n.prestige - 2) : 0;
+    if (base + bonus > 0) items.push({ label: `${nationName(code)} ${STAGE_TEXT[stage]} at the ${name}`, value: damp(base + bonus) });
+    lines.push(`${nationName(code)} ${STAGE_TEXT[stage]} at the ${name}.`);
+  }
+  return { items, lines };
 }
 
 export const confLabel = (conf) => INTL_CONF_LABEL[conf];

@@ -1585,39 +1585,56 @@ test('v2.5 national teams: cycle, qualifying, tournaments and your job', () => {
   for (const code of NATION_CODES) assert.ok(NATIONS[code], code);
   const s = fresh();
   for (const c of Object.values(s.world.clubs)) if (['eur-1', 'sam-1', 'nao-1', 'asi-1', 'apc-1', 'afr-1', 'oce-1'].includes(c.divisionId)) assert.ok(clubNation(c.id, 'X'), c.id);
-  // The cycle: 2027 qualifies for the 2028 continental championships, 2029–30 for the 2030 World Cup.
-  assert.deepEqual(I.campaignFor(2027), { year: 2028, kind: 'CUP' });
-  assert.deepEqual(I.campaignFor(2029), { year: 2030, kind: 'WC' });
-  assert.deepEqual(I.campaignFor(2030), { year: 2030, kind: 'WC' });
+  // The cycle. Europe: qualifiers, Euro, World Cup qualifiers, World Cup. The others: their cup
+  // (no qualifiers), World Cup qualifiers, the cup, World Cup.
+  assert.deepEqual(I.confYear('europe', 2027), { qual: 'cup', tour: null });
+  assert.deepEqual(I.confYear('europe', 2028), { qual: null, tour: 'cup' });
+  assert.deepEqual(I.confYear('europe', 2029), { qual: 'W', tour: null });
+  assert.deepEqual(I.confYear('americas', 2027), { qual: null, tour: 'cup' });
+  assert.deepEqual(I.confYear('africa', 2028), { qual: 'W', tour: null });
+  assert.deepEqual(I.confYear('apac', 2030), { qual: null, tour: 'W' });
   // Every nation can field 12 players (its academies fill the gaps).
   const { pools, strengths } = N.intlContext(s, C.POOL_BY_ID);
   for (const code of NATION_CODES) assert.ok(pools[code].length >= 12, code);
   // Elite nations are stronger than minnows.
   assert.ok(strengths.BRA > strengths.FIJ + 8);
-  // A World Cup campaign: 16 qualifiers, Europe 7, Americas 4, Africa 3, Asia-Pacific 2.
-  let intl = I.seasonIntl(null, 2029, strengths, 4);
   const rng = makeRng(9);
-  const playAll = (slots) => { for (const slot of slots) for (const e of I.prepareIntlSlot(intl, slot, strengths, 3)) { const r = I.quickIntl(rng, e, strengths); I.recordIntl(intl, e, r.score, r.pens); } };
-  playAll(['N0', 'N1', 'N2', 'T0']);
-  assert.deepEqual(intl.tournaments, {}); // no tournament in an odd year
-  intl = I.seasonIntl(intl, 2030, strengths, 5);
-  assert.equal(intl.campaign.year, 2030);
-  playAll(['N0', 'N1', 'N2', 'T0', 'T1', 'T2', 'TQ', 'TS', 'TF']);
+  let intl = null;
+  const season = (year, slots = ['N0', 'N1', 'N2', 'N3', 'N4', 'N5', 'T0', 'T1', 'T2', 'TQ', 'TS', 'TF']) => {
+    intl = I.seasonIntl(intl, year, strengths, year);
+    for (const slot of slots) for (const e of I.prepareIntlSlot(intl, slot, strengths, 3)) { const r = I.quickIntl(rng, e, strengths); I.recordIntl(intl, e, r.score, r.pens); }
+    return intl;
+  };
+  const confOf = (code) => NATIONAL_TEAMS[code].conf;
+  // 2027: Euro qualifiers (six rounds, everyone done) and three open cups: 16 Americas, 12 Africa, 16 Asia-Pacific.
+  season(2027);
+  assert.deepEqual(Object.keys(intl.quals), ['europe']);
+  for (const g of intl.quals.europe.groups) for (const r of I.groupTable(g)) assert.equal(r.p, g.teams.length === 3 ? 4 : 6);
+  assert.deepEqual(Object.keys(intl.tournaments).sort(), ['africa', 'americas', 'apac']);
+  assert.equal(intl.tournaments.americas.teams.length, 16);
+  assert.equal(intl.tournaments.africa.teams.length, 12);
+  assert.equal(intl.tournaments.africa.quarters.length, 4); // 3 groups: top two and the two best thirds
+  assert.ok(Object.values(intl.tournaments).every((t) => t.winner));
+  // 2028: the Euro (8 qualified), World Cup qualifiers outside Europe.
+  season(2028);
+  assert.deepEqual(Object.keys(intl.tournaments), ['europe']);
+  assert.equal(intl.tournaments.europe.teams.length, 8);
+  assert.ok(intl.tournaments.europe.teams.every((c) => confOf(c) === 'europe') && intl.tournaments.europe.winner);
+  assert.deepEqual(Object.keys(intl.quals).sort(), ['africa', 'americas', 'apac']);
+  // 2029: Europe's World Cup qualifiers and the cups again; 2030: the World Cup.
+  season(2029);
+  assert.deepEqual(Object.keys(intl.quals), ['europe']);
+  season(2030);
   const wc = intl.tournaments.W;
   assert.equal(wc.teams.length, 16);
-  const confOf = (code) => NATIONAL_TEAMS[code].conf;
   assert.equal(wc.teams.filter((c) => confOf(c) === 'europe').length, 7);
   assert.equal(wc.teams.filter((c) => confOf(c) === 'americas').length, 4);
   assert.equal(wc.teams.filter((c) => confOf(c) === 'africa').length, 3);
   assert.equal(wc.teams.filter((c) => confOf(c) === 'apac').length, 2);
   assert.ok(wc.winner && wc.quarters.length === 4 && intl.history.at(-1).key === 'W');
-  // Continental year: four 8-nation championships.
-  intl = I.seasonIntl(intl, 2031, strengths, 6);
-  playAll(['N0', 'N1', 'N2']);
-  intl = I.seasonIntl(intl, 2032, strengths, 7);
-  playAll(['N0', 'N1', 'N2', 'T0', 'T1', 'T2', 'TQ', 'TS', 'TF']);
-  assert.deepEqual(Object.keys(intl.tournaments).sort(), ['africa', 'americas', 'apac', 'europe']);
-  for (const t of Object.values(intl.tournaments)) assert.ok(t.teams.length === 8 && t.winner && !t.quarters);
+  // A new cycle starts in 2031.
+  season(2031, []);
+  assert.deepEqual(intl.qualified.W, {});
   // The job: low reputation only gets small nations; Brazil asks for a top manager.
   const offers = N.nationalOffers(s, 3);
   assert.ok(offers.length > 0 && offers.every((c) => NATIONAL_TEAMS[c].prestige >= 4), offers.join());
@@ -1630,7 +1647,7 @@ test('v2.5 national teams: cycle, qualifying, tournaments and your job', () => {
   assert.ok(sel.lineup.every((c) => c.nation === offers[0]));
   // Tap a reserve: he becomes a starter (your pick), the rest still filled by the coach.
   const pick = sel.pool.find((c) => !sel.lineup.includes(c));
-  st = N.cycleCall(st, pick.id);
+  st = N.cycleCall(st, pick.id, C.POOL_BY_ID);
   assert.ok(N.nationSelection(st, C.POOL_BY_ID).lineup.some((c) => c.id === pick.id));
   // The coach: options include the federation's own; appointing one changes the formation.
   const opts = N.nationCoachOptions(st.nationJob.code, st.nationJob.since);
@@ -1667,6 +1684,22 @@ test('v2.5 your national team plays in the windows; academy players carry your c
   assert.equal(s.phase, 'seasonEnd');
   assert.ok(national >= 2, `national games ${national}`);
   assert.equal(s.nationJob.record.p, national);
+  // The squad was set at the event's first game: 12 players, and outsiders can't be called up.
+  assert.equal(s.nationJob.squad.ids.length, 12);
+  assert.ok(s.nationJob.squad.event.endsWith('-Q') || s.nationJob.squad.event.endsWith('-T'));
+  // Mid-event: tapping someone outside the 12 does nothing; tapping a starter swaps him with a reserve.
+  {
+    let m = N.acceptNationalJob({ ...fresh(), nationOffers: ['NZL'] }, 'NZL');
+    m.season.slot = CALENDAR_V23.indexOf('N1');
+    const sel = N.nationSelection(m, POOL_BY_ID);
+    m.nationJob.squad = { event: N.currentEvent(m).key, ids: [...sel.lineup, ...sel.bench].map((c) => c.id) };
+    const outsider = sel.all.find((c) => !m.nationJob.squad.ids.includes(c.id));
+    assert.equal(N.cycleCall(m, outsider.id, POOL_BY_ID), m);
+    const starter = sel.lineup[0];
+    const after = N.nationSelection(N.cycleCall(m, starter.id, POOL_BY_ID), POOL_BY_ID);
+    assert.ok(after.bench.some((c) => c.id === starter.id));
+    assert.ok([...after.lineup, ...after.bench].every((c) => m.nationJob.squad.ids.includes(c.id)));
+  }
   // Your club's country: Racing Santander's academy products are Spanish.
   assert.equal(homeNation(s), 'ESP');
   // The next season keeps the qualifying campaign going.
