@@ -1,15 +1,20 @@
-// National teams (v2.5): call-ups, qualifying campaigns and the summer tournaments.
+// National teams (v2.5): call-ups, qualifiers and the summer tournaments.
 //
-// A four-year cycle (season 1 = 2027):
-//   odd years  → qualifying, first half (three international windows: N0, N1, N2)
-//   even years → qualifying, second half, then the tournament after the league (T slots)
-//   2028, 2032, … the four continental championships (8 nations each)
-//   2030, 2034, … the World Cup (16 nations: Europe 7, Americas 4, Africa 3, Asia-Pacific 2)
+// A four-year cycle (season 1 = 2027). Europe:    qualifiers → European Championship → World Cup
+// qualifiers → World Cup. Americas, Africa, Asia-Pacific: their continental cup (no qualifiers,
+// the 16 strongest nations, 12 in Africa) → World Cup qualifiers → continental cup → World Cup.
 //
-// Qualifying: each confederation is drawn into groups of 3–4 by pots (strongest first), a double
-// round-robin over the two seasons. Group winners go first, then the best runners-up, and so on,
-// by points per game. Tournaments: groups of four (single round-robin, neutral venues), then
-// quarter-finals (16 nations) or straight to the semi-finals (8), and the final.
+//   year      Europe                    Americas / Africa / Asia-Pacific
+//   2027      Euro qualifiers           continental cup
+//   2028      European Championship     World Cup qualifiers
+//   2029      World Cup qualifiers      continental cup
+//   2030      World Cup (16 nations: Europe 7, Americas 4, Africa 3, Asia-Pacific 2)
+//
+// Qualifiers: one season, six international windows (N0–N5). Each confederation is drawn by pots
+// into groups of 3–4, home and away. Group winners first, then the best runners-up, … by points
+// per game. Tournaments (T slots, after the club season): groups of four, single round-robin at
+// neutral venues; 2 groups → semi-finals, 3 or 4 groups → quarter-finals (with 3 groups, the two
+// best third-placed nations too); then the final.
 //
 // Who plays: the nation's named players at clubs around the world (and in your squad), plus the
 // players its clubs' academies produce for the national team (generic, by the nation's prestige).
@@ -23,26 +28,38 @@ import {
   NATIONAL_TEAMS, NATION_CODES, INTL_CONFS, YOUTH_RATING, clubNation,
 } from '../data/nationalTeams.js';
 
-export const FIRST_CUP_YEAR = 2028;
-export const FIRST_WORLD_CUP = 2030;
+export const CYCLE_START = 2027;
 export const WC_SLOTS = { europe: 7, americas: 4, africa: 3, apac: 2 };
-export const CUP_SIZE = 8;
+export const EURO_SIZE = 8;
+export const OPEN_CUP_SIZE = 16; // continental cups without qualifiers: the strongest 16 (Africa: all 12)
 export const WORLD_CUP = 'World Cup';
 export const NATIONS_CUP_NAME = {
   europe: 'European Championship', americas: 'Copa de las Américas', africa: 'Africa Cup of Nations', apac: 'Asia-Pacific Cup',
 };
 // Calendar slots (engine/competitions.js CALENDAR): qualifier windows, then the summer tournament.
-export const WINDOW_SLOTS = ['N0', 'N1', 'N2'];
+export const WINDOW_SLOTS = ['N0', 'N1', 'N2', 'N3', 'N4', 'N5'];
 export const TOURNAMENT_SLOTS = ['T0', 'T1', 'T2', 'TQ', 'TS', 'TF'];
 export const isIntlSlot = (slot) => slot[0] === 'N' || slot[0] === 'T';
 
 const mod = (a, n) => ((a % n) + n) % n;
-export const isWorldCupYear = (y) => mod(y - FIRST_WORLD_CUP, 4) === 0;
-export const isCupYear = (y) => mod(y - FIRST_CUP_YEAR, 4) === 0;
-// The tournament a season's qualifiers lead to: this summer's (even years) or next summer's.
-export function campaignFor(year) {
-  const target = mod(year, 2) === 0 ? year : year + 1;
-  return { year: target, kind: isWorldCupYear(target) ? 'WC' : 'CUP' };
+export const cyclePhase = (year) => mod(year - CYCLE_START, 4);
+export const isWorldCupYear = (year) => cyclePhase(year) === 3;
+
+// What a confederation does in a year: { qual: 'cup' | 'W' | null, tour: 'cup' | 'W' | null }.
+export function confYear(conf, year) {
+  const p = cyclePhase(year);
+  if (p === 3) return { qual: null, tour: 'W' };
+  if (conf === 'europe') return [{ qual: 'cup', tour: null }, { qual: null, tour: 'cup' }, { qual: 'W', tour: null }][p];
+  return [{ qual: null, tour: 'cup' }, { qual: 'W', tour: null }, { qual: null, tour: 'cup' }][p];
+}
+// The year's events in words, for the UI: { conf: 'Euro qualifiers' … }.
+export function yearPlan(year) {
+  const out = {};
+  for (const conf of INTL_CONFS) {
+    const y = confYear(conf, year);
+    out[conf] = y.tour === 'W' ? WORLD_CUP : y.tour ? NATIONS_CUP_NAME[conf] : y.qual === 'W' ? `${WORLD_CUP} qualifiers` : `${NATIONS_CUP_NAME[conf]} qualifiers`;
+  }
+  return out;
 }
 export const tournamentName = (key) => (key === 'W' ? WORLD_CUP : NATIONS_CUP_NAME[key]);
 export const nationName = (code) => NATIONS[code]?.name || code;
@@ -186,18 +203,20 @@ export function confNations(conf) {
   return NATION_CODES.filter((c) => NATIONAL_TEAMS[c].conf === conf);
 }
 
-export function createCampaign(year, strengths, seed) {
-  const { year: target, kind } = campaignFor(year);
+// This year's qualifying groups, per confederation that qualifies this year.
+export function createQualifiers(year, strengths, seed) {
   const rng = makeRng(seed);
-  const confs = {};
+  const out = {};
   for (const conf of INTL_CONFS) {
+    const { qual } = confYear(conf, year);
+    if (!qual) continue;
     const teams = confNations(conf).sort((a, b) => (strengths[b] || 0) - (strengths[a] || 0) || a.localeCompare(b));
     const groups = drawGroups(teams, Math.ceil(teams.length / 4), rng).map((ids) => ({
       teams: ids, rounds: doubleRoundRobin(ids), table: Object.fromEntries(ids.map((id) => [id, emptyRow()])),
     }));
-    confs[conf] = { groups, slots: kind === 'WC' ? WC_SLOTS[conf] : CUP_SIZE };
+    out[conf] = { target: qual, groups, slots: qual === 'W' ? WC_SLOTS[conf] : EURO_SIZE };
   }
-  return { kind, year: target, confs };
+  return out;
 }
 
 export function groupTable(group) {
@@ -206,24 +225,16 @@ export function groupTable(group) {
     .sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.id.localeCompare(b.id));
 }
 
+const per = (r, k) => (r.p ? r[k] / r.p : 0);
+const byRecord = (a, b) => per(b, 'pts') - per(a, 'pts') || per(b, 'gd') - per(a, 'gd') || per(b, 'gf') - per(a, 'gf') || a.id.localeCompare(b.id);
+
 // Qualifiers in order: every group winner, then runners-up, … by points per game.
-export function qualifiedFrom(campaignConf) {
+export function qualifiedFrom(q) {
   const rows = [];
-  campaignConf.groups.forEach((g) => groupTable(g).forEach((r, pos) => rows.push({ ...r, pos })));
-  const per = (r, k) => (r.p ? r[k] / r.p : 0);
-  rows.sort((a, b) => a.pos - b.pos || per(b, 'pts') - per(a, 'pts') || per(b, 'gd') - per(a, 'gd') || per(b, 'gf') - per(a, 'gf') || a.id.localeCompare(b.id));
-  return rows.slice(0, campaignConf.slots).map((r) => r.id);
+  q.groups.forEach((g) => groupTable(g).forEach((r, pos) => rows.push({ ...r, pos })));
+  rows.sort((a, b) => a.pos - b.pos || byRecord(a, b));
+  return rows.slice(0, q.slots).map((r) => r.id);
 }
-
-// Which qualifying round a window plays this season (null: none).
-export function windowRound(campaign, year, slot) {
-  const w = WINDOW_SLOTS.indexOf(slot);
-  if (!campaign || w < 0) return null;
-  if (year === campaign.year - 1) return w;
-  if (year === campaign.year) return 3 + w;
-  return null;
-}
-
 // ---------------------------------------------------------------------------
 // Tournaments
 
@@ -241,8 +252,15 @@ export function createTournament(key, teams, strengths, seed) {
   return { key, teams: [...teams], groups, quarters: null, semis: null, final: null, winner: null, runnerUp: null };
 }
 
+// Group places → knockout ties. 2 groups: A1–B2, B1–A2. 4 groups: A1–B2, B1–A2, C1–D2, D1–C2.
+// 3 groups: the six top-two nations and the two best thirds, seeded 1–8 (1 v 8, 2 v 7 …).
 function afterGroups(t) {
   const tables = t.groups.map(groupTable);
+  if (tables.length === 3) {
+    const tier = (k) => tables.map((tb) => tb[k]).sort(byRecord);
+    const seeds = [...tier(0), ...tier(1), ...tier(2).slice(0, 2)].map((r) => r.id);
+    return [0, 1, 2, 3].map((i) => tie(seeds[i], seeds[7 - i], { neutral: true }));
+  }
   const out = [];
   for (let i = 0; i < tables.length; i += 2) {
     const [a, b] = [tables[i], tables[i + 1]];
@@ -251,31 +269,39 @@ function afterGroups(t) {
   return out;
 }
 
-// Builds the summer's tournaments from the finished campaign.
-export function tournamentsFor(campaign, strengths, seed) {
-  if (!campaign) return {};
-  if (campaign.kind === 'WC') {
-    const teams = INTL_CONFS.flatMap((conf) => qualifiedFrom(campaign.confs[conf]));
-    return { W: createTournament('W', teams, strengths, seed) };
-  }
+// This summer's tournaments. qualified: { cup: { europe: [codes] }, W: { conf: [codes] } } from
+// earlier qualifiers; open cups take the strongest nations straight in.
+export function tournamentsFor(year, qualified, strengths, seed) {
   const out = {};
-  INTL_CONFS.forEach((conf, i) => { out[conf] = createTournament(conf, qualifiedFrom(campaign.confs[conf]), strengths, seed + i); });
+  INTL_CONFS.forEach((conf, i) => {
+    const { tour } = confYear(conf, year);
+    if (tour !== 'cup') return;
+    const teams = conf === 'europe'
+      ? (qualified?.cup?.europe || []).slice(0, EURO_SIZE)
+      : confNations(conf).sort((a, b) => (strengths[b] || 0) - (strengths[a] || 0) || a.localeCompare(b)).slice(0, OPEN_CUP_SIZE);
+    const n = teams.length - (teams.length % 4);
+    if (n >= 8) out[conf] = createTournament(conf, teams.slice(0, n), strengths, seed + i);
+  });
+  if (isWorldCupYear(year)) {
+    const teams = INTL_CONFS.flatMap((conf) => (qualified?.W?.[conf] || []).slice(0, WC_SLOTS[conf]));
+    if (teams.length === 16) out.W = createTournament('W', teams, strengths, seed + 9);
+  }
   return out;
 }
 
 // ---------------------------------------------------------------------------
 // The season's national-team state (season.intl)
 
-// prev: last season's intl (or null for a new career). Keeps the campaign while it runs and the
+// prev: last season's intl (or null for a new career). Carries who qualified for what, and the
 // list of past tournaments.
 export function seasonIntl(prev, year, strengths, seed) {
-  const keep = prev?.campaign && prev.campaign.year >= year ? prev.campaign : null;
-  return {
-    year,
-    campaign: keep || createCampaign(year, strengths, seed),
-    tournaments: {},
-    history: prev?.history || [],
-  };
+  const qualified = structuredClone(prev?.qualified || { cup: {}, W: {} });
+  for (const [conf, q] of Object.entries(prev?.quals || {})) {
+    qualified[q.target === 'W' ? 'W' : 'cup'][conf] = qualifiedFrom(q);
+  }
+  // A new cycle: last cycle's World Cup places are spent.
+  if (cyclePhase(year) === 0) qualified.W = {};
+  return { year, quals: createQualifiers(year, strengths, seed), qualified, tournaments: {}, history: prev?.history || [] };
 }
 
 const ROUND_LABEL = { TQ: 'Quarter-final', TS: 'Semi-final', TF: 'Final' };
@@ -286,26 +312,23 @@ export function prepareIntlSlot(intl, slot, strengths, seed) {
   const games = [];
   if (!intl) return games;
   if (slot[0] === 'N') {
-    const r = windowRound(intl.campaign, intl.year, slot);
-    if (r === null) return games;
-    const target = intl.campaign.kind === 'WC' ? WORLD_CUP : 'continental championship';
-    for (const conf of INTL_CONFS) {
-      intl.campaign.confs[conf].groups.forEach((g, gi) => (g.rounds[r] || []).forEach((game) => games.push({
+    const r = WINDOW_SLOTS.indexOf(slot);
+    for (const [conf, q] of Object.entries(intl.quals || {})) {
+      q.groups.forEach((g, gi) => (g.rounds[r] || []).forEach((game) => games.push({
         kind: 'qual', key: conf, group: gi, game, knockout: false, neutral: false,
-        label: `${intl.campaign.kind === 'WC' ? 'World Cup' : NATIONS_CUP_NAME[conf]} qualifying · Group ${'ABCDEFGH'[gi]}`, target,
+        label: `${q.target === 'W' ? WORLD_CUP : NATIONS_CUP_NAME[conf]} qualifying · Group ${'ABCDEFGH'[gi]}`,
       })));
     }
     return games;
   }
-  if (intl.campaign?.year !== intl.year) return games;
-  if (slot === 'T0' && !Object.keys(intl.tournaments).length) intl.tournaments = tournamentsFor(intl.campaign, strengths, seed);
+  if (slot === 'T0' && !intl.drawn) { intl.tournaments = tournamentsFor(intl.year, intl.qualified, strengths, seed); intl.drawn = true; }
   for (const t of Object.values(intl.tournaments)) {
     const name = tournamentName(t.key);
     if (slot === 'T0' || slot === 'T1' || slot === 'T2') {
       const r = Number(slot[1]);
       t.groups.forEach((g, gi) => g.rounds[r].forEach((game) => games.push({ kind: 'tour', key: t.key, group: gi, game, knockout: false, neutral: true, label: `${name} · Group ${'ABCD'[gi]}` })));
     } else if (slot === 'TQ') {
-      if (t.groups.length !== 4) continue;
+      if (t.groups.length < 3) continue;
       if (!t.quarters) t.quarters = afterGroups(t);
       t.quarters.forEach((game) => games.push({ kind: 'tour', key: t.key, game, knockout: true, neutral: true, label: `${name} · Quarter-final` }));
     } else if (slot === 'TS') {
@@ -329,7 +352,7 @@ export function recordIntl(intl, entry, score, pens = null) {
     if (score[0] !== score[1]) g.winner = score[0] > score[1] ? g.home : g.away;
     else { g.pens = pens; g.winner = pens[0] > pens[1] ? g.home : g.away; }
   } else {
-    const group = entry.kind === 'qual' ? intl.campaign.confs[entry.key].groups[entry.group] : intl.tournaments[entry.key].groups[entry.group];
+    const group = entry.kind === 'qual' ? intl.quals[entry.key].groups[entry.group] : intl.tournaments[entry.key].groups[entry.group];
     [[g.home, score[0], score[1]], [g.away, score[1], score[0]]].forEach(([id, gf, ga]) => {
       const r = group.table[id];
       r.p += 1; r.gf += gf; r.ga += ga;

@@ -19,8 +19,8 @@ import { standings } from './season.js';
 // N0–N2 = international windows (national-team qualifiers, engine/intl.js); T0–TF = the summer
 // tournament after the club season (World Cup or continental championships, even years only).
 export const CALENDAR = [
-  'S', 'L', 'KS', 'L', 'CP', 'L', 'N0', 'CQ', 'L', 'CUP0', 'L', 'CG0', 'L', 'CUP1', 'L', 'N1', 'L', 'CG1', 'L', 'CUP2', 'L', 'L',
-  'CG2', 'L', 'N2', 'CUP3', 'L', 'CQF', 'L', 'CSF', 'L', 'CUP4', 'L', 'L', 'L', 'CF', 'CWC0', 'CWC1', 'CWC2', 'CWCF',
+  'S', 'L', 'KS', 'L', 'N0', 'CP', 'L', 'CQ', 'L', 'N1', 'CUP0', 'L', 'CG0', 'L', 'CUP1', 'L', 'N2', 'L', 'CG1', 'L', 'CUP2', 'L', 'N3', 'L',
+  'CG2', 'L', 'CUP3', 'L', 'N4', 'CQF', 'L', 'CSF', 'L', 'CUP4', 'L', 'N5', 'L', 'L', 'CF', 'CWC0', 'CWC1', 'CWC2', 'CWCF',
   'T0', 'T1', 'T2', 'TQ', 'TS', 'TF',
 ];
 const CUP_SLOTS = CALENDAR.filter((s) => s.startsWith('CUP')).length;

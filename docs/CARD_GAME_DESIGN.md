@@ -1088,8 +1088,17 @@ A second job next to the club, lighter and free of money ("a bit more free game 
 
 - **Nations:** 67 playable, every nation with a league or clubs in the game (the mixed "Other" leagues' clubs carry a country, `CLUB_NATION`) plus Ivory Coast, Cameroon, Ghana and Senegal through their players. Four confederations: Europe 22, Americas 16 (South + North America), Africa 12, Asia-Pacific 17 (Asia + Oceania). Prestige 1 (Elite: Spain, England, Germany, France, Brazil, Argentina) to 5 (minnows).
 - **Players:** anyone with the nation's passport: named cards at any club, your own cards (they don't tire in national games), and 12 academy products a year, the players its clubs' academies bring through (generic, rated by prestige: 66 / 64 / 61 / 58 / 55). Your own academy and youth players now carry your club's country.
-- **Cycle** (season 1 = 2027): odd years start a qualifying campaign, even years finish it and the tournament follows the club season. 2028, 2032 … four continental championships (European Championship, Copa de las Américas, Africa Cup of Nations, Asia-Pacific Cup), 8 nations each: 2 groups of 4 → semi-finals → final. 2030, 2034 … the **World Cup**, 16 nations (Europe 7, Americas 4, Africa 3, Asia-Pacific 2): 4 groups → quarter-finals → semi-finals → final.
-- **Qualifying:** each confederation drawn by pots into groups of 3–4, home and away over two seasons, three international windows a season (calendar slots N0–N2). Group winners first, then the best runners-up by points per game. Tournament games are the T slots after the Club World Cup.
-- **The job:** federations offer by reputation (Elite 84+, Major 70+, Established 50+, Rising 28+, Minnows any). Two offers at the start of a career (minnows) and every summer; take one, switch, or resign. You call up 7 starters + 5 reserves (open places filled with the best available) and appoint the head coach from four candidates (the coach sets formation and style; no tactics clash). Play a game or simulate it.
+- **Cycle** (owner's schedule, season 1 = 2027), every summer a tournament after the club season (T slots):
+
+  | Year | Europe | Americas, Africa, Asia-Pacific |
+  |---|---|---|
+  | 2027, 2031 … | European Championship qualifiers | continental cup, no qualifiers (the 16 strongest; Africa all 12) |
+  | 2028, 2032 … | European Championship (8 nations) | World Cup qualifiers |
+  | 2029, 2033 … | World Cup qualifiers | continental cup |
+  | 2030, 2034 … | World Cup: 16 nations (Europe 7, Americas 4, Africa 3, Asia-Pacific 2) | World Cup |
+
+- **Qualifiers:** one season, six international windows (calendar slots N0–N5). Each confederation is drawn by pots into groups of 3–4, home and away; group winners first, then the best runners-up by points per game. Tournaments: groups of 4 → semi-finals (2 groups) or quarter-finals (4 groups; 3 groups add the two best thirds) → final.
+- **Call-ups per event:** you pick 12 for each event (this year's qualifiers or the summer tournament). The first game sets the squad; until the event ends you can only swap starters and reserves among those 12.
+- **The job:** federations offer by reputation (Elite 84+, Major 70+, Established 50+, Rising 28+, Minnows any). Two offers at the start of a career (minnows) and every summer; take one, switch, or resign. Starters 7 + reserves 5 (open places filled with the best available) and appoint the head coach from four candidates (the coach sets formation and style; no tactics clash). Play a game or simulate it.
 - **Reputation** at season end: tournament stage (World Cup winner +9, final +5, semi +3, quarter +1; continental +6 / +3 / +2 / +1), extra credit for small nations going far, +1 for a minnow qualifying, −3 for a Major or Elite nation missing a tournament. No sacking.
 - **World → Nations:** qualifying groups and tournaments this season, past winners, and a ranking by strength with real-life titles (World Cup to 2022, continental to 2024).

@@ -2,10 +2,10 @@ import React, { useMemo, useState } from 'react';
 import { POOL_BY_ID } from '../state/club.js';
 import {
   nationSelection, cycleCall, lockSelection, clearCalls, appointCoach, nationCoachOptions, intlContext,
-  nationRequirement, CALL_STARTERS, CALL_RESERVES,
+  nationRequirement, CALL_STARTERS, CALL_RESERVES, currentEvent,
 } from '../state/national.js';
 import {
-  groupTable, tournamentName, nationName, nationFlag, qualifiedFrom, WORLD_CUP, NATIONS_CUP_NAME, campaignFor, nationTitles,
+  groupTable, tournamentName, nationName, nationFlag, qualifiedFrom, WORLD_CUP, NATIONS_CUP_NAME, nationTitles, yearPlan, confYear,
 } from '../engine/intl.js';
 import { NATIONAL_TEAMS, NATION_CODES, INTL_CONFS, INTL_CONF_LABEL, REAL_NATION_TITLES, NATION_REPUTATION } from '../data/nationalTeams.js';
 import { overall, teamOverall } from '../engine/cards.js';
@@ -72,20 +72,29 @@ export function Tournament({ t, mine }) {
   );
 }
 
-function Campaign({ intl, conf, mine }) {
-  const c = intl?.campaign;
-  if (!c) return null;
-  const cc = c.confs[conf];
-  const target = c.kind === 'WC' ? WORLD_CUP : NATIONS_CUP_NAME[conf];
-  const done = intl.year === c.year && cc.groups.every((g) => groupTable(g).every((r) => r.p >= (g.teams.length === 3 ? 4 : 6)));
-  const through = done ? qualifiedFrom(cc) : [];
+function Qualifiers({ intl, conf, mine }) {
+  const q = intl?.quals?.[conf];
+  if (!q) return <p className="hint">No qualifiers for {INTL_CONF_LABEL[conf]} this season: {yearPlan(intl?.year ?? 2027)[conf]}.</p>;
+  const target = q.target === 'W' ? WORLD_CUP : NATIONS_CUP_NAME[conf];
+  const done = q.groups.every((g) => groupTable(g).every((r) => r.p >= (g.teams.length === 3 ? 4 : 6)));
+  const through = done ? qualifiedFrom(q) : [];
   return (
     <div className="bracket">
-      <p className="hint">{target} {c.year} qualifying · {INTL_CONF_LABEL[conf]} · {cc.slots} place{cc.slots > 1 ? 's' : ''}: group winners first, then the best runners-up (points per game). Home and away over two seasons, three international windows each.</p>
+      <p className="hint">{target} qualifying · {INTL_CONF_LABEL[conf]} · {q.slots} place{q.slots > 1 ? 's' : ''}: group winners first, then the best runners-up (points per game). Home and away, six international windows this season.</p>
       {done && <p className="promo is-up">Qualified: {through.map((code) => `${nationFlag(code)} ${code}`).join(' · ')}</p>}
-      {cc.groups.map((g, i) => <NGroup key={i} group={g} name={`Group ${'ABCDEFGH'[i]}`} mine={mine} through={cc.slots >= cc.groups.length * 2 ? 2 : 1} />)}
+      {q.groups.map((g, i) => <NGroup key={i} group={g} name={`Group ${'ABCDEFGH'[i]}`} mine={mine} through={q.slots >= q.groups.length * 2 ? 2 : 1} />)}
     </div>
   );
+}
+
+// This season for one confederation: its qualifiers, or its tournament (drawn after the club season).
+function ConfSeason({ intl, conf, mine }) {
+  const t = Object.values(intl?.tournaments || {}).find((x) => x.key === conf || (x.key === 'W' && confYear(conf, intl.year).tour === 'W'));
+  if (t) return <Tournament t={t} mine={mine} />;
+  if (intl?.quals?.[conf]) return <Qualifiers intl={intl} conf={conf} mine={mine} />;
+  const { tour } = confYear(conf, intl?.year ?? 2027);
+  const who = tour === 'W' ? 'the 16 qualified nations' : conf === 'europe' ? 'the 8 qualified nations' : `the ${conf === 'africa' ? 12 : 16} strongest nations (no qualifiers)`;
+  return <p className="hint">{yearPlan(intl?.year ?? 2027)[conf]} after the club season: {who}. The draw comes when the league ends.</p>;
 }
 
 // ---------------------------------------------------------------------------
@@ -106,7 +115,7 @@ export function NationalTeam({ state, setState, onBack }) {
   const n = NATIONAL_TEAMS[job.code];
   const sel = nationSelection(state, POOL_BY_ID, ctx);
   const intl = state.season?.intl;
-  const t = intl?.tournaments?.[intl.campaign?.kind === 'WC' ? 'W' : n.conf];
+  const ev = currentEvent(state);
   const rec = job.record;
   return (
     <div className="screen nation-screen">
@@ -124,8 +133,8 @@ export function NationalTeam({ state, setState, onBack }) {
         <div><span>Goals</span><b>{rec.gf}–{rec.ga}</b><small>for and against</small></div>
         <div><span>Trophies</span><b>{(job.trophies || []).length}</b><small>{(job.trophies || []).map((x) => x.name).join(', ') || 'none yet'}</small></div>
       </div>
-      <Segmented small label="National team" value={tab} options={[{ id: 'squad', label: 'Call-ups' }, { id: 'coach', label: 'Coach' }, { id: 'games', label: 'Games' }, { id: 'comp', label: t ? tournamentName(t.key) : 'Qualifying' }]} onChange={setTab} />
-      {tab === 'squad' && <CallUps state={state} setState={setState} sel={sel} />}
+      <Segmented small label="National team" value={tab} options={[{ id: 'squad', label: 'Call-ups' }, { id: 'coach', label: 'Coach' }, { id: 'games', label: 'Games' }, { id: 'comp', label: yearPlan(intl?.year ?? 2027)[n.conf] }]} onChange={setTab} />
+      {tab === 'squad' && <CallUps state={state} setState={setState} sel={sel} ev={ev} />}
       {tab === 'coach' && (
         <section>
           <h2 className="section-title">Head coach</h2>
@@ -157,12 +166,12 @@ export function NationalTeam({ state, setState, onBack }) {
           )}
         </section>
       )}
-      {tab === 'comp' && (t ? <Tournament t={t} mine={job.code} /> : <Campaign intl={intl} conf={n.conf} mine={job.code} />)}
+      {tab === 'comp' && <ConfSeason intl={intl} conf={n.conf} mine={job.code} />}
     </div>
   );
 }
 
-function CallUps({ state, setState, sel }) {
+function CallUps({ state, setState, sel, ev }) {
   const calls = state.nationJob.calls || {};
   const inSquad = new Set([...sel.lineup, ...sel.bench].map((c) => c.id));
   const starters = new Set(sel.lineup.map((c) => c.id));
@@ -178,11 +187,15 @@ function CallUps({ state, setState, sel }) {
       <div className="nation-xi nation-xi--bench">
         {sel.bench.map((c) => <MiniCard key={c.id} card={c} dim />)}
       </div>
-      <p className="hint">Tap a player below: starter → reserve → not called. Places you leave open are filled with the best available. {picked ? `${picked} picked by you.` : 'Right now the coach picks the best 7 and 5 reserves.'}</p>
-      <div className="cta-row">
+      {sel.locked ? (
+        <p className="promo">Squad set for the {ev.name}: these 12 until it ends. Tap a player to swap him between starter and reserve.</p>
+      ) : (
+        <p className="hint">{ev ? `Pick your 12 for the ${ev.name}: the squad is set at its first game.` : 'Nothing on for your nation right now.'} Tap a player below: starter → reserve → not called. Places you leave open are filled with the best available. {picked ? `${picked} picked by you.` : 'Right now the coach picks the best 7 and 5 reserves.'}</p>
+      )}
+      {!sel.locked && <div className="cta-row">
         <button type="button" className="btn btn--small btn--ghost" onClick={() => setState((s) => lockSelection(s, POOL_BY_ID))}>Pick from the best</button>
         <button type="button" className="btn btn--small btn--ghost" onClick={() => setState((s) => clearCalls(s))} disabled={!picked}>Clear my picks</button>
-      </div>
+      </div>}
       <div className="scroll-x">
         <table className="table table--history nation-pool">
           <thead><tr><th>OVR</th><th className="table__club">Player</th><th>Call</th></tr></thead>
@@ -191,11 +204,11 @@ function CallUps({ state, setState, sel }) {
               const role = calls[c.id] || (starters.has(c.id) ? 'start*' : inSquad.has(c.id) ? 'bench*' : '');
               const club = c.clubId ? state.world.clubs[c.clubId] : null;
               return (
-                <tr key={c.id} className={c.yours ? 'is-user' : ''} onClick={() => setState((s) => cycleCall(s, c.id))}>
+                <tr key={c.id} className={c.yours ? 'is-user' : ''} onClick={() => setState((s) => cycleCall(s, c.id, POOL_BY_ID))}>
                   <td><b>{overall(c)}</b></td>
                   <td className="table__club nation-pool__who"><b>{c.name}</b><small>{c.pos} · {club ? <ClubLink id={club.id}>{club.short}</ClubLink> : 'abroad'}{c.youth ? ' · academy' : ''}{c.yours ? ' · yours' : ''}</small></td>
                   <td>
-                    <button type="button" className={`chip-btn${calls[c.id] ? ' is-on' : ''}`} onClick={(e) => { e.stopPropagation(); setState((s) => cycleCall(s, c.id)); }}>
+                    <button type="button" className={`chip-btn${calls[c.id] ? ' is-on' : ''}`} onClick={(e) => { e.stopPropagation(); setState((s) => cycleCall(s, c.id, POOL_BY_ID)); }}>
                       {role.startsWith('start') ? 'Starter' : role.startsWith('bench') ? 'Reserve' : '—'}{role.endsWith('*') ? ' (auto)' : ''}
                     </button>
                   </td>
@@ -337,18 +350,18 @@ export function NationsWorld({ state }) {
   const mine = state.nationJob?.code;
   const ctx = useMemo(() => (view === 'ranking' ? intlContext(state, POOL_BY_ID) : null), [view, state.world, state.squad, state.season?.year]);
   const year = seasonYear(state.season?.year ?? 1);
-  const camp = campaignFor(year);
-  const tours = Object.values(intl?.tournaments || {});
+  const plan = yearPlan(year);
+  const wc = intl?.tournaments?.W;
   return (
     <>
       <Segmented small label="Nations" value={view} options={[{ id: 'now', label: 'This season' }, { id: 'history', label: 'Winners' }, { id: 'ranking', label: 'Ranking' }]} onChange={setView} />
       {view === 'now' && (
         <>
-          <p className="hint">{year} · {intl?.campaign?.year === year ? `qualifying ends this season; the ${camp.kind === 'WC' ? `${WORLD_CUP} (16 nations)` : 'four continental championships (8 nations each)'} follow${camp.kind === 'WC' ? 's' : ''} the club season.` : `qualifying for the ${camp.year} ${camp.kind === 'WC' ? WORLD_CUP : 'continental championships'} starts: groups play home and away over two seasons.`} World Cup places: Europe 7, Americas 4, Africa 3, Asia-Pacific 2.</p>
-          {camp.kind === 'WC' && tours.length > 0 ? tours.map((t) => <Tournament key={t.key} t={t} mine={mine} />) : (
+          <p className="hint">{year}: {INTL_CONFS.map((c) => `${INTL_CONF_LABEL[c]}: ${plan[c]}`).join("; ")}. The cycle: Europe plays qualifiers, the European Championship, World Cup qualifiers, the World Cup; the other regions their continental cup, World Cup qualifiers, the cup again, the World Cup (Europe 7 places, Americas 4, Africa 3, Asia-Pacific 2).</p>
+          {wc ? <Tournament t={wc} mine={mine} /> : (
             <>
               <Segmented small label="Confederation" value={conf} options={INTL_CONFS.map((c) => ({ id: c, label: INTL_CONF_LABEL[c] }))} onChange={setConf} />
-              {intl?.tournaments?.[conf] ? <Tournament t={intl.tournaments[conf]} mine={mine} /> : <Campaign intl={intl} conf={conf} mine={mine} />}
+              <ConfSeason intl={intl} conf={conf} mine={mine} />
             </>
           )}
         </>
@@ -362,7 +375,7 @@ export function NationsWorld({ state }) {
 function NationHistory({ history }) {
   return (
     <section>
-      {history.length === 0 && <p className="hint">The first summer tournaments are in 2028 (continental championships) and 2030 (the World Cup). Real-life titles are in the Ranking.</p>}
+      {history.length === 0 && <p className="hint">Every summer has a tournament: 2027 the Americas, Africa and Asia-Pacific cups, 2028 the European Championship, 2029 the cups again, 2030 the World Cup. Real-life titles are in the Ranking.</p>}
       <ul className="champions">
         {[...history].reverse().map((h, i) => (
           <li key={i}><span>{h.year} · {tournamentName(h.key)}</span><b><NationName code={h.winner} /> <small>beat {h.runnerUp}</small></b></li>

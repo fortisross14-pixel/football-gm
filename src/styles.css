@@ -2117,3 +2117,5 @@ html.reduce-motion .reveal-row { animation-delay: 0s; }
 .nation-pool .chip-btn { white-space: nowrap; }
 .nation-pool__who b { display: block; }
 .nation-pool__who small { color: var(--muted); font-size: 12px; }
+.table--history.nation-pool { min-width: 0; }
+.nation-pool td.nation-pool__who { max-width: none; width: 100%; white-space: normal; }
